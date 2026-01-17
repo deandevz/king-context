@@ -1,0 +1,181 @@
+[
+  {
+    "title": "Audio Intelligence",
+    "path": "audio-intelligence",
+    "url": "https://docs.gladia.io/chapters/audio-intelligence",
+    "keywords": [
+      "audio intelligence",
+      "speech insights",
+      "transcription features",
+      "translation",
+      "summarization",
+      "named entity recognition",
+      "sentiment analysis",
+      "chapterization",
+      "audio to llm"
+    ],
+    "use_cases": [
+      "how to add AI features to transcription",
+      "when to use audio intelligence for meeting notes",
+      "how to automate voice agent workflows",
+      "when to use compliance redaction with NER",
+      "how to enable multilingual publishing"
+    ],
+    "tags": ["audio-intelligence", "ai-features", "overview"],
+    "priority": 9,
+    "content": "# Audio Intelligence\n\nAudio intelligence turns raw speech into structured, useful data on top of transcription. Once the words are captured, these features help you understand, organize, and act on the content - from instant translation to key-point summaries, entity detection, chapter markers, emotions, and even custom LLM prompts.\n\nUse these capabilities alongside Live or Pre-recorded STT to automate workflows like meeting notes, voice agents, compliance redaction, knowledge extraction, and multilingual publishing.\n\n## Available Features\n\n- **Translation** - Translate transcripts and subtitles into multiple languages in one request.\n- **Summarization** - Generate concise summaries or bullet points for quick understanding.\n- **Named Entity Recognition** - Detect and categorize key entities like people, organizations, dates, and more.\n- **Chapterization** - Segment long audio into chapters with headlines and summaries for easy navigation.\n- **Sentiment & Emotion Analysis** - Understand the tone and emotions expressed across the transcript.\n- **Audio to LLM** - Ask custom questions and run prompts on your audio like an assistant would."
+  },
+  {
+    "title": "Audio to LLM",
+    "path": "audio-intelligence/audio-to-llm",
+    "url": "https://docs.gladia.io/chapters/audio-intelligence/audio-to-llm",
+    "keywords": [
+      "audio to llm",
+      "custom prompts",
+      "llm integration",
+      "transcription analysis",
+      "key points extraction",
+      "title generation",
+      "audio assistant",
+      "ai prompts"
+    ],
+    "use_cases": [
+      "how to extract key points from audio transcription",
+      "how to generate titles from transcription",
+      "when to use custom LLM prompts on audio",
+      "how to ask questions about transcribed content",
+      "how to run custom analysis on audio files"
+    ],
+    "tags": ["audio-intelligence", "ai-features", "llm", "prompts"],
+    "priority": 8,
+    "content": "# Audio to LLM\n\n> This feature is in **Alpha** state. We're looking for feedback to improve this feature.\n\nThe **Audio to LLM** feature applies your own prompts to the audio transcription. For now, it is only available for **pre-recorded** audio.\n\n## Usage\n\nEnable Audio to LLM by setting the appropriate flag and providing your prompts:\n\n### Pre-recorded\n\n```json\n{\n  \"audio_to_llm\": true,\n  \"audio_to_llm_config\": {\n    \"prompts\": [\n      \"Extract the key points from the transcription as bullet points\",\n      \"Generate a title from this transcription\"\n    ]\n  }\n}\n```\n\n## Response\n\nWith this code, your output will look like this:\n\n```json\n{\n  \"success\": true,\n  \"is_empty\": false,\n  \"results\": [\n    {\n      \"success\": true,\n      \"is_empty\": false,\n      \"results\": {\n        \"prompt\": \"Extract the key points from the transcription as bullet points\",\n        \"response\": \"The main entities key points from the transcription are:\\n- ...\"\n      },\n      \"exec_time\": 1.7726809978485107,\n      \"error\": null\n    },\n    {\n      \"success\": true,\n      \"is_empty\": false,\n      \"results\": {\n        \"prompt\": \"Generate a title from this transcription\",\n        \"response\": \"The Great Title\"\n      },\n      \"exec_time\": 1.7832809978258485,\n      \"error\": null\n    }\n  ],\n  \"exec_time\": 6.127103805541992,\n  \"error\": null\n}\n```\n\nYou'll find the results for each prompt under the `results` key."
+  },
+  {
+    "title": "Chapterization",
+    "path": "audio-intelligence/chapterization",
+    "url": "https://docs.gladia.io/chapters/audio-intelligence/chapterization",
+    "keywords": [
+      "chapterization",
+      "audio chapters",
+      "content segmentation",
+      "meeting navigation",
+      "chapter summaries",
+      "headlines",
+      "keywords extraction",
+      "long audio"
+    ],
+    "use_cases": [
+      "how to segment long audio into chapters",
+      "how to add chapter navigation to meeting recordings",
+      "when to use chapterization for podcasts",
+      "how to get summaries and headlines for audio sections",
+      "how to extract keywords from audio chapters"
+    ],
+    "tags": ["audio-intelligence", "ai-features", "chapterization", "segmentation"],
+    "priority": 8,
+    "content": "# Chapterization\n\n> This feature is in **Alpha** state. Breaking changes may still be introduced to this API, but advance notice will be sent. We're looking for feedback to improve this feature.\n\nThe chapterization model segments the audio into logical chapters based on the audio and content, and makes it easier to navigate long audios such as meeting recordings. Each chapter will contain its start and end time, as well as a summary, headline, bottom line \"gist\" and keywords.\n\n## Usage\n\nEnable chapterization by setting the appropriate flag:\n\n### Live transcription\n\n```json\n{\n  \"post_processing\": {\n    \"chapterization\": true\n  },\n  \"messages_config\": {\n    \"receive_post_processing_events\": true\n  }\n}\n```\n\n### Pre-recorded\n\n```json\n{\n  \"chapterization\": true\n}\n```\n\n## Result\n\nThe transcription result will contain a `\"chapterization\"` key with the output of the model:\n\n```json\n{\n  \"transcription\": {...},\n  \"chapterization\": {\n    \"success\": true,\n    \"is_empty\": false,\n    \"results\": [\n      {\n        \"summary\": \"In a world where minimalism is valued, yet excess is desired, hope for the future remains. The past predicts the present, which is yet to be determined.\",\n        \"headline\": \"Headline: \\\"Embracing Hope: The Interconnectedness of Past, Present, and Future\\\"\",\n        \"gist\": \"Embracing Hope: Past, Present, Future Interconnected\",\n        \"keywords\": [\n          \"Split infinity\",\n          \"less is more\",\n          \"too much\",\n          \"hope\",\n          \"present\"\n        ],\n        \"start\": 0.0,\n        \"end\": 19.83977\n      }\n    ],\n    \"exec_time\": 5.078396797180176,\n    \"error\": null\n  }\n}\n```"
+  },
+  {
+    "title": "Named Entity Recognition",
+    "path": "audio-intelligence/named-entity-recognition",
+    "url": "https://docs.gladia.io/chapters/audio-intelligence/named-entity-recognition",
+    "keywords": [
+      "named entity recognition",
+      "NER",
+      "entity detection",
+      "PII detection",
+      "GDPR compliance",
+      "HIPAA compliance",
+      "data redaction",
+      "personal information",
+      "PHI",
+      "regulatory compliance"
+    ],
+    "use_cases": [
+      "how to detect personal information in audio",
+      "how to comply with GDPR using NER",
+      "when to use entity detection for compliance",
+      "how to identify names and organizations in transcription",
+      "how to redact sensitive data from audio"
+    ],
+    "tags": ["audio-intelligence", "ai-features", "ner", "compliance", "pii"],
+    "priority": 9,
+    "content": "# Named Entity Recognition\n\n> This feature is in **Alpha** state. Breaking changes may still be introduced to this API, but an advanced notice will be sent. We're looking for feedback to improve this feature.\n\n**Named Entity Recognition** (also known as **Entity Detection**) detects and categorizes key information in the audio.\n\n## Usage\n\nTo enable named entity recognition simply set the appropriate flag:\n\n### Live transcription\n\n```json\n{\n  \"realtime_processing\": {\n    \"named_entity_recognition\": true\n  },\n  \"messages_config\": {\n    \"receive_realtime_processing_events\": true\n  }\n}\n```\n\n### Pre-recorded\n\n```json\n{\n  \"named_entity_recognition\": true\n}\n```\n\n## Result\n\nThe transcription result will contain a `\"named_entity_recognition\"` key with the output of the model:\n\n```json\n{\n  \"transcription\": {...},\n  \"named_entity_recognition\": {\n    \"success\": true,\n    \"is_empty\": false,\n    \"results\": [\n      {\n        \"entity_type\": \"EMAIL_ADDRESS\",\n        \"text\": \"privacy@gladia.io\",\n        \"start\": 123.4,\n        \"end\": 124.5\n      },\n      {\n        \"entity_type\": \"AGE\",\n        \"text\": \"27 years old\",\n        \"start\": 234.7,\n        \"end\": 235.6\n      }\n    ],\n    \"exec_time\": 1.7726809978485107,\n    \"error\": null\n  }\n}\n```\n\n## Supported Regulations\n\nGladia.io helps you cover the following regulations for your business:\n\n- EU General Data Protection Regulation (GDPR)\n- California Privacy Rights Act (CPRA)\n- USA Health Insurance Portability and Accountability Act (HIPAA Safe Harbor)\n- Quebec Privacy Act (law 25)\n- Japan Act on the Protection of Personal Information (APPI)\n\n## Supported Entities\n\n### PII Entities\n\n- ACCOUNT_NUMBER - Customer account or membership identification number\n- AGE - Numbers associated with an individual's age\n- DATE - Specific calendar dates\n- DATE_INTERVAL - Broader time periods, including date ranges\n- DOB - Dates of birth\n- DRIVER_LICENSE - Driver's permit numbers\n- DURATION - Periods of time\n- EMAIL_ADDRESS - Email addresses\n- EVENT - Names of events or holidays\n- FILENAME - Names of computer files\n- GENDER_SEXUALITY - Terms indicating gender identity or sexual orientation\n- HEALTHCARE_NUMBER - Healthcare numbers and health plan beneficiary numbers\n- IP_ADDRESS - Internet IP address (IPv4 and IPv6)\n- LANGUAGE - Names of natural languages\n- LOCATION - Any named location reference\n- LOCATION_ADDRESS - Full or partial physical mailing addresses\n- LOCATION_CITY - Municipality names\n- LOCATION_COORDINATE - Geographic positions\n- LOCATION_COUNTRY - Country names\n- LOCATION_STATE - State, province, territory names\n- LOCATION_ZIP - Zip codes, postcodes, or postal codes\n- MARITAL_STATUS - Terms indicating marital status\n- MONEY - Names and/or amounts of currency\n- NAME - Names of individuals\n- NAME_FAMILY - Family names\n- NAME_GIVEN - Given names\n- NAME_MEDICAL_PROFESSIONAL - Full names of medical professionals\n- NUMERICAL_PII - Numerical PII that doesn't fall under other categories\n- OCCUPATION - Job titles or professions\n- ORGANIZATION - Names of organizations\n- ORGANIZATION_MEDICAL_FACILITY - Names of medical facilities\n- ORIGIN - Terms indicating nationality, ethnicity, or provenance\n- PASSPORT_NUMBER - Passport numbers\n- PASSWORD - Account passwords, PINs, access keys\n- PHONE_NUMBER - Telephone or fax numbers\n- PHYSICAL_ATTRIBUTE - Distinctive bodily attributes\n- POLITICAL_AFFILIATION - Terms referring to political party or ideology\n- RELIGION - Terms indicating religious affiliation\n- SSN - Social Security Numbers or equivalent\n- TIME - Expressions indicating clock times\n- URL - Internet addresses\n- USERNAME - Usernames, login names, or handles\n- VEHICLE_ID - Vehicle identification numbers and license plates\n- ZODIAC_SIGN - Names of Zodiac signs\n\n### PHI Entities (Protected Health Information)\n\n- BLOOD_TYPE - Blood types\n- CONDITION - Names of medical conditions, diseases, syndromes\n- DOSE - Medically prescribed quantity of medication\n- DRUG - Medications, vitamins, and supplements\n- INJURY - Bodily injuries\n- MEDICAL_PROCESS - Medical processes, treatments, procedures\n- STATISTICS - Medical statistics\n\n### Financial Entities\n\n- BANK_ACCOUNT - Bank account numbers and IBAN\n- CREDIT_CARD - Credit card numbers\n- CREDIT_CARD_EXPIRATION - Expiration date of credit cards\n- CVV - Card verification codes\n- ROUTING_NUMBER - Bank routing numbers"
+  },
+  {
+    "title": "Sentiment and Emotion Analysis",
+    "path": "audio-intelligence/sentiment-analysis",
+    "url": "https://docs.gladia.io/chapters/audio-intelligence/sentiment-analysis",
+    "keywords": [
+      "sentiment analysis",
+      "emotion detection",
+      "tone analysis",
+      "positive negative neutral",
+      "speaker emotions",
+      "diarization",
+      "conversation analysis",
+      "customer sentiment"
+    ],
+    "use_cases": [
+      "how to detect emotions in audio transcription",
+      "how to analyze customer sentiment in calls",
+      "when to use sentiment analysis for feedback",
+      "how to combine sentiment with speaker diarization",
+      "how to identify positive and negative moments in conversations"
+    ],
+    "tags": ["audio-intelligence", "ai-features", "sentiment", "emotion"],
+    "priority": 8,
+    "content": "# Sentiment and Emotion Analysis\n\nThe sentiment and emotion analysis model analyzes the transcript, detecting the general sentiment which is conveyed in each sentence (positive, neutral or negative) as well as any emotion that is being expressed.\n\n## Usage\n\nTo enable sentiment and emotion analysis simply set the appropriate flag:\n\n### Live transcription\n\n```json\n{\n  \"realtime_processing\": {\n    \"sentiment_analysis\": true\n  },\n  \"messages_config\": {\n    \"receive_realtime_processing_events\": true\n  }\n}\n```\n\n### Pre-recorded\n\n```json\n{\n  \"sentiment_analysis\": true\n}\n```\n\n## Result\n\nYour transcription result will contain a `sentiment_analysis` key which will contain an array of all sentences in the audio, and for each one the conveyed sentiment and expressed emotion.\n\nWhen `diarization` is enabled, the sentiment analysis output will contain the `speaker` as well, allowing you to analyze each speaker separately.\n\n```json\n{\n  \"transcription\": {...},\n  \"sentiment_analysis\": {\n    \"success\": true,\n    \"is_empty\": false,\n    \"results\": [\n      {\n        \"text\": \"Jonathan, it says you are trained in technology.\",\n        \"sentiment\": \"neutral\",\n        \"emotion\": \"neutral\",\n        \"start\": 0.45158,\n        \"end\": 2.364,\n        \"channel\": 0,\n        \"speaker\": 0\n      },\n      {\n        \"text\": \"That's very good.\",\n        \"sentiment\": \"positive\",\n        \"emotion\": \"positive_surprise\",\n        \"start\": 2.54438,\n        \"end\": 3.54323,\n        \"channel\": 0,\n        \"speaker\": 0\n      }\n    ],\n    \"exec_time\": 1.127103805541992,\n    \"error\": null\n  }\n}\n```\n\n## Possible Values\n\n### Sentiments\n\n- positive\n- negative\n- neutral\n- mixed\n- unknown\n\n### Emotions\n\n- adoration\n- amusement\n- anger\n- awe\n- confusion\n- contempt\n- contentment\n- desire\n- disappointment\n- disgust\n- distress\n- ecstatic\n- elation\n- embarrassment\n- fear\n- interest\n- pain\n- realization\n- relief\n- sadness\n- negative_surprise\n- positive_surprise\n- sympathy\n- triumph\n- neutral"
+  },
+  {
+    "title": "Summarization",
+    "path": "audio-intelligence/summarization",
+    "url": "https://docs.gladia.io/chapters/audio-intelligence/summarization",
+    "keywords": [
+      "summarization",
+      "audio summary",
+      "transcript summary",
+      "bullet points",
+      "concise summary",
+      "key takeaways",
+      "meeting summary",
+      "content overview"
+    ],
+    "use_cases": [
+      "how to generate summaries from audio",
+      "how to get bullet points from transcription",
+      "when to use concise vs general summary",
+      "how to create meeting notes automatically",
+      "how to extract key information from long audio"
+    ],
+    "tags": ["audio-intelligence", "ai-features", "summarization"],
+    "priority": 8,
+    "content": "# Summarization\n\nThe **Summarization** model generates a summary of your transcript. You can choose one of our summary types to customize the summarization based on your preference.\n\n## Summarization Types\n\n**3 summarization types** are available:\n\n- `general` - A regular summary of the transcription\n- `concise` - A shorter summary for quick overview\n- `bullet_points` - Retrieve the key points in a list\n\nIf no `summarization_config` is provided, `general` type will be used by default.\n\n### Notes on Options\n\n- **general**: Balanced summary for most use cases; good readability and coverage.\n- **concise**: Shorter output for quick overviews or previews; fewer details.\n- **bullet_points**: Lists key takeaways; ideal for action items, meeting notes, or highlights.\n\n## Usage\n\nTo enable summarization simply set the `\"summarization\"` parameter to true:\n\n### Live transcription\n\n```json\n{\n  \"post_processing\": {\n    \"summarization\": true,\n    \"summarization_config\": {\n      \"type\": \"concise\"\n    }\n  },\n  \"messages_config\": {\n    \"receive_post_processing_events\": true\n  }\n}\n```\n\n### Pre-recorded\n\n```json\n{\n  \"summarization\": true,\n  \"summarization_config\": {\n    \"type\": \"bullet_points\"\n  }\n}\n```\n\n## Result\n\nThe transcription result will contain a `\"summarization\"` key with the output of the model:\n\n```json\n{\n  \"transcription\": {...},\n  \"summarization\": {\n    \"success\": true,\n    \"is_empty\": false,\n    \"results\": \"This transcription suggests that...\",\n    \"exec_time\": 1.5126123428344727,\n    \"error\": null\n  }\n}\n```\n\nYou'll find the summarization of your audio under the `results` key."
+  },
+  {
+    "title": "Translation",
+    "path": "audio-intelligence/translation",
+    "url": "https://docs.gladia.io/chapters/audio-intelligence/translation",
+    "keywords": [
+      "translation",
+      "multilingual",
+      "subtitles translation",
+      "transcript translation",
+      "target languages",
+      "lip sync",
+      "dubbing",
+      "context aware translation",
+      "multiple languages"
+    ],
+    "use_cases": [
+      "how to translate transcriptions to multiple languages",
+      "how to generate translated subtitles",
+      "when to use enhanced vs base translation model",
+      "how to enable lip sync for dubbing",
+      "how to provide context for better translation"
+    ],
+    "tags": ["audio-intelligence", "ai-features", "translation", "multilingual"],
+    "priority": 9,
+    "content": "# Translation\n\nThe **Translation** model generates translations of your transcriptions to one or more targeted languages. If subtitles and/or sentences are enabled, the translations will also include translated results for them.\n\nYou can translate your transcription to **multiple languages** in a single API call. The list of the languages covered by the Translation feature are listed in Supported Languages.\n\n## Translation Models\n\n**2 translation models** are available:\n\n- `base` - Fast, covers most use cases\n- `enhanced` - Slower, but higher quality and with context awareness\n\n## Quickstart\n\nTo enable translation, set `translation` to `true` on your request, and add a `translation_config` object:\n\n### Live transcription\n\n```json\n{\n  \"realtime_processing\": {\n    \"translation\": true,\n    \"translation_config\": {\n      \"target_languages\": [\"fr\"],\n      \"model\": \"base\",\n      \"match_original_utterances\": true,\n      \"lipsync\": true,\n      \"context_adaptation\": true,\n      \"context\": \"<string>\",\n      \"informal\": false\n    }\n  },\n  \"messages_config\": {\n    \"receive_realtime_processing_events\": true\n  }\n}\n```\n\n### Pre-recorded\n\n```json\n{\n  \"translation\": true,\n  \"translation_config\": {\n    \"target_languages\": [\"fr\", \"es\"],\n    \"model\": \"enhanced\"\n  }\n}\n```\n\n## Translation Configuration Fields\n\n| Field | Type | Default | Description |\n|-------|------|---------|-------------|\n| target_languages | string[] | required | Target language codes for translation output |\n| model | enum[\"base\", \"enhanced\"] | \"base\" | Specifies the translation model to be used |\n| match_original_utterances | boolean | true | Keep translated segments aligned with source segmentation. Use `true` for subtitles/dubbing; set `false` for more natural flow |\n| lipsync | boolean | true | Controls alignment with visual cues, specifically lip movements. Enhances viewing experience for dubbed content |\n| context_adaptation | boolean | true | Enable context-aware translation. Leverages extra context and style preferences for better accuracy |\n| context | string | - | Additional context to improve terminology, proper nouns, or disambiguation. Effective with `context_adaptation: true` |\n| informal | boolean | false | Prefer informal register when available; useful for chatty UX or youth audiences |\n\n## Result\n\nThe transcription result will contain a `\"translation\"` key with the output of the model:\n\n```json\n{\n  \"transcription\": {...},\n  \"translation\": {\n    \"success\": true,\n    \"is_empty\": false,\n    \"results\": [\n      {\n        \"words\": [\n          {\n            \"word\": \"Diviser\",\n            \"start\": 0.20043,\n            \"end\": 0.70080,\n            \"confidence\": 1\n          },\n          {\n            \"word\": \"l'infini\",\n            \"start\": 0.90095,\n            \"end\": 1.56144,\n            \"confidence\": 1\n          }\n        ],\n        \"languages\": [\"fr\"],\n        \"full_transcript\": \"Diviser l'infini dans un temps où moins est plus...\",\n        \"utterances\": [...],\n        \"error\": null\n      }\n    ],\n    \"exec_time\": 0.6475496292114258,\n    \"error\": null\n  }\n}\n```\n\nIf you enabled the `subtitles` generation, those will also benefit from the translation model.\n\n## Best Practices\n\n- Set `target_languages` to only the languages you need.\n- Use `enhanced` with `context_adaptation` for high-accuracy, domain-heavy content.\n- Provide a meaningful `context` to improve terminology and named entities.\n- Keep `match_original_utterances: true` for subtitles; set to `false` for a more natural flow.\n- Pair with language detection and code switching when source language may vary."
+  }
+]

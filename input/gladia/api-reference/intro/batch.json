@@ -1,0 +1,63 @@
+[
+  {
+    "title": "API Reference Introduction",
+    "path": "api-reference",
+    "url": "https://docs.gladia.io/api-reference",
+    "keywords": [
+      "gladia api",
+      "api reference",
+      "rest api",
+      "transcription api",
+      "speech to text",
+      "webhooks",
+      "audio intelligence",
+      "api documentation",
+      "json api"
+    ],
+    "use_cases": [
+      "how to get started with Gladia API",
+      "how to integrate speech-to-text in my application",
+      "when to use webhooks vs polling for transcription results",
+      "how to structure API calls to Gladia",
+      "what endpoints are available in Gladia API"
+    ],
+    "tags": [
+      "api-reference",
+      "introduction",
+      "getting-started",
+      "rest-api"
+    ],
+    "priority": 10,
+    "content": "# API Reference Introduction\n\n**Gladia API** aims to provide a complete set of resources alongside with its **state-of-the-art API** features to makes the integration as easy as possible, like **webhooks event**, **callback urls** and **audio intelligence** to transform your transcriptions from raw data to usable knowledge, allowing you to focus on your product.\n\nThe API is structured following the **REST** standard and JSON input/output whenever it's possible, with a user-friendly experience and ensure a **low effort** integration process.\n\n## Available Endpoints\n\n### Live Endpoints\n- POST - Initiate a session\n- WSS - Live WebSocket\n- GET - Get result\n- GET - List transcriptions\n- GET - Download audio file\n- DEL - Delete transcription\n- Webhooks\n- Callbacks\n\n### Pre-recorded Endpoints\n- POST - Upload a file\n- POST - Initiate a transcription\n- GET - Get result\n- GET - List transcriptions\n- GET - Download audio file\n- DEL - Delete transcription\n- Webhooks\n- Callbacks\n\n### Transcription (deprecated)\n- POST - Initiate a transcription\n- GET - Get result\n- GET - List transcriptions\n- GET - Download audio file\n- DEL - Delete transcription\n\nIf you're not looking for technical API reference documentation, you can check the [Quickstart guide](https://docs.gladia.io/chapters/introduction/getting-started).\n\nLet's get started with learning how to use [Authentication](https://docs.gladia.io/api-reference/authentication) with your API calls."
+  },
+  {
+    "title": "Authentication",
+    "path": "api-reference/authentication",
+    "url": "https://docs.gladia.io/api-reference/authentication",
+    "keywords": [
+      "authentication",
+      "api key",
+      "x-gladia-key",
+      "sign up",
+      "authorization",
+      "header authentication",
+      "api credentials",
+      "gladia account"
+    ],
+    "use_cases": [
+      "how to authenticate Gladia API calls",
+      "how to get a Gladia API key",
+      "how to sign up for Gladia",
+      "where to find my API key in Gladia dashboard",
+      "how to pass API key in request headers"
+    ],
+    "tags": [
+      "api-reference",
+      "authentication",
+      "security",
+      "api-key"
+    ],
+    "priority": 10,
+    "content": "# Authentication\n\nUse your API key to authenticate your calls.\n\n## Signing Up\n\nYou will first need to create your account. Sign-up to [app.gladia.io](https://app.gladia.io/). You can sign-up through Google and more sign-up methods will be available in the near future.\n\n## Get your API key\n\nNow that you signed up, login to app.gladia.io and go to the [API keys section](https://app.gladia.io/apikeys). We should have already created a default key for you. You can use this one or create your own.\n\n> Gladia offers 10 Hours of free audio transcription per month if you want to test the service!\n\nWith your API key, you're now ready to use Gladia APIs.\n\n## Authenticate your API calls\n\nOnce you got your API key, pass it in the header `x-gladia-key`, like this:\n\n```bash\ncurl --request GET \\\n  --url https://api.gladia.io/v2/transcription \\\n  --header 'x-gladia-key: YOUR_GLADIA_API_KEY'\n```\n\nThe header authentication method ensures that you are able to use Gladia in any environment or any cloud-based third party service.\n\nThis is the **only** authentication method you'll need to use all the API endpoints.\n\nNext, we'll see what's the general pre-recorded flow and how to manage it on your side."
+  }
+]

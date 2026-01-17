@@ -1,0 +1,118 @@
+[
+  {
+    "title": "Welcome to Gladia",
+    "path": "introduction",
+    "url": "https://docs.gladia.io/chapters/introduction",
+    "keywords": [
+      "gladia",
+      "speech-to-text",
+      "audio transcription",
+      "real-time transcription",
+      "audio intelligence",
+      "API",
+      "voice recognition",
+      "SDK",
+      "integrations"
+    ],
+    "use_cases": [
+      "How to get started with Gladia API?",
+      "What can Gladia do for audio transcription?",
+      "When to use live vs pre-recorded transcription?",
+      "How to integrate Gladia with third-party services?",
+      "What audio intelligence features does Gladia offer?"
+    ],
+    "tags": [
+      "introduction",
+      "overview",
+      "getting-started"
+    ],
+    "priority": 10,
+    "content": "# Welcome to Gladia\n\nGladia is a state-of-the-art audio transcription and intelligence provider. We offer a simple API to get transcription from your audios and videos, in both Real-time and asynchronous ways, with audio intelligence tools to extract, analyze and understand data from your audios.\n\n## Quick Links\n\n- **Getting started**: Getting started with Gladia Speech-To-Text API.\n- **Transcribe live audio**: Quickstart with Real-Time transcription using Gladia.\n- **Transcribe pre-recorded audio**: Quickstart with Asynchronous transcription using Gladia.\n- **Apply audio intelligence**: Use the power of LLMs directly on your audios without a third party service.\n- **Test gladia playground**: Test gladia quickly on our playground.\n- **API Reference**: Visit our technical documentation for more details.\n\n## Our integration partners\n\nIf you want to build fast with Gladia, you can use one of our integration partners:\n\n- **SDK**: For built-in best practices\n- **Pipecat**: For vocal/AI agents\n- **Livekit**: For vocal/AI agents\n- **Vapi**: For vocal/AI agents\n- **Recall**: For meeting recorder / agents\n- **Meeting Baas**: For meeting recorder / agents\n- **Twilio**: To use Gladia with telephony"
+  },
+  {
+    "title": "Getting Started",
+    "path": "introduction/getting-started",
+    "url": "https://docs.gladia.io/chapters/introduction/getting-started",
+    "keywords": [
+      "getting started",
+      "API key",
+      "sign up",
+      "account setup",
+      "authentication",
+      "quickstart",
+      "free tier",
+      "SDK"
+    ],
+    "use_cases": [
+      "How to create a Gladia account?",
+      "How to get an API key for Gladia?",
+      "How to start using Gladia for transcription?",
+      "What is the free tier limit for Gladia?"
+    ],
+    "tags": [
+      "getting-started",
+      "authentication",
+      "quickstart"
+    ],
+    "priority": 10,
+    "content": "# Getting Started\n\nSetup your Gladia account and start using the most reliable state-of-the-art Speech-To-Text API.\n\n## Step 1: Setup account\n\n### Signing Up\n\nYou will first need to create your account. Sign-up to app.gladia.io. You can sign-up through Google and more sign-up methods will be available in the near feature.\n\n### Get your API key\n\nNow that you signed up, login to app.gladia.io and go to the API keys section. We should have already created a default key for you. You can use this one or create your own.\n\n> Gladia offers 10 Hours of free audio transcription per month if you want to test the service!\n\nWith your API key, you're now ready to use Gladia APIs.\n\n## Step 2: Start building with Gladia!\n\n### With our SDK / API\n\nWant to build your integration yourself? Use our SDK or our API directly:\n\n- **Transcribe live audio**: Quickstart with Real-Time transcription using Gladia.\n- **Transcribe pre-recorded audio**: Quickstart with Asynchronous transcription using Gladia.\n\n### With one of our partners\n\nIf you want to build fast with Gladia, you can use one of our integration partners:\n\n- **SDK**: For built-in best practices\n- **Pipecat**: For vocal/AI agents\n- **Livekit**: For vocal/AI agents\n- **Vapi**: For vocal/AI agents\n- **Recall**: For meeting recorder / agents\n- **Meeting Baas**: For meeting recorder / agents\n- **Twilio**: To use Gladia with telephony\n\n## Next steps\n\nNow that you tested Gladia's basic transcription, you might want to extract data, enhance, translate or format your audio transcriptions. On top of its Speech-to-text API, Gladia provides a whole set of tools that you might want to use for your particular use cases like:\n\n- Pre-recorded transcription features\n- Realtime transcription features\n- Code samples\n- API Reference"
+  },
+  {
+    "title": "Gladia over vanilla Whisper?",
+    "path": "introduction/why-use-gladia",
+    "url": "https://docs.gladia.io/chapters/introduction/why-use-gladia",
+    "keywords": [
+      "whisper",
+      "comparison",
+      "self-hosted",
+      "cloud API",
+      "benefits",
+      "cost",
+      "security",
+      "scalability",
+      "maintenance"
+    ],
+    "use_cases": [
+      "Why should I use Gladia instead of self-hosted Whisper?",
+      "What are the benefits of using Gladia API?",
+      "How does Gladia compare to running my own Whisper instance?",
+      "When is cloud-based transcription better than self-hosted?"
+    ],
+    "tags": [
+      "introduction",
+      "comparison",
+      "whisper"
+    ],
+    "priority": 7,
+    "content": "# Running your own Whisper instance\n\nIn the dynamic world of technology, leveraging AI for voice recognition has become a key asset for many applications. Whisper presents a cutting-edge solution. However, setting up and maintaining your own Whisper instance can be fraught with challenges. In this article, we dive into why managing your own Whisper instance might not be the best approach and how Gladia API seamlessly fills this gap.\n\n## The Downside of Running Your Own Whisper Instance\n\n### Resource-Heavy Requirements\n\n- **Intensive Computing Needs**: Whisper models are like power-hungry giants, requiring substantial CPU and GPU power.\n- **Enormous Storage Space**: Prepare to allocate extensive storage for datasets and model weights, akin to building large warehouses for data.\n\n### Navigating the Maze of Technical Complexity\n\n- **Daunting Setup and Maintenance**: The complexity of configuration and ongoing maintenance can be overwhelming.\n- **Staying Ahead of the Curve**: Keeping up with the latest advancements in AI technology requires constant vigilance and learning.\n\n### Security Concerns: A Thorny Issue\n\n- **Data Privacy Risks**: Storing sensitive voice data on your own servers can be like opening a Pandora's box of privacy issues.\n- **Attack Vulnerability**: Self-hosted solutions could be more susceptible to cyber-attacks, making them a potential Achilles' heel.\n\n### Cost: The Hidden Giant\n\n- **Ongoing Operational Expenses**: The high computational demands translate into increased electricity and cooling costs.\n- **Initial Investment in Hardware**: Get ready to invest in high-end hardware, akin to buying a sports car for a daily commute.\n\n## Gladia API: The Knight in Shining Armor\n\nGladia API emerges as a cloud-based savior, addressing these challenges and offering a more streamlined, secure, and efficient alternative.\n\n### User-Friendly Integration\n\n- **Plug and Play**: With Gladia API, integrating voice recognition is as easy as plugging in a USB drive - simple and straightforward.\n- **Maintenance-Free**: Say goodbye to the hassles of updates and maintenance, as Gladia API takes care of it all.\n\n### Scalability and Cost-Effectiveness\n\n- **Pay-As-You-Go Model**: Only pay for the processing you need, avoiding the financial burden of maintaining expensive hardware.\n- **Elastic Scalability**: Whether your demand is a trickle or a flood, Gladia API adapts effortlessly, scaling to your needs.\n\n### Enhanced Security: Your Digital Fortress\n\n- **Fort-Knox-Level Data Security**: Gladia API ensures top-notch security for your data, adhering to stringent data privacy standards.\n- **Continuous Security Updates**: Stay protected against emerging threats with regular security updates.\n\n### Comprehensive Support and Documentation\n\n- **Extensive Documentation**: Dive into detailed documentation to get the most out of Gladia API.\n- **Community and Expertise at Your Fingertips**: Leverage the collective wisdom of a vast user community and expert support for any queries or challenges.\n\nIn conclusion, while running your own Whisper instance might seem appealing, the journey is fraught with hurdles. Gladia API emerges as a robust, hassle-free alternative, letting you focus on innovation rather than infrastructure."
+  },
+  {
+    "title": "Playground",
+    "path": "introduction/playground",
+    "url": "https://docs.gladia.io/chapters/introduction/playground",
+    "keywords": [
+      "playground",
+      "testing",
+      "demo",
+      "web interface",
+      "upload audio",
+      "microphone",
+      "live transcription",
+      "named entity recognition"
+    ],
+    "use_cases": [
+      "How to test Gladia without writing code?",
+      "How to use the Gladia playground for transcription?",
+      "How to transcribe audio from my microphone?",
+      "How to upload and transcribe local audio files?"
+    ],
+    "tags": [
+      "introduction",
+      "playground",
+      "testing",
+      "demo"
+    ],
+    "priority": 8,
+    "content": "# Playground\n\nUse the Gladia app to transcribe your audio.\n\nGladia's playground is a convenient way to test our Speech-To-Text API. On the playground you are able to transcribe remote audio files through URL, and also upload your local audio files, alongside with live audio transcription.\n\n## Step 1: Select your audio source\n\nChoose your audio source (stream from your microphone, or upload a local file). Then proceed to the next step.\n\n## Step 2: Select features\n\nYou'll be able to select some of the options Gladia API provide for your transcription.\n\nFor this example, we want to detect the named entity (like email addresses, phone numbers, etc.), so we turned on **named entity recognition**.\n\n> Only a few features of Gladia API are available on the playground. For more advanced testing, check our API documentation instead.\n\n## Step 3: Talk to Gladia\n\nYou can talk to Gladia by clicking on the \"Start transcribing\" button, and you'll be able to see the transcription of your voice in the \"Transcription\" tab.\n\n> Text in italic in the transcription represents partial transcripts.\n\n## Step 4: Transcribe\n\nYou can see an already formatted and readable results in the default \"Transcription\" tab, and you'll also find the result in JSON format (the one you'd get with an API call)."
+  }
+]

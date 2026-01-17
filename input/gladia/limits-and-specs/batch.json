@@ -1,0 +1,156 @@
+[
+  {
+    "title": "Concurrency and Rate Limits",
+    "path": "limits-and-specifications/concurrency",
+    "url": "https://docs.gladia.io/chapters/limits-and-specifications/concurrency",
+    "keywords": [
+      "concurrency",
+      "rate limits",
+      "API limits",
+      "transcription limits",
+      "usage limits",
+      "free tier",
+      "paid tier",
+      "enterprise",
+      "queue"
+    ],
+    "use_cases": [
+      "how to check my concurrency limits",
+      "what are the rate limits for Gladia API",
+      "how many concurrent transcriptions can I run",
+      "when to upgrade from free to paid tier",
+      "how to request higher concurrency limits"
+    ],
+    "tags": ["limits", "specifications", "rate-limiting", "concurrency", "pricing"],
+    "priority": 7,
+    "content": "# Concurrency and Rate Limits\n\nIn order to provide a smooth experience and optimal performance for all users, Gladia accounts can have up to **3** different limits for **Free**, **Paid** & **Enterprise** users:\n\n> **Need a higher concurrency limit?** The values listed below are default values. We can provide high concurrencies based on your needs, so feel free to [contact us](https://www.gladia.io/contact).\n\n| Plan type | Usage limit (per month) | Max Transcriptions in concurrency (pre-recorded) | Max Transcriptions in concurrency (Live) |\n| --- | --- | --- | --- |\n| **Enterprise** | Unlimited | On demand | On demand |\n| **Paid** | Unlimited | 25 | 30 |\n| **Free** | 10 Hours | 3 | 1 |\n\n## Limit Types\n\n- **Usage limit** (free-tier users only): This determines the number of hours a user can transcribe a given month. This is a limitation for free tier users only.\n\n- **Concurrency** (depending on free/paid tier): This refers to the maximum number of transcriptions (pre-recorded or real-time) that a user can process at the same time. For asynchronous transcriptions, Paid plan users can queue up to 300 requests, but only will still have 25 max processed concurrently.\n\n- **API level rate limit** (same for every user): This is the number of API calls that a user can make within a particular time frame. This is to ensure that a single user or malicious actor doesn't affect the performance of the API for all the other users."
+  },
+  {
+    "title": "Data Retention",
+    "path": "limits-and-specifications/data-retention",
+    "url": "https://docs.gladia.io/chapters/limits-and-specifications/data-retention",
+    "keywords": [
+      "data retention",
+      "zero data retention",
+      "privacy",
+      "GDPR",
+      "data storage",
+      "enterprise",
+      "audio files",
+      "transcripts",
+      "metadata"
+    ],
+    "use_cases": [
+      "how long does Gladia store my data",
+      "how to enable zero data retention",
+      "what happens to my audio files after transcription",
+      "how to comply with GDPR using Gladia",
+      "when to use zero data retention mode"
+    ],
+    "tags": ["limits", "specifications", "privacy", "data-retention", "enterprise"],
+    "priority": 7,
+    "content": "# Data Retention\n\nTo provide transcription services, Gladia processes several types of data:\n\n- **Audio input**: Audio files or audio streams provided for transcription\n- **Transcription output**: Text, timestamps, words, utterances\n- **API Metadata**: Request IDs, timestamps, processing status\n- **Logs**: Operational logs for system reliability\n\nThe duration for which your data is stored depends on your plan type. You have two main options for data retention:\n\n- **Standard data retention**: Your data (such as audio files, transcripts, and metadata) remains accessible for a set number of days, up to a maximum allowed by your plan. The minimum retention value is 0, which means your data is deleted within 24 hours. The maximum and default value is 12 months.\n\n- **Zero data retention**: Data storage is minimized at all stages, avoiding temporary storage whenever possible. All data is deleted immediately after processing.\n\n> Only Enterprise users are eligible for custom data retention and the zero data retention option.\n\nTo enable usage tracking, Gladia retains essential API metadata: request ID, timestamp, processing status and audio duration. Immutable logs are also maintained, for a limited period, to ensure service quality and reliability.\n\n## Zero Data Retention Behavior\n\nWhen Zero Data Retention is enabled, Gladia processes data ephemerally; no data is stored at rest.\n\n- **No audio files are stored**: Files cannot be retrieved through the API or in the Gladia's playground. File upload is also disabled; the asynchronous API must use an external audio file url, such as S3 presigned url.\n\n- **No transcripts are stored**: Transcription results cannot be retrieved through the API and are not visible in the Gladia's playground.\n\n- **No metadata retrieval**: Transcription API calls, audio duration, and other metadata cannot be retrieved through the API or in the Gladia's playground.\n\n- **Transcription results delivered only via callbacks**: The only way to receive transcription results is through callbacks; they cannot be retrieved by any other means.\n\nOnce the result is delivered, the audio, transcript, and metadata cannot be accessed."
+  },
+  {
+    "title": "Supported Files and Duration",
+    "path": "limits-and-specifications/supported-formats",
+    "url": "https://docs.gladia.io/chapters/limits-and-specifications/supported-formats",
+    "keywords": [
+      "supported formats",
+      "audio formats",
+      "video formats",
+      "file size",
+      "duration limit",
+      "mp3",
+      "wav",
+      "youtube",
+      "conversion"
+    ],
+    "use_cases": [
+      "what audio formats does Gladia support",
+      "what is the maximum file size for transcription",
+      "how to transcribe YouTube videos with Gladia",
+      "how to split large audio files for transcription",
+      "what video formats can Gladia transcribe"
+    ],
+    "tags": ["limits", "specifications", "formats", "audio", "video"],
+    "priority": 7,
+    "content": "# Supported Files and Duration\n\nWe support almost all types of audio or video files with a tradeoff to be taken into account between the transfer time of specific formats that can generate big files and the time to convert the original format to the target one (WAV pcm 16KHz little-endian). You can find an estimate of the conversion times in the table below.\n\n## Gladia API Current Limitations\n\nThose limits will be gradually lifted to ensure the full stability and performance of the service for everyone.\n\n- **Audio length**: The maximum length of audio that can be transcribed in a single request is currently 135 minutes. Attempts to transcribe longer audio files will result in an error. Direct YouTube links are limited to 120 minutes instead of 135 minutes.\n\n> We support up to 4h15 audio length for enterprise plans.\n\n- **File size**: Audio files must not exceed 1000 MB in size. Larger files will not be accepted by the API.\n\n### Splitting Oversize Audio Files\n\nFor audio files that are near or exceed the limitations on length and size, it is recommended to split them into smaller chunks of ~60 minutes each. This approach not only adheres to the API constraints but also generally yields better transcription results.\n\nTools for Splitting Audio Files:\n- **FFMPEG**: FFMPEG is a versatile command-line tool that can be used to manipulate audio and video files. It is a popular choice for splitting long audio files.\n- **ffmpeg-python**: For Python users, ffmpeg-python is a wrapper around FFMPEG that provides a more Pythonic interface for interacting with FFMPEG.\n- **prism-media** for Node.js: Node.js users can use prism-media for manipulating media files, including splitting audio files.\n- **fluent-ffmpeg** for Node.js: Another option for Node.js users is fluent-ffmpeg, which offers a simpler and more fluent API for handling media files.\n\n## Supported Audio Formats\n\n| Source Format | Mime Type | Audio/Video |\n| --- | --- | --- |\n| aac | audio/aac | Audio |\n| ac3 | audio/ac3 | Audio |\n| eac3 | audio/eac3 | Audio |\n| flac | audio/flac | Audio |\n| m4a | audio/mp4 | Audio |\n| mp2 | audio/mpeg | Audio |\n| mp3 | audio/mpeg | Audio |\n| ogg | application/ogg | Audio |\n| opus | audio/opus | Audio |\n| wav | audio/wav | Audio |\n\n## Supported Video Formats\n\n| Source Format | Mime Type | Audio/Video |\n| --- | --- | --- |\n| 3g2 | video/3gpp2 | Video |\n| 3gp | video/3gpp | Video |\n| avi | video/x-msvideo | Video |\n| flv | video/x-flv | Video |\n| m4v | video/x-m4v | Video |\n| matroska | video/x-matroska | Audio/Video |\n| mov | video/quicktime | Video |\n| mp4 | video/mp4 | Audio/Video |\n| wmv | video/x-ms-wmv | Video |\n\n## Supported Online Video Services\n\n| Platform | Audio/Video Support | Stage |\n| --- | --- | --- |\n| YouTube | Video | Released |\n| TikTok | Video | Released |\n| Instagram | Video | Released |\n| Facebook | Video | Released |\n| Vimeo | Video | Released |\n| Dailymotion | Video | Released |\n| LinkedIn | Video | Released |\n| Sharechat | Video | Released |\n| Likee | Video | Released |\n| TikTok (Beta) | Video | Beta |\n| Twitter (Beta) | Video | Beta |\n\n## Conversion Time\n\n| Source Format | Mime Type | Audio/Video | Estimated File Size (1 Hour) | Estimated Conversion Time (1 Hour) |\n| --- | --- | --- | --- | --- |\n| 3g2 | video/3gpp2 | Video | ~300 MB | ~30 seconds |\n| 3gp | video/3gpp | Video | ~300 MB | ~40 seconds |\n| aac | audio/aac | Audio | ~60 MB | ~36 seconds |\n| ac3 | audio/ac3 | Audio | ~215 MB | ~42 seconds |\n| avi | video/x-msvideo | Video | ~800 MB | ~1 minute |\n| eac3 | audio/eac3 | Audio | ~215 MB | ~32 seconds |\n| flac | audio/flac | Audio | ~260 MB | ~46 seconds |\n| flv | video/x-flv | Video | ~400 MB | ~40 seconds |\n| m4a | audio/m4a | Audio | ~60 MB | ~26 seconds |\n| x-m4a | audio/x-m4a | Audio | ~60 MB | ~26 seconds |\n| m4v | video/x-m4v | Video | ~800 MB | ~1 minute |\n| matroska | video/x-matroska | Audio/Video | ~800 MB | ~1 minute |\n| mov | video/quicktime | Video | ~800 MB | ~1 minute |\n| mp2 | audio/mpeg | Audio | ~120 MB | ~42 seconds |\n| mp3 | audio/mpeg | Audio | ~120 MB | ~37 seconds |\n| mp4 | video/mp4 | Audio/Video | ~800 MB | ~1 minute |\n| ogg | application/ogg | Audio | ~60 MB | ~1 minute |\n| opus | audio/opus | Audio | ~30 MB | ~1 minute |\n| wav | audio/wav | Audio | ~510 MB | N/A |\n| wmv | video/x-ms-wmv | Video | ~800 MB | ~1 minute |"
+  },
+  {
+    "title": "Migration from AssemblyAI to Gladia",
+    "path": "migrations/from-assembly",
+    "url": "https://docs.gladia.io/chapters/migrations/from-assembly",
+    "keywords": [
+      "migration",
+      "AssemblyAI",
+      "realtime transcription",
+      "WebSocket",
+      "SDK",
+      "parameter mapping",
+      "code migration",
+      "switch provider"
+    ],
+    "use_cases": [
+      "how to migrate from AssemblyAI to Gladia",
+      "what are the equivalent parameters between AssemblyAI and Gladia",
+      "how to switch realtime transcription from AssemblyAI",
+      "how to map AssemblyAI events to Gladia events",
+      "how to install Gladia SDK for migration"
+    ],
+    "tags": ["migration", "assemblyai", "realtime", "sdk", "websocket"],
+    "priority": 6,
+    "content": "# Quick Migration Guide: Realtime STT from AssemblyAI to Gladia\n\nThis step-by-step guide shows how to switch your realtime transcription from AssemblyAI to Gladia with minimal code changes. It highlights equivalences, subtle differences, and drop-in replacements so you can migrate quickly and confidently, without any regressions.\n\n## Step-by-step Guide\n\n### Install the SDK\n\nInstall the official SDKs to enable realtime streaming. That's all you need to get started in Python or TypeScript.\n\n**For AssemblyAI:**\n```bash\npip install assemblyai\n```\n\n**For Gladia:**\n```bash\npip install gladiaio-sdk\n```\n\n### Initialize the Client\n\nCreate and authenticate the client that manages your live connection. The shape is the same idea across providers - just swap the client and key.\n\n**For AssemblyAI:**\n```python\nfrom assemblyai.streaming.v3 import StreamingClient, StreamingClientOptions\n\napi_key = \"<YOUR_ASSEMBLYAI_API_KEY>\"\n\nassemblyClient = StreamingClient(\n    StreamingClientOptions(\n        api_key=api_key,\n        api_host=\"streaming.assemblyai.com\",\n    )\n)\n```\n\n**For Gladia:**\n```python\nfrom gladiaio_sdk import GladiaClient\n\ngladia_client = GladiaClient(api_key=\"<YOUR_GLADIA_API_KEY>\")\n```\n\n### Configure the Session\n\nChoose the model, audio format, and language options your app needs. Most parameters map one-to-one, so your existing settings carry over naturally.\n\n#### AssemblyAI to Gladia Parameter Mapping\n\n| AssemblyAI | Gladia | Notes / Example |\n| --- | --- | --- |\n| `model` | `model` | Choose the latest Gladia model (\"solaria-1\"). |\n| `encoding` | `encoding` | Match the actual audio format (e.g., `linear16` <-> `wav/pcm`). |\n| | `bit_depth` | Choose the bit depth value from your audio |\n| `sample_rate` | `sample_rate` | Same unit (Hz). |\n| `channels` | `channels` | Same meaning. |\n| `interim_results` | `messages_config.receive_partial_transcripts` | Set `true` to receive partials messages. |\n| `endpointing` | `endpointing`; `maximum_duration_without_endpointing` | Port thresholds and consider a hard cap. |\n| `language` | `language_config.languages` (+ `code_switching`) | Pass one or more languages; enable switching when multiple languages are spoken. |\n\n**Gladia Config Example:**\n```json\n{\n  \"model\": \"solaria-1\",\n  \"encoding\": \"wav/pcm\",\n  \"bit_depth\": 16,\n  \"sample_rate\": 16000,\n  \"channels\": 1,\n  \"language_config\": { \"languages\": [\"en\"], \"code_switching\": false },\n  \"messages_config\": {\n    \"receive_partial_transcripts\": true,\n    \"receive_final_transcripts\": true\n  },\n  \"endpointing\": 0.8,\n  \"maximum_duration_without_endpointing\": 30,\n  \"realtime_processing\": {\n    \"custom_vocabulary\": false,\n    \"custom_spelling\": false\n  }\n}\n```\n\n### Start the Transcription Session\n\nOpen a live transcription session using your configuration.\n\n**For AssemblyAI:**\n```python\nfrom assemblyai.streaming.v3 import StreamingParameters\n\nassemblyClient.connect(\n    StreamingParameters(\n        sample_rate=16000,\n        format_turns=True,\n    )\n)\n```\n\n**For Gladia:**\n```python\ngladia_session = gladia_client.live_v2().start_session(gladia_config)\n```\n\n### Send Audio Chunks\n\nStream audio frames to the session as they are produced. Both SDKs accept small chunks continuously.\n\n**For AssemblyAI:**\n```python\nassemblyClient.stream(audio_chunk)\n```\n\n**For Gladia:**\n```python\ngladia_session.send_audio(audio_chunk)\n```\n\n### Read Transcription Messages\n\nEvent mapping from AssemblyAI to Gladia:\n- `Transcript` -> listen to Gladia `message` and branch on `message.data.is_final` to separate partial vs final results.\n- `Open`/`Close`/`Error` -> map to Gladia `started`/`ended`/`error`.\n\n**For Gladia:**\n```python\nfrom gladiaio_sdk import (\n    LiveV2WebSocketMessage,\n    LiveV2InitResponse,\n    LiveV2EndedMessage,\n)\n\n@live_session.on(\"message\")\ndef on_message(message: LiveV2WebSocketMessage):\n    # Partial and final transcripts are delivered here\n    # filter them with message.data.is_final field\n    print(message)\n\n@live_session.once(\"started\")\ndef on_started(_response: LiveV2InitResponse):\n    print(\"Session started. Listening...\")\n\n@live_session.once(\"ended\")\ndef on_ended(_ended: LiveV2EndedMessage):\n    print(\"Session ended.\")\n\n@live_session.on(\"error\")\ndef on_error(error: Exception):\n    print(f\"Error: {error}\")\n```"
+  },
+  {
+    "title": "Migration from Deepgram to Gladia",
+    "path": "migrations/from-deepgram",
+    "url": "https://docs.gladia.io/chapters/migrations/from-deepgram",
+    "keywords": [
+      "migration",
+      "Deepgram",
+      "realtime transcription",
+      "WebSocket",
+      "SDK",
+      "parameter mapping",
+      "code migration",
+      "switch provider"
+    ],
+    "use_cases": [
+      "how to migrate from Deepgram to Gladia",
+      "what are the equivalent parameters between Deepgram and Gladia",
+      "how to switch realtime transcription from Deepgram",
+      "how to map Deepgram events to Gladia events",
+      "how to install Gladia SDK for migration"
+    ],
+    "tags": ["migration", "deepgram", "realtime", "sdk", "websocket"],
+    "priority": 6,
+    "content": "# Quick Migration Guide: Realtime STT from Deepgram to Gladia\n\nThis step-by-step guide shows how to switch your realtime transcription from Deepgram to Gladia with minimal code changes. It highlights equivalences, subtle differences, and drop-in replacements so you can migrate quickly and confidently, without any regressions.\n\n## Step-by-step Guide\n\n### Install the SDK\n\nInstall the official SDKs to enable realtime streaming. That's all you need to get started in Python or TypeScript.\n\n**For Deepgram:**\n```bash\npip install deepgram-sdk\n```\n\n**For Gladia:**\n```bash\npip install gladiaio-sdk\n```\n\n### Initialize the Client\n\nCreate and authenticate the client that manages your live connection. The shape is the same idea across providers - just swap the client and key.\n\n**For Deepgram:**\n```python\nfrom deepgram import DeepgramClient\n\ndeepgram_client = DeepgramClient(api_key=\"<YOUR_DEEPGRAM_API_KEY>\")\n```\n\n**For Gladia:**\n```python\nfrom gladiaio_sdk import GladiaClient\n\ngladia_client = GladiaClient(api_key=\"<YOUR_GLADIA_API_KEY>\")\n```\n\n### Configure the Session\n\nChoose the model, audio format, and language options your app needs. Most parameters map one-to-one, so your existing settings carry over naturally.\n\n#### Deepgram to Gladia Parameter Mapping\n\n| Deepgram | Gladia | Notes / Example |\n| --- | --- | --- |\n| `model` | `model` | Choose the latest Gladia model (\"solaria-1\"). |\n| `encoding` | `encoding` | Match the actual audio format (e.g., `linear16` <-> `wav/pcm`). |\n| | `bit_depth` | Choose the bit depth value from your audio |\n| `sample_rate` | `sample_rate` | Same unit (Hz). |\n| `channels` | `channels` | Same meaning. |\n| `interim_results` | `messages_config.receive_partial_transcripts` | Set `true` to receive partials messages. |\n| `endpointing` | `endpointing`; `maximum_duration_without_endpointing` | Port thresholds and consider a hard cap. |\n| `language` | `language_config.languages` (+ `code_switching`) | Pass one or more languages; enable switching when multiple languages are spoken. |\n\n**Gladia Config Example:**\n```json\n{\n  \"model\": \"solaria-1\",\n  \"encoding\": \"wav/pcm\",\n  \"bit_depth\": 16,\n  \"sample_rate\": 16000,\n  \"channels\": 1,\n  \"language_config\": { \"languages\": [\"en\"], \"code_switching\": false },\n  \"messages_config\": {\n    \"receive_partial_transcripts\": true,\n    \"receive_final_transcripts\": true\n  },\n  \"endpointing\": 0.8,\n  \"maximum_duration_without_endpointing\": 30,\n  \"realtime_processing\": {\n    \"custom_vocabulary\": false,\n    \"custom_spelling\": false\n  }\n}\n```\n\n### Start the Transcription Session\n\nOpen a live transcription session using your configuration.\n\n**For Deepgram:**\n```python\nwith deepgram_client.listen.v1.connect(deepgram_config) as deepgram_connection:\n    # Further code to add event handlers\n    deepgram_connection.start_listening()\n```\n\n**For Gladia:**\n```python\ngladia_session = gladia_client.live_v2().start_session(gladia_config)\n```\n\n### Send Audio Chunks\n\nStream audio frames to the session as they are produced. Both SDKs accept small chunks continuously.\n\n**For Deepgram:**\n```python\ndeepgram_connection.send(audio_chunk)\n```\n\n**For Gladia:**\n```python\ngladia_session.send_audio(audio_chunk)\n```\n\n### Read Transcription Messages\n\nEvent mapping from Deepgram to Gladia:\n- `Transcript` -> listen to Gladia `message` and branch on `message.data.is_final` to separate partial vs final results.\n- `Open`/`Close`/`Error` -> map to Gladia `started`/`ended`/`error`.\n\n**For Deepgram:**\n```python\nfrom deepgram.core.events import EventType\n\ndef on_open(_):\n    print(\"Deepgram connection opened\")\n\ndef on_message(data, **kwargs):\n    print(data[\"channel\"][\"alternatives\"][0])\n\ndef on_close(data, **kwargs):\n    print(\"Deepgram connection closed\")\n\ndef on_error(error, **kwargs):\n    print(\"Error:\", error)\n\ndeepgram_connection.on(EventType.OPEN, on_open)\ndeepgram_connection.on(EventType.MESSAGE, on_message)\ndeepgram_connection.on(EventType.CLOSE, on_close)\ndeepgram_connection.on(EventType.ERROR, on_error)\n```\n\n**For Gladia:**\n```python\nfrom gladiaio_sdk import (\n    LiveV2WebSocketMessage,\n    LiveV2InitResponse,\n    LiveV2EndedMessage,\n)\n\n@live_session.on(\"message\")\ndef on_message(message: LiveV2WebSocketMessage):\n    # Partial and final transcripts are delivered here\n    # filter them with message.data.is_final field\n    print(message)\n\n@live_session.once(\"started\")\ndef on_started(_response: LiveV2InitResponse):\n    print(\"Session started. Listening...\")\n\n@live_session.once(\"ended\")\ndef on_ended(_ended: LiveV2EndedMessage):\n    print(\"Session ended.\")\n\n@live_session.on(\"error\")\ndef on_error(error: Exception):\n    print(f\"Error: {error}\")\n```"
+  },
+  {
+    "title": "Recommended Parameters by Use Case",
+    "path": "recommended-parameters",
+    "url": "https://docs.gladia.io/chapters/recommended-parameters",
+    "keywords": [
+      "parameters",
+      "configuration",
+      "voice agents",
+      "meeting recorders",
+      "subtitles",
+      "captioning",
+      "endpointing",
+      "latency",
+      "best practices"
+    ],
+    "use_cases": [
+      "what parameters should I use for voice agents",
+      "how to configure Gladia for meeting recording",
+      "what is the best endpointing value for subtitles",
+      "how to optimize latency for voice bots",
+      "how to configure realtime transcription for my use case"
+    ],
+    "tags": ["parameters", "configuration", "best-practices", "voice-agents", "subtitles"],
+    "priority": 8,
+    "content": "# Recommended Parameters by Use Case\n\nWhen building realtime transcription applications, the **right configuration** of parameters can make a big difference regarding the transcription quality and latency. This guide provides **recommended values** for common use cases so you can get started quickly with settings optimized for **latency, readability, or accuracy**.\n\nThese recommendations apply to the **Realtime API** and can be passed during session initialization. They are starting points - feel free to fine-tune them to your needs.\n\n---\n\n## Voice Agents\n\nFor callbots, customer service assistants, or voice-driven chatbots, the top priority is **low latency**. The agent should respond quickly, even if sentence boundaries are not perfect.\n\n**Recommended parameters:**\n\n- **`endpointing`: 0.05 - 0.1**\n  Keeps conversations snappy by closing utterances quickly.\n\n- **`maximum_duration_without_endpointing`: 15s**\n  Prevents very long utterances from staying open, without cutting off the conversation.\n\n- **`messages_config.partial_transcripts`: true**\n  Enables interim results for early reactions. For that, you can use the speech_stop event to know when the user has stopped speaking.\n\n- **`language_config.language`: fixed if known**\n  Skips auto-detection for faster response.\n\nThis setup is best when **fast turn-taking** is essential!\n\n---\n\n## Meeting Recorders\n\nFor meetings, lectures, and conferences, the focus shifts to **readability and completeness**. Latency is less critical than producing well-punctuated, accurate transcripts.\n\n**Recommended parameters:**\n\n- **`endpointing`: 0.3 - 0.5**\n  Captures sentences fully before closing.\n\n- **`maximum_duration_without_endpointing`: 60s**\n  Allows for longer interventions or presentations.\n\n- **`messages_config.partial_transcripts`: true**\n  Shows live transcripts while waiting for finals.\n\n- **`realtime_processing.custom_vocabulary`: add company-specific terms**\n  Ensures correct spelling of jargon, acronyms, or product names.\n\n---\n\n## Subtitles / Captioning\n\nWhen providing live subtitles, the goal is to **sync text with the speaker**. For post-production subtitles, readability and sentence integrity matter more.\n\n**Recommended parameters:**\n\n- **`endpointing`:**\n  - `0.3` -> for **live captions** (minimal lag)\n  - `0.8` -> for **clean subtitles** (post-production or recordings)\n\n- **`maximum_duration_without_endpointing`: 5s**\n  Prevents excessively long subtitle blocks.\n\n- **`messages_config.partial_transcripts`: true**\n  Shows words as they're spoken, then refines them."
+  }
+]

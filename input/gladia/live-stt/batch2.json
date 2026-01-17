@@ -1,0 +1,154 @@
+[
+  {
+    "title": "Partial Transcripts",
+    "path": "partial-transcripts",
+    "url": "https://docs.gladia.io/chapters/live-stt/features/partial-transcripts",
+    "keywords": [
+      "partial transcripts",
+      "streaming transcription",
+      "low latency",
+      "real-time",
+      "is_final",
+      "receive_partial_transcripts",
+      "messages_config",
+      "intermediate results",
+      "utterance"
+    ],
+    "use_cases": [
+      "How to enable partial transcripts for low-latency streaming?",
+      "How to distinguish between partial and final transcripts?",
+      "When to use partial vs final transcripts?",
+      "How to configure messages_config for partial results?"
+    ],
+    "tags": [
+      "live",
+      "realtime",
+      "features",
+      "streaming",
+      "latency"
+    ],
+    "priority": 8,
+    "content": "# Partial Transcripts\n\nPartial transcripts provide a low-latency streaming transcription as words are spoken, offering immediate insights before the final, high-accuracy transcript is ready.\n\n## Enabling Partial Transcripts\n\nTo enable partial transcripts, add the `receive_partial_transcripts` property to the `messages_config` object:\n\n```json\n{\n  \"encoding\": \"wav/pcm\",\n  \"sample_rate\": 16000,\n  \"bit_depth\": 16,\n  \"channels\": 1,\n  \"language_config\": {\n    \"languages\": [\"en\"],\n    \"code_switching\": false\n  },\n  \"messages_config\": {\n    \"receive_partial_transcripts\": true,\n    \"receive_final_transcripts\": true\n  }\n}\n```\n\nWith this configuration, you will receive both partial transcripts as they are generated and the final, most accurate version of each utterance.\n\n## How Partial Transcripts Work\n\nTo reduce the total response time and create a more fluid user experience, partial transcripts use a faster, smaller model than the one used for final transcripts, trading a small amount of accuracy for a large gain in latency.\n\n**Important:** Partial transcripts accuracy deteriorates when multiple languages and/or code switching are enabled. For best results, limit the number of languages.\n\n## Distinguishing Partial from Final Transcripts\n\nWhen `receive_partial_transcripts` is `true`, the real-time API will send transcript messages for both intermediate and final results. To distinguish between them, the message payload includes the `is_final` boolean field:\n\n- `\"is_final\": false`: The message contains a partial transcript, which is subject to change.\n- `\"is_final\": true`: The message contains the final, most accurate transcript for an utterance. This transcript will not change.\n\nIn the same utterance, the partial and final transcripts share the same `data.id`."
+  },
+  {
+    "title": "Custom Metadata",
+    "path": "custom-metadata",
+    "url": "https://docs.gladia.io/chapters/live-stt/features/custom-metadata",
+    "keywords": [
+      "custom metadata",
+      "session metadata",
+      "filtering",
+      "tagging",
+      "custom_metadata",
+      "session tracking",
+      "user identification",
+      "API filtering"
+    ],
+    "use_cases": [
+      "How to attach metadata to a live transcription session?",
+      "How to filter transcription sessions by custom metadata?",
+      "How to track sessions by internal user ID?",
+      "What are the limits for custom_metadata?"
+    ],
+    "tags": [
+      "live",
+      "realtime",
+      "features",
+      "metadata",
+      "filtering"
+    ],
+    "priority": 7,
+    "content": "# Custom Metadata\n\nYou can attach metadata to your real-time transcription session using the `custom_metadata` property. This makes it easy to recognize your transcription when you receive data from the GET `/v2/live/:id` endpoint, and enables filtering in the GET `/v2/live` list endpoint.\n\n## Adding Custom Metadata\n\nAdd the following to your configuration:\n\n```json\n\"custom_metadata\": {\n  \"internalUserId\": 2348739875894375,\n  \"paymentMethod\": {\n    \"last4Digits\": 4576\n  },\n  \"internalUserName\": \"Spencer\"\n}\n```\n\n## Filtering by Custom Metadata\n\nThen filter results with a GET request, like:\n\n```\nhttps://api.gladia.io/v2/live?custom_metadata={\"internalUserId\": \"2348739875894375\"}\n```\n\nor:\n\n```\nhttps://api.gladia.io/v2/live?custom_metadata={\"paymentMethod\": {\"last4Digits\": 4576}, \"internalUserName\": \"Spencer\"}\n```\n\n## Limitations\n\n`custom_metadata` cannot be longer than 2000 characters when stringified."
+  },
+  {
+    "title": "Custom Spelling",
+    "path": "custom-spelling",
+    "url": "https://docs.gladia.io/chapters/live-stt/features/custom-spelling",
+    "keywords": [
+      "custom spelling",
+      "spelling dictionary",
+      "spelling_dictionary",
+      "custom_spelling_config",
+      "word normalization",
+      "spelling correction",
+      "text replacement",
+      "realtime_processing"
+    ],
+    "use_cases": [
+      "How to customize spelling for specific words?",
+      "How to normalize spelling variants in transcripts?",
+      "How to handle names with multiple pronunciations?",
+      "How to replace spoken words with specific spellings?"
+    ],
+    "tags": [
+      "live",
+      "realtime",
+      "features",
+      "spelling",
+      "customization"
+    ],
+    "priority": 7,
+    "content": "# Custom Spelling\n\nYou can customize how certain words, names or phrases are spelled in the final transcript.\n\n## Using Custom Spelling\n\nTo use custom spelling, provide a dictionary through the `custom_spelling_config` parameter. This dictionary should contain the correct spelling as the key and a list of one or more possible variations as the value.\n\nCustom spelling is useful in scenarios where consistent spelling of specific words is crucial (e.g., technical terms in industry-specific recordings).\n\n**Note:** The keys in the dictionary are case sensitive, while the values aren't. Values can contain multiple words.\n\n## Configuration Example\n\n```json\n{\n  \"realtime_processing\": {\n    \"custom_spelling\": true,\n    \"custom_spelling_config\": {\n      \"spelling_dictionary\": {\n        \"Gorish\": [\"ghorish\", \"gaurish\", \"gaureish\"],\n        \"Data Science\": [\"data-science\", \"data science\"],\n        \".\": [\"period\", \"full stop\"],\n        \"SQL\": [\"sequel\"]\n      }\n    }\n  }\n}\n```\n\nIn this example, the model will ensure that \"Gorish\" is spelled correctly throughout the transcript, even if it is pronounced in various ways such as \"ghorish,\" \"gaurish,\" or \"gaureish.\""
+  },
+  {
+    "title": "Custom Vocabulary",
+    "path": "custom-vocabulary",
+    "url": "https://docs.gladia.io/chapters/live-stt/features/custom-vocabulary",
+    "keywords": [
+      "custom vocabulary",
+      "vocabulary boost",
+      "word recognition",
+      "custom_vocabulary_config",
+      "intensity",
+      "pronunciations",
+      "domain-specific",
+      "proper nouns",
+      "technical terms"
+    ],
+    "use_cases": [
+      "How to boost recognition of specific words?",
+      "How to improve accuracy for domain-specific terms?",
+      "How to configure custom vocabulary with pronunciations?",
+      "How to set intensity for vocabulary boosting?"
+    ],
+    "tags": [
+      "live",
+      "realtime",
+      "features",
+      "vocabulary",
+      "accuracy"
+    ],
+    "priority": 8,
+    "content": "# Custom Vocabulary\n\nTo enhance the precision of words you know will recur often in your transcription, use the `custom_vocabulary` feature.\n\n## Configuration Example\n\n```json\n{\n  \"realtime_processing\": {\n    \"custom_vocabulary\": true,\n    \"custom_vocabulary_config\": {\n      \"vocabulary\": [\n        \"Westeros\",\n        {\"value\": \"Stark\"},\n        {\n          \"value\": \"Night's Watch\",\n          \"pronunciations\": [\"Nightz Watch\"],\n          \"intensity\": 0.4,\n          \"language\": \"en\"\n        }\n      ],\n      \"default_intensity\": 0.6\n    }\n  }\n}\n```\n\n## Parameters\n\n### default_intensity\n- **Type:** number\n- **Description:** The global intensity of the feature (minimum 0, maximum 1, default 0.5).\n\n### vocabulary\n- **Type:** object array\n- **Properties:**\n\n#### value (required)\n- **Type:** string\n- **Description:** The text used to replace in the transcription\n\n#### pronunciations\n- **Type:** string array\n- **Description:** The pronunciations used in the transcription language, or `vocabulary.language` if present.\n\n#### intensity\n- **Type:** number\n- **Description:** The intensity of the feature for this particular word (minimum 0, maximum 1, default 0.5).\n\n#### language\n- **Type:** string\n- **Description:** Specify the language in which it will be pronounced when sound comparison occurs. Default to transcription language."
+  },
+  {
+    "title": "Multiple Channels",
+    "path": "multiple-channels",
+    "url": "https://docs.gladia.io/chapters/live-stt/features/multiple-channels",
+    "keywords": [
+      "multiple channels",
+      "multi-channel",
+      "stereo audio",
+      "channel separation",
+      "audio tracks",
+      "channel key",
+      "WebSocket",
+      "billing per channel"
+    ],
+    "use_cases": [
+      "How to transcribe multi-channel audio streams?",
+      "How to identify which channel an utterance came from?",
+      "How to merge multiple audio tracks into one WebSocket?",
+      "How is multi-channel audio billed?"
+    ],
+    "tags": [
+      "live",
+      "realtime",
+      "features",
+      "channels",
+      "audio"
+    ],
+    "priority": 7,
+    "content": "# Multiple Channels\n\nIf you have multiple channels in your audio stream, specify the count in the configuration:\n\n```json\n{\n  \"channels\": 2\n}\n```\n\n## How It Works\n\nGladia's real-time API will automatically split the channels and transcribe them separately. For each utterance, you'll get a `channel` key corresponding to the channel the utterance came from.\n\n## Billing\n\nTranscribing an audio stream with multiple channels is billed per channel. For example, an audio stream with 2 channels will be billed as double the audio duration, even if the channels are identical.\n\n## Merging Multiple Audio Tracks\n\nFor a detailed guide on how to merge multiple audio tracks into a single multi-channel stream and send it over a WebSocket, see the [Sending multiple audio tracks over a single WebSocket](https://docs.gladia.io/chapters/live-stt/quickstart#merging-multiple-audio-tracks-into-one-multi-channel-websocket) section."
+  }
+]

@@ -1,0 +1,200 @@
+[
+  {
+    "title": "SDK",
+    "path": "integrations/sdk",
+    "url": "https://docs.gladia.io/chapters/integrations/sdk",
+    "keywords": [
+      "SDK",
+      "JavaScript",
+      "TypeScript",
+      "Python",
+      "integration",
+      "npm",
+      "pypi",
+      "gladiaio-sdk",
+      "library",
+      "package"
+    ],
+    "use_cases": [
+      "How to integrate Gladia using the official SDK?",
+      "How to use Gladia with JavaScript or TypeScript?",
+      "How to use Gladia with Python?",
+      "When to use the SDK instead of direct API calls?",
+      "How to quickly start building with Gladia?"
+    ],
+    "tags": [
+      "integration",
+      "sdk",
+      "javascript",
+      "python",
+      "library"
+    ],
+    "priority": 8,
+    "content": "# SDK\n\nTo integrate Gladia into your project faster, and use all of our best practices for transcribing audio, you can use one of our SDKs.\n\nWant to start building realtime transcription applications with Gladia? Check out our [live transcription guide](https://docs.gladia.io/chapters/live-stt/quickstart).\n\n## Available SDKs\n\n### Typescript/Javascript\n\nUse the JavaScript SDK to integrate Gladia into your project.\n\n- **Package**: [@gladiaio/sdk on npm](https://www.npmjs.com/package/@gladiaio/sdk)\n\n### Python\n\nUse the Python SDK to integrate Gladia into your project.\n\n- **Package**: [gladiaio-sdk on PyPI](https://pypi.org/project/gladiaio-sdk/)"
+  },
+  {
+    "title": "Twilio",
+    "path": "integrations/twilio",
+    "url": "https://docs.gladia.io/chapters/integrations/twilio",
+    "keywords": [
+      "Twilio",
+      "Media Streams",
+      "WebSocket",
+      "phone calls",
+      "voice",
+      "telephony",
+      "IVR",
+      "call center",
+      "real-time",
+      "live captions"
+    ],
+    "use_cases": [
+      "How to integrate Gladia with Twilio Media Streams?",
+      "How to transcribe phone calls in real-time?",
+      "How to build IVR and call center bots with Gladia?",
+      "How to add live captions to phone calls?",
+      "When to use Twilio with Gladia for voice applications?"
+    ],
+    "tags": [
+      "integration",
+      "twilio",
+      "telephony",
+      "voice",
+      "third-party"
+    ],
+    "priority": 8,
+    "content": "# Twilio Integration\n\n## What is Twilio\n\nTwilio is a cloud platform that lets you add voice, messaging, and video to your apps with simple APIs. Instead of worrying about telecom infrastructure, you can focus on your product. In this guide, we'll use Twilio for voice with Gladia Speech-to-Text.\n\n## Twilio Media Streams\n\nTwilio Programmable Voice lets you make and receive calls. Media Streams can send real-time audio from a live call to your server over WebSocket. When connected to Gladia's low-latency Speech-to-Text (STT), you get instant transcription. This powers real-time voice agents, call analytics, compliance tools, and live captions.\n\nWant the full API reference? Check the official Twilio Media Streams docs: [www.twilio.com/docs/voice/twiml/stream](https://www.twilio.com/docs/voice/twiml/stream).\n\n## What you can build\n\n- Real-time transcription and analytics\n- IVR and call center bots\n- Compliance and QA monitoring\n- Live captions on phone calls\n\n## Quickstart\n\nTry our sample project that connects Twilio Media Streams with Gladia STT:\n\n[gladia-samples/integrations-examples/twilio](https://github.com/gladiaio/gladia-samples/tree/main/integrations-examples/twilio)\n\n## Next steps\n\n- [Get your API key](https://app.gladia.io/apikeys) - Get your API key on the Gladia dashboard\n- [Twilio with Gladia](https://github.com/gladiaio/gladia-samples/tree/main/integrations-examples/twilio) - See and run the complete sample\n- [Twilio Media Streams docs](https://www.twilio.com/docs/voice/twiml/stream) - Learn about streaming audio from Twilio"
+  },
+  {
+    "title": "Pipecat",
+    "path": "integrations/pipecat",
+    "url": "https://docs.gladia.io/chapters/integrations/pipecat",
+    "keywords": [
+      "Pipecat",
+      "voice agents",
+      "AI agents",
+      "real-time",
+      "STT",
+      "TTS",
+      "LLM",
+      "pipeline",
+      "open-source",
+      "framework"
+    ],
+    "use_cases": [
+      "How to integrate Gladia with Pipecat?",
+      "How to build real-time voice agents with Pipecat and Gladia?",
+      "How to create live captions using Pipecat?",
+      "When to use Pipecat for voice-first AI applications?",
+      "How to build contact-center bots with Pipecat and Gladia?"
+    ],
+    "tags": [
+      "integration",
+      "pipecat",
+      "voice-agents",
+      "ai-agents",
+      "third-party"
+    ],
+    "priority": 8,
+    "content": "# Pipecat Integration\n\n## What is Pipecat?\n\nPipecat is an open-source framework for building realtime, voice-first AI agents. It orchestrates audio input/output, speech-to-text (STT), large language models (LLMs), and text-to-speech (TTS) into one low-latency pipeline you can run on the server and connect to from the browser or native apps. With Pipecat's Gladia STT service, you can plug Gladia's accurate, low-latency transcription directly into your agent.\n\nLooking for the full API and options? See the official Pipecat Gladia STT docs: [docs.pipecat.ai/server/services/stt/gladia](https://docs.pipecat.ai/server/services/stt/gladia).\n\n## What you can build\n\n- Voice assistants that understand users in real time\n- Live captions and meeting companions\n- Contact-center bots and IVRs\n- In-app help widgets with speech interfaces\n\n## Quickstart using the sample repo\n\nUse our end-to-end sample that wires Pipecat with Gladia STT: [gladia-samples/integrations-examples/pipecat-bot](https://github.com/gladiaio/gladia-samples/tree/main/integrations-examples/pipecat-bot)\n\n## Next steps\n\n- [Get your API key](https://app.gladia.io/apikeys) - Get your API key on the Gladia dashboard\n- [Pipecat bot with Gladia](https://github.com/gladiaio/gladia-samples/tree/main/integrations-examples/pipecat-bot) - Browse and run the full sample\n- [Pipecat Gladia STT docs](https://docs.pipecat.ai/server/services/stt/gladia) - Explore service options and parameters"
+  },
+  {
+    "title": "Recall",
+    "path": "integrations/recall",
+    "url": "https://docs.gladia.io/chapters/integrations/recall",
+    "keywords": [
+      "Recall.ai",
+      "meeting bot",
+      "Zoom",
+      "Google Meet",
+      "Microsoft Teams",
+      "Webex",
+      "Slack",
+      "meeting transcription",
+      "real-time",
+      "unified API"
+    ],
+    "use_cases": [
+      "How to integrate Gladia with Recall.ai?",
+      "How to transcribe Zoom, Google Meet, and Teams meetings?",
+      "How to build meeting assistants with Gladia and Recall.ai?",
+      "How to add live captions to meetings using Recall.ai?",
+      "When to use Recall.ai Meeting Bot with Gladia?"
+    ],
+    "tags": [
+      "integration",
+      "recall",
+      "meetings",
+      "meeting-bot",
+      "third-party"
+    ],
+    "priority": 7,
+    "content": "# Recall Integration\n\n## What is Recall?\n\nRecall.ai provides a unified Meeting Bot API that can join Zoom, Google Meet, Microsoft Teams, Cisco Webex, and Slack calls, stream audio in real time, and route it to providers for transcription and intelligence. With Gladia STT connected in Recall.ai, you get accurate, low-latency transcription for your calls without building any of the bot or RTC plumbing yourself.\n\nLooking to connect Gladia in Recall.ai now? Open the Gladia page in the Recall.ai dashboard: [us-east-1.recall.ai/dashboard/transcription/gladia](https://us-east-1.recall.ai/dashboard/transcription/gladia). If you use a different region, switch the region in the URL.\n\n## What you can build\n\n- Meeting assistants that take notes, summaries, and action items\n- Live captions for meetings, webinars, and trainings\n- Contact-center analytics and QA from customer calls\n- LLM agents that join calls and understand participants in real time\n\n## Quick setup via the dashboard\n\n1. Go to the Recall.ai Gladia page: [https://us-east-1.recall.ai/dashboard/transcription/gladia](https://us-east-1.recall.ai/dashboard/transcription/gladia)\n2. Paste your Gladia API key from the Gladia dashboard: [https://app.gladia.io/apikeys](https://app.gladia.io/apikeys)\n3. Click \"Save credentials.\" Recall.ai will use your Gladia key for transcription.\n\n## Next steps\n\n- [Get your API key](https://app.gladia.io/apikeys) - Get your API key on the Gladia dashboard\n- [Connect Gladia in Recall.ai](https://us-east-1.recall.ai/dashboard/transcription/gladia) - Open the dashboard page and save your key\n- [Recall.ai website](https://www.recall.ai/partners/gladia) - Learn more about the platform and features"
+  },
+  {
+    "title": "Meeting BaaS",
+    "path": "integrations/meeting-baas",
+    "url": "https://docs.gladia.io/chapters/integrations/meeting-baas",
+    "keywords": [
+      "Meeting BaaS",
+      "Google Meet",
+      "Zoom",
+      "Microsoft Teams",
+      "meeting recording",
+      "meeting transcription",
+      "unified API",
+      "webhook",
+      "GDPR",
+      "retranscribe"
+    ],
+    "use_cases": [
+      "How to integrate Gladia with Meeting BaaS?",
+      "How to record and transcribe meetings with Meeting BaaS?",
+      "How to create a bot with Gladia as STT provider?",
+      "How to retranscribe existing recordings with Gladia?",
+      "When to use Meeting BaaS for meeting transcription?"
+    ],
+    "tags": [
+      "integration",
+      "meeting-baas",
+      "meetings",
+      "recording",
+      "third-party"
+    ],
+    "priority": 7,
+    "content": "# Meeting BaaS Integration\n\n## What is Meeting BaaS?\n\nMeeting BaaS provides a unified API for Google Meet, Zoom, and Microsoft Teams so you can record and transcribe meetings through one service. By connecting Gladia STT, you leverage Gladia's accurate, feature-rich transcription for your meeting recordings without building the capture and RTC plumbing yourself.\n\nLooking for API details and options? See the Meeting BaaS docs: [docs.meetingbaas.com](https://docs.meetingbaas.com/) and the Gladia docs [docs.gladia.io](https://docs.gladia.io/).\n\n## Benefits of integration\n\n- **Single API for Multiple Platforms**: Record and transcribe meetings from Google Meet, Zoom, and Microsoft Teams through one consistent API\n- **Advanced Transcription**: Utilize Gladia's accurate and feature-rich transcription service\n- **Instant Availability**: Get video recordings and transcriptions immediately after meetings\n- **Custom Branding**: Display your user's branding with custom names and chat messages\n- **GDPR Compliance**: Meeting BaaS provides a DPA and focuses on data minimization\n\n## What you can build\n\n- Use the generated transcripts in your applications\n- Set up webhook notifications for transcription events\n- Explore LLM summaries and metadata extraction features\n- Build custom interfaces using the provided transcription data\n\n## Quickstart via API\n\nThere are two main ways to use Gladia with Meeting BaaS.\n\n### Create a bot with Gladia as the STT provider\n\nWhen creating a bot to join a meeting, specify Gladia as the speech-to-text provider:\n\n```bash\ncurl -X POST \"https://api.meetingbaas.com/bots\" \\\n  -H \"x-meeting-baas-api-key: <MEETING_BAAS_API_KEY>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n          \"meeting_url\": \"https://meet.google.com/xyz-abc\",\n          \"speech_to_text\": \"Gladia\",\n          \"webhook_url\": \"https://yourapp.com/webhook\"\n       }'\n```\n\n### Retranscribe an existing recording with Gladia\n\nFor existing recordings, use the Retranscribe Bot API to process audio with Gladia:\n\n```bash\ncurl -X POST \"https://api.meetingbaas.com/bots/retranscribe\" \\\n  -H \"x-meeting-baas-api-key: <MEETING_BAAS_API_KEY>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"bot_uuid\": \"string\",\n    \"speech_to_text\": {\n      \"api_key\": \"<GLADIA_API_KEY>\",\n      \"provider\": \"Gladia\"\n    },\n    \"webhook_url\": \"string\"\n  }'\n```\n\n## Setup instructions\n\n### Prerequisites\n\n1. A Meeting BaaS account with an API key\n2. A Gladia account with an API key\n\n### Integration steps\n\n1. **Get your Gladia API key**\n   - [Sign up for a Gladia account](https://app.gladia.io/auth/signin) if you don't have one\n   - Navigate to your API keys section and copy your key\n\n2. **Create a Meeting BaaS bot with Gladia**\n   - Use the API endpoint `/bots` with your Meeting BaaS API key\n   - Set `\"speech_to_text\": \"Gladia\"` in your request body as shown in the example above\n\n3. **Retranscribe with Gladia**\n   - Use the `/bots/retranscribe` endpoint\n   - Provide your Gladia API key in the `speech_to_text.api_key` field\n   - Set `\"provider\": \"Gladia\"` to specify Gladia as the transcription service\n\n## Response handling\n\nUpon successful integration, Meeting BaaS will return a response with status code 200 or 202, containing details about the transcription job.\n\n## What's next?\n\nAfter integrating with Meeting BaaS, you can:\n\n- Use the generated transcripts in your applications\n- Set up webhook notifications for transcription events\n- Explore additional Meeting BaaS features like LLM summaries and metadata extraction\n- Build custom interfaces using the provided transcription data\n\n## Next steps\n\n- [Get your API key](https://app.gladia.io/apikeys) - Get your API key on the Gladia dashboard\n- [Meeting BaaS docs](https://docs.meetingbaas.com/) - Explore service options and API details\n- [Gladia docs](https://docs.gladia.io/) - Learn about STT options and parameters"
+  },
+  {
+    "title": "LiveKit",
+    "path": "integrations/livekit",
+    "url": "https://docs.gladia.io/chapters/integrations/livekit",
+    "keywords": [
+      "LiveKit",
+      "LiveKit Agents",
+      "real-time",
+      "voice agents",
+      "AI agents",
+      "STT",
+      "TTS",
+      "LLM",
+      "rooms",
+      "webinars"
+    ],
+    "use_cases": [
+      "How to integrate Gladia with LiveKit Agents?",
+      "How to build real-time voice assistants with LiveKit?",
+      "How to add live captions to LiveKit rooms?",
+      "When to use LiveKit Agents for voice applications?",
+      "How to build customer-support bots with LiveKit and Gladia?"
+    ],
+    "tags": [
+      "integration",
+      "livekit",
+      "voice-agents",
+      "ai-agents",
+      "third-party"
+    ],
+    "priority": 8,
+    "content": "# LiveKit Integration\n\n## What is LiveKit Agents?\n\nLiveKit Agents is a framework for building real-time, voice-enabled AI applications that connect to LiveKit rooms. It lets you compose speech-to-text (STT), large language models (LLMs), and text-to-speech (TTS) to create interactive agents that can hear, think, and speak in low-latency pipelines. With the Gladia STT integration, your agents benefit from accurate, fast transcription.\n\nLooking for the full API and options? See the official LiveKit Gladia STT docs: [docs.livekit.io/agents/integrations/stt/gladia](https://docs.livekit.io/agents/integrations/stt/gladia/).\n\n## What you can build\n\n- Real-time voice assistants in LiveKit rooms\n- Live captions for webinars and meetings\n- Customer-support and IVR voice bots\n- In-app guidance with speech interfaces\n\n## Quickstart using the sample repo\n\nUse our end-to-end sample that wires LiveKit Agents with Gladia STT: [gladia-samples/integrations-examples/livekit-agent](https://github.com/gladiaio/gladia-samples/tree/main/integrations-examples/livekit-agent)\n\n## Next steps\n\n- [Get your API key](https://app.gladia.io/apikeys) - Get your API key on the Gladia dashboard\n- [LiveKit agent with Gladia](https://github.com/gladiaio/gladia-samples/tree/main/integrations-examples/livekit-agent) - Browse and run the full sample\n- [LiveKit Gladia STT docs](https://docs.livekit.io/agents/integrations/stt/gladia/) - Explore service options and parameters"
+  }
+]

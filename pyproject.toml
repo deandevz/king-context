@@ -1,0 +1,14 @@
+[project]
+name = "king-context"
+version = "0.1.0"
+description = "Local-first, token-efficient documentation server for LLM context injection"
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "numpy>=1.24.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

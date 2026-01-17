@@ -1,0 +1,209 @@
+[
+  {
+    "title": "Audio Chunk Acknowledge (ack)",
+    "path": "audio-chunk-ack",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/audio-chunk-ack",
+    "keywords": [
+      "audio chunk",
+      "acknowledgment",
+      "ack",
+      "websocket",
+      "live streaming",
+      "byte range",
+      "time range",
+      "callback",
+      "real-time"
+    ],
+    "use_cases": [
+      "how to confirm audio chunk was received",
+      "when to handle audio_chunk acknowledgment events",
+      "how to track audio byte and time ranges",
+      "how to verify audio streaming is working correctly",
+      "when audio chunk acknowledgment fails"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "acknowledgment", "websocket"],
+    "priority": 6,
+    "content": "# Audio Chunk Acknowledge (ack)\n\nPayload definition for the `audio_chunk` acknowledgment.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.audio_chunk\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"acknowledged\": true,\n    \"error\": null,\n    \"type\": \"audio_chunk\",\n    \"data\": {\n      \"byte_range\": [1024, 2048],\n      \"time_range\": [0.8, 0.9]\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- **Type:** string<uuid>\n- **Required:** yes\n- **Description:** Id of the job\n- **Example:** `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- **Type:** enum<string>\n- **Required:** yes\n- **Default:** `live.audio_chunk`\n- **Available options:** `live.audio_chunk`\n- **Example:** `\"live.audio_chunk\"`\n\n### payload\n- **Type:** object\n- **Required:** yes\n- **Description:** The live message payload as sent to the WebSocket"
+  },
+  {
+    "title": "End Recording",
+    "path": "end-recording",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/end-recording",
+    "keywords": [
+      "end recording",
+      "stop recording",
+      "recording duration",
+      "lifecycle",
+      "websocket",
+      "live session",
+      "callback",
+      "recording complete"
+    ],
+    "use_cases": [
+      "how to detect when recording has ended",
+      "when recording stops in a live session",
+      "how to get recording duration",
+      "how to handle end_recording callback event",
+      "when to finalize recording data"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "lifecycle", "recording"],
+    "priority": 6,
+    "content": "# End Recording\n\nPayload definition for the callback event `live.end_recording`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.end_recording\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"end_recording\",\n    \"data\": {\n      \"recording_duration\": 344.45\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- **Type:** string<uuid>\n- **Required:** yes\n- **Description:** Id of the job\n- **Example:** `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- **Type:** enum<string>\n- **Required:** yes\n- **Default:** `live.end_recording`\n- **Available options:** `live.end_recording`\n- **Example:** `\"live.end_recording\"`\n\n### payload\n- **Type:** object\n- **Required:** yes\n- **Description:** The live message payload as sent to the WebSocket\n- **Contains:** session_id, created_at, type, data with recording_duration"
+  },
+  {
+    "title": "End Session",
+    "path": "end-session",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/end-session",
+    "keywords": [
+      "end session",
+      "session complete",
+      "lifecycle",
+      "websocket",
+      "live session",
+      "callback",
+      "session termination",
+      "close session"
+    ],
+    "use_cases": [
+      "how to detect when a session has ended",
+      "when live session terminates",
+      "how to handle end_session callback event",
+      "how to cleanup after session ends",
+      "when to close websocket connection"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "lifecycle", "session"],
+    "priority": 6,
+    "content": "# End Session\n\nPayload definition for the callback event `live.end_session`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.end_session\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"end_session\"\n  }\n}\n```\n\n## Schema\n\n### id\n- **Type:** string<uuid>\n- **Required:** yes\n- **Description:** Id of the job\n- **Example:** `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- **Type:** enum<string>\n- **Required:** yes\n- **Default:** `live.end_session`\n- **Available options:** `live.end_session`\n- **Example:** `\"live.end_session\"`\n\n### payload\n- **Type:** object\n- **Required:** yes\n- **Description:** The live message payload as sent to the WebSocket\n- **Contains:** session_id, created_at, type"
+  },
+  {
+    "title": "Named Entity Recognition",
+    "path": "named-entity-recognition",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/named-entity-recognition",
+    "keywords": [
+      "named entity recognition",
+      "NER",
+      "entity extraction",
+      "realtime",
+      "websocket",
+      "live streaming",
+      "callback",
+      "entity type",
+      "utterance"
+    ],
+    "use_cases": [
+      "how to extract named entities in real-time",
+      "when to use NER callback event",
+      "how to identify entity types in transcription",
+      "how to process named entity recognition results",
+      "when entities are detected in live audio"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "realtime", "NER", "audio-intelligence"],
+    "priority": 6,
+    "content": "# Named Entity Recognition\n\nPayload definition for the callback event `live.named_entity_recognition`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.named_entity_recognition\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"error\": null,\n    \"type\": \"named_entity_recognition\",\n    \"data\": {\n      \"utterance_id\": \"00-00000011\",\n      \"utterance\": {\n        \"start\": 123,\n        \"end\": 123,\n        \"confidence\": 123,\n        \"channel\": 1,\n        \"words\": [\n          {\n            \"word\": \"<string>\",\n            \"start\": 123,\n            \"end\": 123,\n            \"confidence\": 123\n          }\n        ],\n        \"text\": \"<string>\",\n        \"language\": \"en\",\n        \"speaker\": 1\n      },\n      \"results\": [\n        {\n          \"entity_type\": \"<string>\",\n          \"text\": \"<string>\",\n          \"start\": 123,\n          \"end\": 123\n        }\n      ]\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- **Type:** string<uuid>\n- **Required:** yes\n- **Description:** Id of the job\n- **Example:** `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- **Type:** enum<string>\n- **Required:** yes\n- **Default:** `live.named_entity_recognition`\n- **Available options:** `live.named_entity_recognition`\n- **Example:** `\"live.named_entity_recognition\"`\n\n### payload\n- **Type:** object\n- **Required:** yes\n- **Description:** The live message payload as sent to the WebSocket\n- **Contains:** session_id, created_at, error, type, data with utterance_id, utterance, and results"
+  },
+  {
+    "title": "Chapterization",
+    "path": "post-chapterization",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/post-chapterization",
+    "keywords": [
+      "chapterization",
+      "chapters",
+      "post-processing",
+      "websocket",
+      "live session",
+      "callback",
+      "headline",
+      "gist",
+      "summary",
+      "keywords"
+    ],
+    "use_cases": [
+      "how to receive chapterization results",
+      "when post-processing chapterization completes",
+      "how to get chapter headlines and summaries",
+      "how to extract keywords from chapters",
+      "when to use chapter segmentation in live audio"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "post-processing", "chapterization"],
+    "priority": 6,
+    "content": "# Chapterization\n\nPayload definition for the callback event `live.post_chapterization`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.post_chapterization\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"error\": null,\n    \"type\": \"post_chapterization\",\n    \"data\": {\n      \"results\": [\n        {\n          \"headline\": \"<string>\",\n          \"gist\": \"<string>\",\n          \"keywords\": [\"<string>\"],\n          \"start\": 123,\n          \"end\": 123,\n          \"sentences\": [\n            {\n              \"sentence\": \"<string>\",\n              \"start\": 123,\n              \"end\": 123,\n              \"words\": [\n                {\n                  \"word\": \"<string>\",\n                  \"start\": 123,\n                  \"end\": 123,\n                  \"confidence\": 123\n                }\n              ]\n            }\n          ],\n          \"text\": \"<string>\",\n          \"abstractive_summary\": \"<string>\",\n          \"extractive_summary\": \"<string>\",\n          \"summary\": \"<string>\"\n        }\n      ]\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- **Type:** string<uuid>\n- **Required:** yes\n- **Description:** Id of the job\n- **Example:** `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- **Type:** enum<string>\n- **Required:** yes\n- **Default:** `live.post_chapterization`\n- **Available options:** `live.post_chapterization`\n- **Example:** `\"live.post_chapterization\"`\n\n### payload\n- **Type:** object\n- **Required:** yes\n- **Description:** The live message payload as sent to the WebSocket\n- **Contains:** session_id, created_at, error, type, data with results array containing headline, gist, keywords, sentences, summaries"
+  },
+  {
+    "title": "Final Transcript",
+    "path": "post-final-transcript",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/post-final-transcript",
+    "keywords": [
+      "final transcript",
+      "post-processing",
+      "complete transcription",
+      "websocket",
+      "live session",
+      "callback",
+      "utterances",
+      "metadata",
+      "translation",
+      "summarization"
+    ],
+    "use_cases": [
+      "how to get the final complete transcript",
+      "when post-processing final transcript is ready",
+      "how to access full transcription with all features",
+      "how to get audio metadata with transcript",
+      "when final transcript includes translation and summarization"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "post-processing", "transcript"],
+    "priority": 6,
+    "content": "# Final Transcript\n\nPayload definition for the callback event `live.post_final_transcript`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.post_final_transcript\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"post_final_transcript\",\n    \"data\": {\n      \"metadata\": {\n        \"audio_duration\": 3600,\n        \"number_of_distinct_channels\": 1,\n        \"billing_time\": 3600,\n        \"transcription_time\": 20\n      },\n      \"transcription\": {\n        \"full_transcript\": \"<string>\",\n        \"languages\": [\"en\"],\n        \"utterances\": [...],\n        \"sentences\": [...],\n        \"subtitles\": [...]\n      },\n      \"translation\": {...},\n      \"summarization\": {...},\n      \"named_entity_recognition\": {...},\n      \"sentiment_analysis\": {...},\n      \"chapterization\": {...}\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- **Type:** string<uuid>\n- **Required:** yes\n- **Description:** Id of the job\n- **Example:** `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- **Type:** enum<string>\n- **Required:** yes\n- **Default:** `live.post_final_transcript`\n- **Available options:** `live.post_final_transcript`\n- **Example:** `\"live.post_final_transcript\"`\n\n### payload\n- **Type:** object\n- **Required:** yes\n- **Description:** The live message payload as sent to the WebSocket\n- **Contains:** session_id, created_at, type, data with metadata, transcription, translation, summarization, named_entity_recognition, sentiment_analysis, chapterization"
+  },
+  {
+    "title": "Summarization",
+    "path": "post-summarization",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/post-summarization",
+    "keywords": [
+      "summarization",
+      "summary",
+      "post-processing",
+      "websocket",
+      "live session",
+      "callback",
+      "text summary",
+      "audio intelligence"
+    ],
+    "use_cases": [
+      "how to receive summarization results",
+      "when post-processing summarization completes",
+      "how to get summary of live transcription",
+      "how to handle summarization callback event",
+      "when to use summarization in live audio"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "post-processing", "summarization"],
+    "priority": 6,
+    "content": "# Summarization\n\nPayload definition for the callback event `live.post_summarization`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.post_summarization\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"error\": null,\n    \"type\": \"post_summarization\",\n    \"data\": {\n      \"results\": \"<string>\"\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- **Type:** string<uuid>\n- **Required:** yes\n- **Description:** Id of the job\n- **Example:** `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- **Type:** enum<string>\n- **Required:** yes\n- **Default:** `live.post_summarization`\n- **Available options:** `live.post_summarization`\n- **Example:** `\"live.post_summarization\"`\n\n### payload\n- **Type:** object\n- **Required:** yes\n- **Description:** The live message payload as sent to the WebSocket\n- **Contains:** session_id, created_at, error, type, data with results string"
+  },
+  {
+    "title": "Post Transcript",
+    "path": "post-transcript",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/post-transcript",
+    "keywords": [
+      "post transcript",
+      "transcript",
+      "post-processing",
+      "websocket",
+      "live session",
+      "callback",
+      "utterances",
+      "sentences",
+      "subtitles"
+    ],
+    "use_cases": [
+      "how to receive post-processed transcript",
+      "when transcript post-processing completes",
+      "how to get utterances and sentences from transcript",
+      "how to generate subtitles from live transcript",
+      "when to handle post_transcript callback event"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "post-processing", "transcript"],
+    "priority": 6,
+    "content": "# Post Transcript\n\nPayload definition for the callback event `live.post_transcript`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.post_transcript\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"post_transcript\",\n    \"data\": {\n      \"full_transcript\": \"<string>\",\n      \"languages\": [\"en\"],\n      \"utterances\": [\n        {\n          \"start\": 123,\n          \"end\": 123,\n          \"confidence\": 123,\n          \"channel\": 1,\n          \"words\": [\n            {\n              \"word\": \"<string>\",\n              \"start\": 123,\n              \"end\": 123,\n              \"confidence\": 123\n            }\n          ],\n          \"text\": \"<string>\",\n          \"language\": \"en\",\n          \"speaker\": 1\n        }\n      ],\n      \"sentences\": [...],\n      \"subtitles\": [\n        {\n          \"format\": \"srt\",\n          \"subtitles\": \"<string>\"\n        }\n      ]\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- **Type:** string<uuid>\n- **Required:** yes\n- **Description:** Id of the job\n- **Example:** `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- **Type:** enum<string>\n- **Required:** yes\n- **Default:** `live.post_transcript`\n- **Available options:** `live.post_transcript`\n- **Example:** `\"live.post_transcript\"`\n\n### payload\n- **Type:** object\n- **Required:** yes\n- **Description:** The live message payload as sent to the WebSocket\n- **Contains:** session_id, created_at, type, data with full_transcript, languages, utterances, sentences, subtitles"
+  }
+]

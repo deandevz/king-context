@@ -1,0 +1,32 @@
+{
+  "status": "completed",
+  "started_at": "2026-01-16T23:20:00Z",
+  "completed_at": "2026-01-16T23:36:00Z",
+  "batches_completed": [
+    "introduction",
+    "pre-recorded-stt-1",
+    "pre-recorded-stt-2",
+    "live-stt-1",
+    "live-stt-2",
+    "audio-intelligence",
+    "language",
+    "integrations",
+    "limits-and-specs",
+    "api-ref-intro",
+    "api-ref-live-endpoints",
+    "api-ref-live-callbacks-1",
+    "api-ref-live-callbacks-2",
+    "api-ref-live-webhooks",
+    "api-ref-pre-recorded",
+    "api-ref-transcription"
+  ],
+  "batches_pending": [],
+  "errors": [],
+  "summary": {
+    "urls_discovered": 93,
+    "urls_extracted": 93,
+    "sections_generated": 93,
+    "output_file": "mcp-docs-server/data/gladia.json",
+    "output_size_bytes": 268415
+  }
+}

@@ -1,0 +1,124 @@
+[
+  {
+    "title": "Sentiment Analysis Callback",
+    "path": "api-reference/v2/live/callback/sentiment-analysis",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/sentiment-analysis",
+    "keywords": ["sentiment analysis", "live.sentiment_analysis", "emotion detection", "websocket callback", "realtime sentiment", "utterance analysis", "callback event", "live transcription"],
+    "use_cases": [
+      "how to receive sentiment analysis results in real-time",
+      "when to use live.sentiment_analysis callback event",
+      "how to handle sentiment and emotion data from WebSocket",
+      "what fields are included in sentiment analysis callback payload"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "realtime-messages", "sentiment-analysis"],
+    "priority": 6,
+    "content": "# Sentiment Analysis Callback\n\nPayload definition for the callback event `live.sentiment_analysis`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.sentiment_analysis\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"error\": null,\n    \"type\": \"sentiment_analysis\",\n    \"data\": {\n      \"utterance_id\": \"00-00000011\",\n      \"utterance\": {\n        \"start\": 123,\n        \"end\": 123,\n        \"confidence\": 123,\n        \"channel\": 1,\n        \"words\": [\n          {\n            \"word\": \"<string>\",\n            \"start\": 123,\n            \"end\": 123,\n            \"confidence\": 123\n          }\n        ],\n        \"text\": \"<string>\",\n        \"language\": \"en\",\n        \"speaker\": 1\n      },\n      \"results\": [\n        {\n          \"sentiment\": \"<string>\",\n          \"emotion\": \"<string>\",\n          \"text\": \"<string>\",\n          \"start\": 123,\n          \"end\": 123,\n          \"channel\": 123\n        }\n      ]\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- Type: `string<uuid>`\n- Required: yes\n- Description: Id of the job\n- Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- Type: `enum<string>`\n- Default: `live.sentiment_analysis`\n- Required: yes\n- Available options: `live.sentiment_analysis`\n- Example: `\"live.sentiment_analysis\"`\n\n### payload\n- Type: `object`\n- Required: yes\n- Description: The live message payload as sent to the WebSocket"
+  },
+  {
+    "title": "Speech End Callback",
+    "path": "api-reference/v2/live/callback/speech-end",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/speech-end",
+    "keywords": ["speech end", "live.speech_end", "websocket callback", "voice activity detection", "VAD", "speech detection", "callback event", "realtime messages"],
+    "use_cases": [
+      "how to detect when speech ends in real-time",
+      "when to use live.speech_end callback event",
+      "how to handle speech end detection from WebSocket",
+      "what fields are included in speech end callback payload"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "realtime-messages", "speech-detection"],
+    "priority": 6,
+    "content": "# Speech End Callback\n\nPayload definition for the callback event `live.speech_end`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.speech_end\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"speech_end\",\n    \"data\": {\n      \"time\": 12.56,\n      \"channel\": 1\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- Type: `string<uuid>`\n- Required: yes\n- Description: Id of the job\n- Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- Type: `enum<string>`\n- Default: `live.speech_end`\n- Required: yes\n- Available options: `live.speech_end`\n- Example: `\"live.speech_end\"`\n\n### payload\n- Type: `object`\n- Required: yes\n- Description: The live message payload as sent to the WebSocket\n- Contains: session_id, created_at, type, and data with time and channel information"
+  },
+  {
+    "title": "Speech Start Callback",
+    "path": "api-reference/v2/live/callback/speech-start",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/speech-start",
+    "keywords": ["speech start", "live.speech_start", "websocket callback", "voice activity detection", "VAD", "speech detection", "callback event", "realtime messages"],
+    "use_cases": [
+      "how to detect when speech starts in real-time",
+      "when to use live.speech_start callback event",
+      "how to handle speech start detection from WebSocket",
+      "what fields are included in speech start callback payload"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "realtime-messages", "speech-detection"],
+    "priority": 6,
+    "content": "# Speech Start Callback\n\nPayload definition for the callback event `live.speech_start`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.speech_start\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"speech_start\",\n    \"data\": {\n      \"time\": 12.56,\n      \"channel\": 1\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- Type: `string<uuid>`\n- Required: yes\n- Description: Id of the job\n- Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- Type: `enum<string>`\n- Default: `live.speech_start`\n- Required: yes\n- Available options: `live.speech_start`\n- Example: `\"live.speech_start\"`\n\n### payload\n- Type: `object`\n- Required: yes\n- Description: The live message payload as sent to the WebSocket\n- Contains: session_id, created_at, type, and data with time and channel information"
+  },
+  {
+    "title": "Start Recording Callback",
+    "path": "api-reference/v2/live/callback/start-recording",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/start-recording",
+    "keywords": ["start recording", "live.start_recording", "websocket callback", "lifecycle message", "recording start", "callback event", "session lifecycle"],
+    "use_cases": [
+      "how to detect when recording starts",
+      "when to use live.start_recording callback event",
+      "how to handle recording lifecycle events from WebSocket",
+      "what fields are included in start recording callback payload"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "lifecycle-messages", "recording"],
+    "priority": 6,
+    "content": "# Start Recording Callback\n\nPayload definition for the callback event `live.start_recording`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.start_recording\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"start_recording\"\n  }\n}\n```\n\n## Schema\n\n### id\n- Type: `string<uuid>`\n- Required: yes\n- Description: Id of the job\n- Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- Type: `enum<string>`\n- Default: `live.start_recording`\n- Required: yes\n- Available options: `live.start_recording`\n- Example: `\"live.start_recording\"`\n\n### payload\n- Type: `object`\n- Required: yes\n- Description: The live message payload as sent to the WebSocket\n- Contains: session_id, created_at, and type"
+  },
+  {
+    "title": "Start Session Callback",
+    "path": "api-reference/v2/live/callback/start-session",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/start-session",
+    "keywords": ["start session", "live.start_session", "websocket callback", "lifecycle message", "session start", "callback event", "session lifecycle"],
+    "use_cases": [
+      "how to detect when a session starts",
+      "when to use live.start_session callback event",
+      "how to handle session lifecycle events from WebSocket",
+      "what fields are included in start session callback payload"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "lifecycle-messages", "session"],
+    "priority": 6,
+    "content": "# Start Session Callback\n\nPayload definition for the callback event `live.start_session`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.start_session\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"start_session\"\n  }\n}\n```\n\n## Schema\n\n### id\n- Type: `string<uuid>`\n- Required: yes\n- Description: Id of the job\n- Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- Type: `enum<string>`\n- Default: `live.start_session`\n- Required: yes\n- Available options: `live.start_session`\n- Example: `\"live.start_session\"`\n\n### payload\n- Type: `object`\n- Required: yes\n- Description: The live message payload as sent to the WebSocket\n- Contains: session_id, created_at, and type"
+  },
+  {
+    "title": "Stop Recording Acknowledge (ack) Callback",
+    "path": "api-reference/v2/live/callback/stop-recording-ack",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/stop-recording-ack",
+    "keywords": ["stop recording", "live.stop_recording", "websocket callback", "acknowledgment message", "recording stop", "callback event", "ack", "recording duration"],
+    "use_cases": [
+      "how to receive stop recording acknowledgment",
+      "when to use live.stop_recording callback event",
+      "how to handle recording stop acknowledgment from WebSocket",
+      "what fields are included in stop recording ack callback payload"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "acknowledgment-messages", "recording"],
+    "priority": 6,
+    "content": "# Stop Recording Acknowledge (ack) Callback\n\nPayload definition for the `stop_recording` acknowledgment.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.stop_recording\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"acknowledged\": true,\n    \"error\": null,\n    \"type\": \"stop_recording\",\n    \"data\": {\n      \"recording_duration\": 344.45,\n      \"recording_left_to_process\": 11.23\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- Type: `string<uuid>`\n- Required: yes\n- Description: Id of the job\n- Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- Type: `enum<string>`\n- Default: `live.stop_recording`\n- Required: yes\n- Available options: `live.stop_recording`\n- Example: `\"live.stop_recording\"`\n\n### payload\n- Type: `object`\n- Required: yes\n- Description: The live message payload as sent to the WebSocket\n- Contains: session_id, created_at, acknowledged, error, type, and data with recording_duration and recording_left_to_process"
+  },
+  {
+    "title": "Transcript Callback",
+    "path": "api-reference/v2/live/callback/transcript",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/transcript",
+    "keywords": ["transcript", "live.transcript", "websocket callback", "realtime transcription", "utterance", "is_final", "callback event", "speech-to-text"],
+    "use_cases": [
+      "how to receive transcription results in real-time",
+      "when to use live.transcript callback event",
+      "how to handle transcript data from WebSocket",
+      "what fields are included in transcript callback payload",
+      "how to differentiate final vs interim transcripts"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "realtime-messages", "transcription"],
+    "priority": 6,
+    "content": "# Transcript Callback\n\nPayload definition for the callback event `live.transcript`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.transcript\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"type\": \"transcript\",\n    \"data\": {\n      \"id\": \"00-00000011\",\n      \"is_final\": true,\n      \"utterance\": {\n        \"start\": 123,\n        \"end\": 123,\n        \"confidence\": 123,\n        \"channel\": 1,\n        \"words\": [\n          {\n            \"word\": \"<string>\",\n            \"start\": 123,\n            \"end\": 123,\n            \"confidence\": 123\n          }\n        ],\n        \"text\": \"<string>\",\n        \"language\": \"en\",\n        \"speaker\": 1\n      }\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- Type: `string<uuid>`\n- Required: yes\n- Description: Id of the job\n- Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- Type: `enum<string>`\n- Default: `live.transcript`\n- Required: yes\n- Available options: `live.transcript`\n- Example: `\"live.transcript\"`\n\n### payload\n- Type: `object`\n- Required: yes\n- Description: The live message payload as sent to the WebSocket\n- Contains: session_id, created_at, type, and data with id, is_final flag, and utterance details including words, text, language, and speaker"
+  },
+  {
+    "title": "Translation Callback",
+    "path": "api-reference/v2/live/callback/translation",
+    "url": "https://docs.gladia.io/api-reference/v2/live/callback/translation",
+    "keywords": ["translation", "live.translation", "websocket callback", "realtime translation", "utterance", "target language", "original language", "callback event"],
+    "use_cases": [
+      "how to receive translation results in real-time",
+      "when to use live.translation callback event",
+      "how to handle translation data from WebSocket",
+      "what fields are included in translation callback payload",
+      "how to get original and translated utterances"
+    ],
+    "tags": ["api-reference", "live", "callback", "events", "realtime-messages", "translation"],
+    "priority": 6,
+    "content": "# Translation Callback\n\nPayload definition for the callback event `live.translation`.\n\n## Example\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"live.translation\",\n  \"payload\": {\n    \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n    \"created_at\": \"2021-09-01T12:00:00.123Z\",\n    \"error\": null,\n    \"type\": \"translation\",\n    \"data\": {\n      \"utterance_id\": \"00-00000011\",\n      \"utterance\": {\n        \"start\": 123,\n        \"end\": 123,\n        \"confidence\": 123,\n        \"channel\": 1,\n        \"words\": [\n          {\n            \"word\": \"<string>\",\n            \"start\": 123,\n            \"end\": 123,\n            \"confidence\": 123\n          }\n        ],\n        \"text\": \"<string>\",\n        \"language\": \"en\",\n        \"speaker\": 1\n      },\n      \"original_language\": \"af\",\n      \"target_language\": \"af\",\n      \"translated_utterance\": {\n        \"start\": 123,\n        \"end\": 123,\n        \"confidence\": 123,\n        \"channel\": 1,\n        \"words\": [\n          {\n            \"word\": \"<string>\",\n            \"start\": 123,\n            \"end\": 123,\n            \"confidence\": 123\n          }\n        ],\n        \"text\": \"<string>\",\n        \"language\": \"en\",\n        \"speaker\": 1\n      }\n    }\n  }\n}\n```\n\n## Schema\n\n### id\n- Type: `string<uuid>`\n- Required: yes\n- Description: Id of the job\n- Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n### event\n- Type: `enum<string>`\n- Default: `live.translation`\n- Required: yes\n- Available options: `live.translation`\n- Example: `\"live.translation\"`\n\n### payload\n- Type: `object`\n- Required: yes\n- Description: The live message payload as sent to the WebSocket\n- Contains: session_id, created_at, error, type, and data with utterance_id, original utterance, original_language, target_language, and translated_utterance"
+  }
+]

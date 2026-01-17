@@ -1,0 +1,292 @@
+[
+  {
+    "title": "Initiate a Transcription",
+    "path": "api-reference/v2/pre-recorded/init",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/init",
+    "keywords": [
+      "transcription",
+      "pre-recorded",
+      "POST",
+      "initiate",
+      "audio_url",
+      "diarization",
+      "translation",
+      "summarization",
+      "callback",
+      "custom_vocabulary"
+    ],
+    "use_cases": [
+      "How to start a new pre-recorded transcription job?",
+      "How to transcribe an audio file from URL?",
+      "How to enable speaker diarization in transcription?",
+      "When to use callbacks vs polling for results?",
+      "How to configure custom vocabulary for better accuracy?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "endpoints",
+      "POST",
+      "transcription"
+    ],
+    "priority": 8,
+    "content": "# Initiate a Transcription\n\n**POST /v2/pre-recorded**\n\nInitiate a new pre recorded job.\n\n## Authorization\n\n- **x-gladia-key** (header, required): Your personal Gladia API key\n\n## Request Body (application/json)\n\n### Required Parameters\n\n- **audio_url** (string, uri, required): URL to a Gladia file or to an external audio or video file\n  - Example: `\"http://files.gladia.io/example/audio-transcription/split_infinity.wav\"`\n\n### Language Configuration\n\n- **language_config** (object): Specify the language configuration\n  - **languages**: Array of language codes\n  - **code_switching**: Enable multi-language detection\n\n- **detect_language** (boolean, default: true, deprecated): Use `language_config` instead\n- **enable_code_switching** (boolean, default: false, deprecated): Use `language_config` instead\n- **language** (enum, deprecated): Set the spoken language (ISO 639 standard)\n  - Options: af, am, ar, as, az, ba, be, bg, bn, bo, br, bs, ca, cs, cy, da, de, el, en, es, et, eu, fa, fi, fo, fr, gl, gu, ha, haw, he, hi, hr, ht, hu, hy, id, is, it, ja, jw, ka, kk, km, kn, ko, la, lb, ln, lo, lt, lv, mg, mi, mk, ml, mn, mr, ms, mt, my, ne, nl, nn, no, oc, pa, pl, ps, pt, ro, ru, sa, sd, si, sk, sl, sn, so, sq, sr, su, sv, sw, ta, te, tg, th, tk, tl, tr, tt, uk, ur, uz, vi, yi, yo, zh\n\n### Custom Vocabulary (Beta)\n\n- **custom_vocabulary** (boolean, default: false): Enable custom vocabulary\n- **custom_vocabulary_config** (object): Custom vocabulary configuration\n  - **vocabulary**: Array of vocabulary items (strings or objects with value, pronunciations, intensity, language)\n  - **default_intensity**: Default intensity (0.5)\n\n### Callback Configuration\n\n- **callback** (boolean, default: false): Enable callback for this transcription\n- **callback_config** (object): Customize the callback behaviour\n  - **url**: Callback URL\n  - **method**: HTTP method (POST)\n- **callback_url** (string, uri, deprecated): Use `callback_config` instead\n\n### Subtitles Configuration\n\n- **subtitles** (boolean, default: false): Enable subtitles generation\n- **subtitles_config** (object): Configuration for subtitles\n  - **formats**: Array of formats (e.g., \"srt\")\n  - **minimum_duration**: Minimum duration (1)\n  - **maximum_duration**: Maximum duration (15.5)\n  - **maximum_characters_per_row**: Max chars per row (2)\n  - **maximum_rows_per_caption**: Max rows per caption (3)\n  - **style**: Style (\"default\")\n\n### Speaker Recognition (Diarization)\n\n- **diarization** (boolean, default: false): Enable speaker recognition\n- **diarization_config** (object): Speaker recognition configuration\n  - **number_of_speakers**: Exact number of speakers (3)\n  - **min_speakers**: Minimum speakers (1)\n  - **max_speakers**: Maximum speakers (2)\n\n### Translation (Beta)\n\n- **translation** (boolean, default: false): Enable translation\n- **translation_config** (object): Translation configuration\n  - **target_languages**: Array of target language codes\n  - **model**: Model type (\"base\")\n  - **match_original_utterances**: Match original utterances (true)\n  - **lipsync**: Enable lipsync (true)\n  - **context_adaptation**: Enable context adaptation (true)\n  - **context**: Context string\n  - **informal**: Use informal language (false)\n\n### Summarization (Beta)\n\n- **summarization** (boolean, default: false): Enable summarization\n- **summarization_config** (object): Summarization configuration\n  - **type**: Type (\"general\")\n\n### Audio Intelligence Features\n\n- **moderation** (boolean, default: false, Alpha): Enable content moderation\n- **named_entity_recognition** (boolean, default: false, Alpha): Enable NER\n- **chapterization** (boolean, default: false, Alpha): Enable chapterization\n- **name_consistency** (boolean, default: false, Alpha): Enable name consistency\n- **sentiment_analysis** (boolean, default: false): Enable sentiment analysis\n\n### Custom Spelling (Alpha)\n\n- **custom_spelling** (boolean, default: false): Enable custom spelling\n- **custom_spelling_config** (object): Custom spelling configuration\n  - **spelling_dictionary**: Dictionary mapping (e.g., {\"Gettleman\": [\"gettleman\"], \"SQL\": [\"Sequel\"]})\n\n### Structured Data Extraction (Alpha)\n\n- **structured_data_extraction** (boolean, default: false): Enable structured data extraction\n- **structured_data_extraction_config** (object): Configuration\n  - **classes**: Array of classes (e.g., [\"Persons\", \"Organizations\"])\n\n### Audio to LLM (Alpha)\n\n- **audio_to_llm** (boolean, default: false): Enable audio to LLM processing\n- **audio_to_llm_config** (object): Configuration\n  - **prompts**: Array of prompts (e.g., [\"Extract the key points from the transcription\"])\n\n### Other Options\n\n- **custom_metadata** (object): Custom metadata to attach (e.g., {\"user\": \"John Doe\"})\n- **sentences** (boolean, default: false): Enable sentences output\n- **display_mode** (boolean, default: false, Alpha): Change output display mode\n- **punctuation_enhanced** (boolean, default: false, Alpha): Use enhanced punctuation\n- **context_prompt** (string, deprecated): Context to feed the model\n\n## Response (201)\n\nThe pre recorded job has been initiated.\n\n- **id** (string, uuid, required): Id of the job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n- **result_url** (string, uri, required): Prebuilt URL to fetch the result\n  - Example: `\"https://api.gladia.io/v2/transcription/45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Error Responses\n\n- **400**: Bad Request\n- **401**: Unauthorized (invalid API key)\n- **422**: Unprocessable Entity\n\n## Example Request\n\n```bash\ncurl --request POST \\\n  --url https://api.gladia.io/v2/pre-recorded \\\n  --header 'Content-Type: application/json' \\\n  --header 'x-gladia-key: <api-key>' \\\n  --data '{\n    \"audio_url\": \"http://files.gladia.io/example/audio-transcription/split_infinity.wav\",\n    \"diarization\": true,\n    \"diarization_config\": {\n      \"min_speakers\": 1,\n      \"max_speakers\": 4\n    }\n  }'\n```\n\n## Example Response\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"result_url\": \"https://api.gladia.io/v2/transcription/45463597-20b7-4af7-b3b3-f5fb778203ab\"\n}\n```"
+  },
+  {
+    "title": "Get Transcription Result",
+    "path": "api-reference/v2/pre-recorded/get",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/get",
+    "keywords": [
+      "transcription",
+      "pre-recorded",
+      "GET",
+      "result",
+      "status",
+      "polling",
+      "utterances",
+      "metadata",
+      "full_transcript"
+    ],
+    "use_cases": [
+      "How to get the result of a pre-recorded transcription?",
+      "How to check the status of a transcription job?",
+      "When is a transcription complete and ready?",
+      "How to poll for transcription results?",
+      "What information is included in the transcription response?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "endpoints",
+      "GET",
+      "result"
+    ],
+    "priority": 8,
+    "content": "# Get Transcription Result\n\n**GET /v2/pre-recorded/{id}**\n\nGet the pre recorded job's metadata, status, and result.\n\n## Authorization\n\n- **x-gladia-key** (header, required): Your personal Gladia API key\n\n## Path Parameters\n\n- **id** (string, required): Id of the pre recorded job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Response (200)\n\nThe pre recorded job's metadata.\n\n### Core Fields\n\n- **id** (string, uuid, required): Id of the job\n- **request_id** (string, required): Debug id (e.g., \"G-45463597\")\n- **version** (integer, required): API version (2)\n- **kind** (enum, required): Always \"pre-recorded\"\n- **status** (enum, required): Job status\n  - `queued`: The job has been queued\n  - `processing`: The job is being processed\n  - `done`: The job is complete and result is available\n  - `error`: An error occurred during processing\n\n### Timestamps\n\n- **created_at** (string, date-time, required): Creation date\n- **completed_at** (string, date-time | null): Completion date (when status is \"done\" or \"error\")\n\n### Metadata\n\n- **custom_metadata** (object): Custom metadata from the initial request\n- **post_session_metadata** (object, required): Debug metadata\n- **error_code** (integer | null): HTTP status code if status is \"error\" (400-599)\n\n### File Information\n\n- **file** (object): The uploaded file data (null if status is \"error\")\n  - **id**: File ID\n  - **filename**: Original filename\n  - **source**: File source\n  - **audio_duration**: Duration in seconds (3600)\n  - **number_of_channels**: Number of audio channels (1)\n\n### Request Parameters\n\n- **request_params** (object): Parameters used for this transcription (null if status is \"error\")\n  - Contains all parameters from the initial request (audio_url, diarization, translation, etc.)\n\n### Result (when status is \"done\")\n\n- **result** (object): Pre-recorded transcription result\n  \n  #### Metadata\n  - **metadata.audio_duration**: Audio duration in seconds\n  - **metadata.number_of_distinct_channels**: Number of distinct channels\n  - **metadata.billing_time**: Billable time in seconds\n  - **metadata.transcription_time**: Processing time in seconds\n\n  #### Transcription\n  - **transcription.full_transcript**: Complete transcript text\n  - **transcription.languages**: Array of detected languages\n  - **transcription.utterances**: Array of utterance objects\n    - **start**: Start time\n    - **end**: End time\n    - **confidence**: Confidence score\n    - **channel**: Audio channel\n    - **words**: Array of word objects (word, start, end, confidence)\n    - **text**: Utterance text\n    - **language**: Language code\n    - **speaker**: Speaker number (if diarization enabled)\n  - **transcription.sentences**: Array of sentence results\n  - **transcription.subtitles**: Array of subtitle objects (format, subtitles)\n\n  #### Audio Intelligence Results\n  - **translation**: Translation results\n  - **summarization**: Summarization results\n  - **moderation**: Moderation results\n  - **named_entity_recognition**: NER results\n  - **name_consistency**: Name consistency results\n  - **speaker_reidentification**: Speaker re-identification results\n  - **structured_data_extraction**: Structured data results\n  - **sentiment_analysis**: Sentiment analysis results\n  - **audio_to_llm**: Audio to LLM results\n  - **sentences**: Sentence parsing results\n  - **display_mode**: Display mode results\n  - **chapterization**: Chapterization results\n  - **diarization**: Speaker diarization results\n\n## Error Responses\n\n- **401**: Unauthorized (invalid API key)\n- **404**: Not Found (transcription not found)\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url https://api.gladia.io/v2/pre-recorded/45463597-20b7-4af7-b3b3-f5fb778203ab \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Example Response\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"request_id\": \"G-45463597\",\n  \"version\": 2,\n  \"status\": \"done\",\n  \"created_at\": \"2023-12-28T09:04:17.210Z\",\n  \"completed_at\": \"2023-12-28T09:04:37.210Z\",\n  \"kind\": \"pre-recorded\",\n  \"custom_metadata\": {\n    \"user\": \"John Doe\"\n  },\n  \"file\": {\n    \"id\": \"...\",\n    \"filename\": \"audio.wav\",\n    \"audio_duration\": 3600,\n    \"number_of_channels\": 1\n  },\n  \"result\": {\n    \"metadata\": {\n      \"audio_duration\": 3600,\n      \"number_of_distinct_channels\": 1,\n      \"billing_time\": 3600,\n      \"transcription_time\": 20\n    },\n    \"transcription\": {\n      \"full_transcript\": \"Hello world...\",\n      \"languages\": [\"en\"],\n      \"utterances\": [...]\n    }\n  }\n}\n```"
+  },
+  {
+    "title": "Delete Transcription",
+    "path": "api-reference/v2/pre-recorded/delete",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/delete",
+    "keywords": [
+      "transcription",
+      "pre-recorded",
+      "DELETE",
+      "remove",
+      "cleanup",
+      "data",
+      "privacy"
+    ],
+    "use_cases": [
+      "How to delete a pre-recorded transcription?",
+      "How to remove transcription data for privacy?",
+      "When should I delete old transcriptions?",
+      "What data is removed when deleting a transcription?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "endpoints",
+      "DELETE"
+    ],
+    "priority": 8,
+    "content": "# Delete Transcription\n\n**DELETE /v2/pre-recorded/{id}**\n\nDelete a pre-recorded transcription and all its data (audio file, transcription).\n\n## Authorization\n\n- **x-gladia-key** (header, required): Your personal Gladia API key\n\n## Path Parameters\n\n- **id** (string, required): Id of the pre recorded job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Response (202)\n\nThe pre recorded job has been successfully deleted.\n\nNo response body is returned.\n\n## Error Responses\n\n- **401**: Unauthorized (invalid API key)\n  ```json\n  {\n    \"timestamp\": \"2023-12-28T09:04:17.210Z\",\n    \"path\": \"/v2/transcription/45463597-20b7-4af7-b3b3-f5fb778203ab\",\n    \"request_id\": \"G-821fe9df\",\n    \"statusCode\": 401,\n    \"message\": \"gladia key not found\"\n  }\n  ```\n- **403**: Forbidden (not authorized to delete this transcription)\n- **404**: Not Found (transcription not found)\n\n## Example Request\n\n```bash\ncurl --request DELETE \\\n  --url https://api.gladia.io/v2/pre-recorded/45463597-20b7-4af7-b3b3-f5fb778203ab \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Notes\n\n- This operation is irreversible\n- Deletes both the audio file and all transcription data\n- Use for data privacy compliance or cleanup purposes"
+  },
+  {
+    "title": "Download Audio File",
+    "path": "api-reference/v2/pre-recorded/get-audio",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/get-audio",
+    "keywords": [
+      "transcription",
+      "pre-recorded",
+      "GET",
+      "audio",
+      "download",
+      "file",
+      "binary"
+    ],
+    "use_cases": [
+      "How to download the original audio file from a transcription?",
+      "How to retrieve the audio used for transcription?",
+      "When would I need to download the audio file?",
+      "What format is the downloaded audio file?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "endpoints",
+      "GET",
+      "audio"
+    ],
+    "priority": 8,
+    "content": "# Download Audio File\n\n**GET /v2/pre-recorded/{id}/file**\n\nDownload the audio file used for this pre recorded job.\n\n## Authorization\n\n- **x-gladia-key** (header, required): Your personal Gladia API key\n\n## Path Parameters\n\n- **id** (string, required): Id of the pre recorded job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Response (200)\n\nThe audio file used for this pre recorded job.\n\n- **Content-Type**: application/octet-stream\n- **Response Type**: file (binary)\n\n## Error Responses\n\n- **401**: Unauthorized (invalid API key)\n- **404**: Not Found (transcription or file not found)\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url https://api.gladia.io/v2/pre-recorded/45463597-20b7-4af7-b3b3-f5fb778203ab/file \\\n  --header 'x-gladia-key: <api-key>' \\\n  --output audio_file.wav\n```\n\n## Notes\n\n- The file is returned as binary data\n- Use the `--output` flag with curl to save to a file\n- The original audio format is preserved"
+  },
+  {
+    "title": "List Transcriptions",
+    "path": "api-reference/v2/pre-recorded/list",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/list",
+    "keywords": [
+      "transcription",
+      "pre-recorded",
+      "GET",
+      "list",
+      "pagination",
+      "filter",
+      "status",
+      "date"
+    ],
+    "use_cases": [
+      "How to list all my pre-recorded transcriptions?",
+      "How to filter transcriptions by status?",
+      "How to paginate through transcription results?",
+      "How to find transcriptions by date range?",
+      "How to filter by custom metadata?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "endpoints",
+      "GET",
+      "list"
+    ],
+    "priority": 8,
+    "content": "# List Transcriptions\n\n**GET /v2/pre-recorded**\n\nGet pre recorded jobs based on query parameters.\n\n## Authorization\n\n- **x-gladia-key** (header, required): Your personal Gladia API key\n\n## Query Parameters\n\n### Pagination\n\n- **offset** (integer, default: 0): The starting point for pagination (>= 0)\n- **limit** (integer, default: 20): Maximum number of items to return (>= 1)\n\n### Date Filters\n\n- **date** (string, date-time): Filter by specific date (ISO format YYYY-MM-DD)\n  - Example: `\"2026-01-12\"`\n- **before_date** (string, date-time): Include items before this date (ISO format)\n  - Example: `\"2026-01-12T00:00:09.657Z\"`\n- **after_date** (string, date-time): Include items after this date (ISO format)\n  - Example: `\"2026-01-12T00:00:09.657Z\"`\n\n### Status Filter\n\n- **status** (enum[], optional): Filter by item status\n  - Options: `queued`, `processing`, `done`, `error`\n  - Example: `[\"done\"]`\n\n### Custom Metadata Filter\n\n- **custom_metadata** (object): Filter by custom metadata\n  - Example: `{\"user\": \"John Doe\"}`\n\n## Response (200)\n\nA list of pre recorded jobs matching the parameters.\n\n### Pagination Links\n\n- **first** (string, uri, required): URL to fetch the first page\n- **current** (string, uri, required): URL to fetch the current page\n- **next** (string, uri | null, required): URL to fetch the next page (null if last page)\n\n### Items Array\n\n- **items** (object[], required): List of pre-recorded transcriptions\n  - Each item contains the same structure as the GET /v2/pre-recorded/{id} response\n\n## Error Responses\n\n- **401**: Unauthorized (invalid API key)\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url 'https://api.gladia.io/v2/pre-recorded?limit=20&status=done' \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Example Response\n\n```json\n{\n  \"first\": \"https://api.gladia.io/v2/transcription?status=done&offset=0&limit=20\",\n  \"current\": \"https://api.gladia.io/v2/transcription?status=done&offset=0&limit=20\",\n  \"next\": \"https://api.gladia.io/v2/transcription?status=done&offset=20&limit=20\",\n  \"items\": [\n    {\n      \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n      \"request_id\": \"G-45463597\",\n      \"version\": 2,\n      \"status\": \"done\",\n      \"created_at\": \"2023-12-28T09:04:17.210Z\",\n      \"completed_at\": \"2023-12-28T09:04:37.210Z\",\n      \"kind\": \"pre-recorded\",\n      ...\n    }\n  ]\n}\n```\n\n## Notes\n\n- Use pagination to avoid large response payloads\n- Combine date filters with status for precise queries\n- Custom metadata filtering enables user-specific queries"
+  },
+  {
+    "title": "Callback Error Event",
+    "path": "api-reference/v2/pre-recorded/callback/error",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/callback/error",
+    "keywords": [
+      "callback",
+      "error",
+      "transcription.error",
+      "webhook",
+      "notification",
+      "failure",
+      "pre-recorded"
+    ],
+    "use_cases": [
+      "What is the callback error payload format?",
+      "How to handle transcription errors via callback?",
+      "What information is included in error callbacks?",
+      "How to identify which transcription failed?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "callbacks",
+      "error"
+    ],
+    "priority": 8,
+    "content": "# Callback Error Event\n\nPayload definition for the callback event `transcription.error`.\n\nThis callback is sent to your configured callback URL when a transcription job fails.\n\n## Schema\n\n### Fields\n\n- **id** (string, uuid, required): Id of the job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n- **event** (enum, required): Type of event\n  - Value: `transcription.error`\n  - Example: `\"transcription.error\"`\n\n- **error** (object, required): The error that occurred during the transcription\n  - **code** (integer): HTTP error code\n  - **message** (string): Error message\n\n- **custom_metadata** (object, optional): Custom metadata given in the initial request\n  - Example: `{\"user\": \"John Doe\"}`\n\n## Example Payload\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"transcription.error\",\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Bad Request\"\n  },\n  \"custom_metadata\": {\n    \"user\": \"John Doe\"\n  }\n}\n```\n\n## Notes\n\n- This callback is sent when the transcription fails for any reason\n- Use the `id` to correlate with your original request\n- The `custom_metadata` helps identify the context of the failed job\n- Check the `error.code` and `error.message` for debugging"
+  },
+  {
+    "title": "Callback Success Event",
+    "path": "api-reference/v2/pre-recorded/callback/success",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/callback/success",
+    "keywords": [
+      "callback",
+      "success",
+      "transcription.success",
+      "webhook",
+      "notification",
+      "result",
+      "pre-recorded"
+    ],
+    "use_cases": [
+      "What is the callback success payload format?",
+      "How to receive transcription results via callback?",
+      "What information is included in success callbacks?",
+      "How to process callback transcription results?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "callbacks",
+      "success"
+    ],
+    "priority": 8,
+    "content": "# Callback Success Event\n\nPayload definition for the callback event `transcription.success`.\n\nThis callback is sent to your configured callback URL when a transcription job completes successfully.\n\n## Schema\n\n### Fields\n\n- **id** (string, uuid, required): Id of the job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n- **event** (enum, required): Type of event\n  - Value: `transcription.success`\n  - Example: `\"transcription.success\"`\n\n- **payload** (object, required): Result of the transcription\n  - Contains the full transcription result including:\n    - **metadata**: Audio duration, billing time, transcription time\n    - **transcription**: Full transcript, languages, utterances, sentences, subtitles\n    - **translation**: Translation results (if enabled)\n    - **summarization**: Summary results (if enabled)\n    - **moderation**: Moderation results (if enabled)\n    - **named_entity_recognition**: NER results (if enabled)\n    - **name_consistency**: Name consistency results (if enabled)\n    - **speaker_reidentification**: Speaker re-identification results\n    - **structured_data_extraction**: Structured data results (if enabled)\n    - **sentiment_analysis**: Sentiment results (if enabled)\n    - **audio_to_llm**: Audio to LLM results (if enabled)\n    - **sentences**: Sentence parsing results (if enabled)\n    - **display_mode**: Display mode results (if enabled)\n    - **chapterization**: Chapterization results (if enabled)\n    - **diarization**: Speaker diarization results (if enabled)\n\n- **custom_metadata** (object, optional): Custom metadata given in the initial request\n  - Example: `{\"user\": \"John Doe\"}`\n\n## Example Payload\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"event\": \"transcription.success\",\n  \"payload\": {\n    \"metadata\": {\n      \"audio_duration\": 3600,\n      \"number_of_distinct_channels\": 1,\n      \"billing_time\": 3600,\n      \"transcription_time\": 20\n    },\n    \"transcription\": {\n      \"full_transcript\": \"...\",\n      \"languages\": [\"en\"],\n      \"utterances\": [...],\n      \"sentences\": [...],\n      \"subtitles\": [...]\n    }\n  },\n  \"custom_metadata\": {\n    \"user\": \"John Doe\"\n  }\n}\n```\n\n## Notes\n\n- The payload contains the complete transcription result\n- Same structure as the result from GET /v2/pre-recorded/{id}\n- Use callbacks to avoid polling for results\n- The `custom_metadata` helps identify and route the callback"
+  },
+  {
+    "title": "Webhook Created Event",
+    "path": "api-reference/v2/pre-recorded/webhook/created",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/webhook/created",
+    "keywords": [
+      "webhook",
+      "created",
+      "transcription.created",
+      "notification",
+      "job",
+      "pre-recorded"
+    ],
+    "use_cases": [
+      "What is the webhook created event format?",
+      "How to know when a transcription job is created?",
+      "What is the difference between callback and webhook?",
+      "How to track transcription job lifecycle?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "webhooks",
+      "created"
+    ],
+    "priority": 8,
+    "content": "# Webhook Created Event\n\nPayload definition for the webhook event `transcription.created`.\n\nThis webhook is triggered when a new pre-recorded transcription job is created.\n\n## Schema\n\n### Fields\n\n- **event** (enum, required): Type of event\n  - Value: `transcription.created`\n  - Example: `\"transcription.created\"`\n\n- **payload** (object, required): Event payload\n  - **id** (string, uuid): Id of the created job\n    - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Example Payload\n\n```json\n{\n  \"event\": \"transcription.created\",\n  \"payload\": {\n    \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\"\n  }\n}\n```\n\n## Notes\n\n- This webhook notifies when a job enters the queue\n- Use the `id` to track the job through its lifecycle\n- Webhooks are account-level notifications (configured separately from per-request callbacks)\n- This event is sent before processing begins"
+  },
+  {
+    "title": "Webhook Error Event",
+    "path": "api-reference/v2/pre-recorded/webhook/error",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/webhook/error",
+    "keywords": [
+      "webhook",
+      "error",
+      "transcription.error",
+      "notification",
+      "failure",
+      "pre-recorded"
+    ],
+    "use_cases": [
+      "What is the webhook error event format?",
+      "How to receive error notifications via webhook?",
+      "What is the difference between callback error and webhook error?",
+      "How to monitor transcription failures at account level?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "webhooks",
+      "error"
+    ],
+    "priority": 8,
+    "content": "# Webhook Error Event\n\nPayload definition for the webhook event `transcription.error`.\n\nThis webhook is triggered when a pre-recorded transcription job fails.\n\n## Schema\n\n### Fields\n\n- **event** (enum, required): Type of event\n  - Value: `transcription.error`\n  - Example: `\"transcription.error\"`\n\n- **payload** (object, required): Event payload\n  - **id** (string, uuid): Id of the failed job\n    - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Example Payload\n\n```json\n{\n  \"event\": \"transcription.error\",\n  \"payload\": {\n    \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\"\n  }\n}\n```\n\n## Notes\n\n- This webhook provides a lightweight notification of failure\n- Use the `id` to fetch full error details via GET /v2/pre-recorded/{id}\n- Webhooks are account-level notifications (configured separately from per-request callbacks)\n- The callback error event contains more detail (error code and message)"
+  },
+  {
+    "title": "Webhook Success Event",
+    "path": "api-reference/v2/pre-recorded/webhook/success",
+    "url": "https://docs.gladia.io/api-reference/v2/pre-recorded/webhook/success",
+    "keywords": [
+      "webhook",
+      "success",
+      "transcription.success",
+      "notification",
+      "complete",
+      "pre-recorded"
+    ],
+    "use_cases": [
+      "What is the webhook success event format?",
+      "How to receive success notifications via webhook?",
+      "What is the difference between callback success and webhook success?",
+      "How to monitor transcription completions at account level?"
+    ],
+    "tags": [
+      "api-reference",
+      "pre-recorded",
+      "webhooks",
+      "success"
+    ],
+    "priority": 8,
+    "content": "# Webhook Success Event\n\nPayload definition for the webhook event `transcription.success`.\n\nThis webhook is triggered when a pre-recorded transcription job completes successfully.\n\n## Schema\n\n### Fields\n\n- **event** (enum, required): Type of event\n  - Value: `transcription.success`\n  - Example: `\"transcription.success\"`\n\n- **payload** (object, required): Event payload\n  - **id** (string, uuid): Id of the completed job\n    - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Example Payload\n\n```json\n{\n  \"event\": \"transcription.success\",\n  \"payload\": {\n    \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\"\n  }\n}\n```\n\n## Notes\n\n- This webhook provides a lightweight notification of completion\n- Use the `id` to fetch full results via GET /v2/pre-recorded/{id}\n- Webhooks are account-level notifications (configured separately from per-request callbacks)\n- The callback success event contains the full result payload"
+  }
+]

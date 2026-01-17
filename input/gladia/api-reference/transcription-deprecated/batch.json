@@ -1,0 +1,215 @@
+[
+  {
+    "title": "Initiate a transcription (Deprecated)",
+    "path": "transcription-init",
+    "url": "https://docs.gladia.io/api-reference/v2/transcription/init",
+    "keywords": [
+      "transcription",
+      "init",
+      "POST",
+      "audio_url",
+      "diarization",
+      "translation",
+      "summarization",
+      "callback",
+      "deprecated",
+      "pre-recorded"
+    ],
+    "use_cases": [
+      "How to start a transcription job with Gladia?",
+      "How to enable diarization in transcription?",
+      "How to configure callbacks for transcription results?",
+      "When to use custom vocabulary in transcription?",
+      "How to enable translation during transcription?"
+    ],
+    "tags": [
+      "api-reference",
+      "transcription",
+      "deprecated",
+      "POST",
+      "pre-recorded"
+    ],
+    "priority": 3,
+    "content": "# Initiate a transcription (Deprecated)\n\n**DEPRECATED**: Prefer the more specific [pre-recorded endpoint](/api-reference/v2/pre-recorded/init).\n\nInitiate a pre-recorded transcription job. Use the returned id and the GET /v2/transcription/:id endpoint to obtain the results.\n\n## Endpoint\n\n```\nPOST /v2/transcription\n```\n\n## Authorization\n\n- **x-gladia-key** (string, header, required): Your personal Gladia API key\n\n## Request Body (application/json)\n\n### Required Parameters\n\n- **audio_url** (string, uri, required): URL to a Gladia file or to an external audio or video file\n  - Example: `\"http://files.gladia.io/example/audio-transcription/split_infinity.wav\"`\n\n### Optional Parameters\n\n- **context_prompt** (string, deprecated): Context to feed the transcription model with for possible better accuracy\n- **custom_vocabulary** (boolean, default: false): Enable custom vocabulary for this audio\n- **custom_vocabulary_config** (object): Custom vocabulary configuration\n  - **vocabulary** (array): List of vocabulary items\n  - **default_intensity** (number): Default intensity value\n- **detect_language** (boolean, default: true, deprecated): Use `language_config` instead. Detect the language from the given audio\n- **enable_code_switching** (boolean, default: false, deprecated): Use `language_config` instead. Detect multiple languages\n- **language** (enum, deprecated): Use `language_config` instead. Set the spoken language (ISO 639 standard)\n- **callback_url** (string, uri, deprecated): Use `callback`/`callback_config` instead\n- **callback** (boolean, default: false): Enable callback for this transcription\n- **callback_config** (object): Customize the callback behaviour (url and http method)\n- **subtitles** (boolean, default: false): Enable subtitles generation\n- **subtitles_config** (object): Configuration for subtitles generation\n- **diarization** (boolean, default: false): Enable speaker recognition (diarization)\n- **diarization_config** (object): Speaker recognition configuration\n- **translation** (boolean, default: false, beta): Enable translation\n- **translation_config** (object, beta): Translation configuration\n- **summarization** (boolean, default: false, beta): Enable summarization\n- **summarization_config** (object, beta): Summarization configuration\n- **moderation** (boolean, default: false, alpha): Enable moderation\n- **named_entity_recognition** (boolean, default: false, alpha): Enable named entity recognition\n- **chapterization** (boolean, default: false, alpha): Enable chapterization\n- **name_consistency** (boolean, default: false, alpha): Enable names consistency\n- **custom_spelling** (boolean, default: false, alpha): Enable custom spelling\n- **structured_data_extraction** (boolean, default: false, alpha): Enable structured data extraction\n- **sentiment_analysis** (boolean, default: false): Enable sentiment analysis\n- **audio_to_llm** (boolean, default: false, alpha): Enable audio to LLM processing\n- **custom_metadata** (object): Custom metadata you can attach to this transcription\n- **sentences** (boolean, default: false): Enable sentences\n- **display_mode** (boolean, default: false, alpha): Change output display mode\n- **punctuation_enhanced** (boolean, default: false, alpha): Use enhanced punctuation\n- **language_config** (object): Specify the language configuration\n\n## Example Request\n\n```bash\ncurl --request POST \\\n  --url https://api.gladia.io/v2/transcription \\\n  --header 'Content-Type: application/json' \\\n  --header 'x-gladia-key: <api-key>' \\\n  --data '{\n    \"audio_url\": \"http://files.gladia.io/example/audio-transcription/split_infinity.wav\",\n    \"diarization\": true,\n    \"subtitles\": true\n  }'\n```\n\n## Response (201 - Created)\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"result_url\": \"https://api.gladia.io/v2/transcription/45463597-20b7-4af7-b3b3-f5fb778203ab\"\n}\n```\n\n### Response Fields\n\n- **id** (string, uuid, required): Id of the job\n- **result_url** (string, uri, required): Prebuilt URL with your transcription id to fetch the result\n\n## Error Responses\n\n- **400**: Bad Request\n- **401**: Unauthorized - Invalid API key\n- **422**: Unprocessable Entity"
+  },
+  {
+    "title": "Get transcription result (Deprecated)",
+    "path": "transcription-get",
+    "url": "https://docs.gladia.io/api-reference/v2/transcription/get",
+    "keywords": [
+      "transcription",
+      "get",
+      "result",
+      "status",
+      "GET",
+      "metadata",
+      "deprecated",
+      "polling"
+    ],
+    "use_cases": [
+      "How to get transcription results from Gladia?",
+      "How to check transcription job status?",
+      "How to poll for transcription completion?",
+      "When is a transcription job done?",
+      "How to retrieve transcription metadata?"
+    ],
+    "tags": [
+      "api-reference",
+      "transcription",
+      "deprecated",
+      "GET",
+      "result"
+    ],
+    "priority": 3,
+    "content": "# Get transcription result (Deprecated)\n\n**DEPRECATED**: Prefer the more specific [pre-recorded endpoint](/api-reference/v2/pre-recorded/get).\n\nGet transcription's status, parameters and result.\n\n## Endpoint\n\n```\nGET /v2/transcription/{id}\n```\n\n## Authorization\n\n- **x-gladia-key** (string, header, required): Your personal Gladia API key\n\n## Path Parameters\n\n- **id** (string, required): Id of the transcription job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url https://api.gladia.io/v2/transcription/{id} \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Response (200 - OK)\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"request_id\": \"G-45463597\",\n  \"version\": 2,\n  \"kind\": \"pre-recorded\",\n  \"created_at\": \"2023-12-28T09:04:17.210Z\",\n  \"status\": \"queued\",\n  \"file\": {\n    \"id\": \"f0dcZE10-23d8-47f0-a25d-74a6eed88721\",\n    \"filename\": \"split_infinity.wav\",\n    \"source\": \"http://files.gladia.io/example/audio-transcription/split_infinity.wav\",\n    \"audio_duration\": 20,\n    \"number_of_channels\": 1\n  },\n  \"request_params\": {\n    \"audio_url\": \"http://files.gladia.io/example/audio-transcription/split_infinity.wav\",\n    \"subtitles\": false,\n    \"diarization\": false,\n    \"translation\": false,\n    \"summarization\": false\n  },\n  \"completed_at\": null,\n  \"custom_metadata\": null,\n  \"error_code\": null,\n  \"result\": null\n}\n```\n\n### Response Fields\n\n- **id** (string, uuid, required): Id of the job\n- **request_id** (string, required): Debug id\n- **version** (integer, required): API version\n- **status** (enum, required): Job status\n  - Available options: `queued`, `processing`, `done`, `error`\n- **created_at** (string, datetime, required): Creation date\n- **kind** (enum, default: pre-recorded, required): Available options: `pre-recorded`\n- **completed_at** (string, datetime | null): Completion date when status is \"done\" or \"error\"\n- **custom_metadata** (object): Custom metadata given in the initial request\n- **error_code** (integer | null): HTTP status code of the error if status is \"error\" (range: 400-599)\n- **file** (object): The file data you uploaded. Can be null if status is \"error\"\n- **request_params** (object): Parameters used for this pre-recorded transcription\n- **result** (object): Pre-recorded transcription's result when status is \"done\"\n\n## Status Values\n\n- **queued**: The job has been queued\n- **processing**: The job is being processed\n- **done**: The job has been processed and the result is available\n- **error**: An error occurred during the job's processing\n\n## Error Responses\n\n- **401**: Unauthorized - Invalid API key\n- **404**: Not Found - Transcription not found"
+  },
+  {
+    "title": "Delete transcription (Deprecated)",
+    "path": "transcription-delete",
+    "url": "https://docs.gladia.io/api-reference/v2/transcription/delete",
+    "keywords": [
+      "transcription",
+      "delete",
+      "DELETE",
+      "remove",
+      "cleanup",
+      "deprecated",
+      "data"
+    ],
+    "use_cases": [
+      "How to delete a transcription from Gladia?",
+      "How to remove transcription data?",
+      "When to cleanup old transcriptions?",
+      "How to delete audio files from Gladia?"
+    ],
+    "tags": [
+      "api-reference",
+      "transcription",
+      "deprecated",
+      "DELETE"
+    ],
+    "priority": 3,
+    "content": "# Delete transcription (Deprecated)\n\n**DEPRECATED**: Prefer the more specific [pre-recorded endpoint](/api-reference/v2/pre-recorded/delete).\n\nDelete a transcription and all its data (audio file, transcription).\n\n## Endpoint\n\n```\nDELETE /v2/transcription/{id}\n```\n\n## Authorization\n\n- **x-gladia-key** (string, header, required): Your personal Gladia API key\n\n## Path Parameters\n\n- **id** (string, required): Id of the transcription job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Example Request\n\n```bash\ncurl --request DELETE \\\n  --url https://api.gladia.io/v2/transcription/{id} \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Response\n\n- **202**: The transcription job has been successfully deleted\n\n## Error Responses\n\n- **401**: Unauthorized - Invalid API key\n  ```json\n  {\n    \"timestamp\": \"2023-12-28T09:04:17.210Z\",\n    \"path\": \"/v2/transcription/45463597-20b7-4af7-b3b3-f5fb778203ab\",\n    \"request_id\": \"G-821fe9df\",\n    \"statusCode\": 401,\n    \"message\": \"gladia key not found\"\n  }\n  ```\n- **403**: Forbidden\n- **404**: Not Found - Transcription not found"
+  },
+  {
+    "title": "Download audio file (Deprecated)",
+    "path": "transcription-get-audio",
+    "url": "https://docs.gladia.io/api-reference/v2/transcription/get-audio",
+    "keywords": [
+      "transcription",
+      "audio",
+      "download",
+      "file",
+      "GET",
+      "binary",
+      "deprecated"
+    ],
+    "use_cases": [
+      "How to download the audio file from a transcription?",
+      "How to retrieve the original audio from Gladia?",
+      "When to download transcription audio files?"
+    ],
+    "tags": [
+      "api-reference",
+      "transcription",
+      "deprecated",
+      "GET",
+      "audio"
+    ],
+    "priority": 3,
+    "content": "# Download audio file (Deprecated)\n\n**DEPRECATED**: Prefer the more specific [pre-recorded endpoint](/api-reference/v2/pre-recorded/get-audio).\n\nDownload the audio file used on a transcription.\n\n## Endpoint\n\n```\nGET /v2/transcription/{id}/file\n```\n\n## Authorization\n\n- **x-gladia-key** (string, header, required): Your personal Gladia API key\n\n## Path Parameters\n\n- **id** (string, required): Id of the transcription job\n  - Example: `\"45463597-20b7-4af7-b3b3-f5fb778203ab\"`\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url https://api.gladia.io/v2/transcription/{id}/file \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Response (200 - OK)\n\n- **Content-Type**: application/octet-stream\n- **Response**: Binary file data\n\n## Error Responses\n\n- **401**: Unauthorized - Invalid API key\n- **404**: Not Found - Transcription or file not found"
+  },
+  {
+    "title": "List transcriptions (Deprecated)",
+    "path": "transcription-list",
+    "url": "https://docs.gladia.io/api-reference/v2/transcription/list",
+    "keywords": [
+      "transcription",
+      "list",
+      "GET",
+      "pagination",
+      "filter",
+      "status",
+      "deprecated",
+      "query"
+    ],
+    "use_cases": [
+      "How to list all transcriptions in Gladia?",
+      "How to filter transcriptions by status?",
+      "How to paginate through transcription results?",
+      "How to filter transcriptions by date?",
+      "How to find transcriptions with custom metadata?"
+    ],
+    "tags": [
+      "api-reference",
+      "transcription",
+      "deprecated",
+      "GET",
+      "list"
+    ],
+    "priority": 3,
+    "content": "# List transcriptions (Deprecated)\n\n**DEPRECATED**: Prefer the more specific [pre-recorded endpoint](/api-reference/v2/pre-recorded/list).\n\nList all the transcriptions matching the parameters.\n\n## Endpoint\n\n```\nGET /v2/transcription\n```\n\n## Authorization\n\n- **x-gladia-key** (string, header, required): Your personal Gladia API key\n\n## Query Parameters\n\n- **offset** (integer, default: 0): The starting point for pagination. A value of 0 starts from the first item. (min: 0)\n- **limit** (integer, default: 20): The maximum number of items to return. (min: 1)\n- **date** (string, datetime): Filter items relevant to a specific date in ISO format (YYYY-MM-DD)\n  - Example: `\"2026-01-12\"`\n- **before_date** (string, datetime): Include items that occurred before the specified date in ISO format\n  - Example: `\"2026-01-12T00:00:09.657Z\"`\n- **after_date** (string, datetime): Filter for items after the specified date. Use with `before_date` for a range\n- **status** (enum[]): Filter the list based on item status. Accepts multiple values\n  - Available options: `queued`, `processing`, `done`, `error`\n- **custom_metadata** (object): Filter by custom metadata\n  - Example: `{ \"user\": \"John Doe\" }`\n- **kind** (enum[]): Filter the list based on the item type\n  - Available options: `pre-recorded`, `live`\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url 'https://api.gladia.io/v2/transcription?limit=20' \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Response (200 - OK)\n\n```json\n{\n  \"first\": \"https://api.gladia.io/v2/transcription?status=done&offset=0&limit=20\",\n  \"current\": \"https://api.gladia.io/v2/transcription?status=done&offset=0&limit=20\",\n  \"next\": \"https://api.gladia.io/v2/transcription?status=done&offset=20&limit=20\",\n  \"items\": [\n    {\n      \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n      \"request_id\": \"G-45463597\",\n      \"version\": 2,\n      \"status\": \"done\",\n      \"created_at\": \"2023-12-28T09:04:17.210Z\",\n      \"kind\": \"pre-recorded\",\n      \"completed_at\": \"2023-12-28T09:04:37.210Z\",\n      \"file\": {\n        \"id\": \"<string>\",\n        \"filename\": \"<string>\",\n        \"source\": \"<string>\",\n        \"audio_duration\": 3600,\n        \"number_of_channels\": 1\n      },\n      \"result\": {\n        \"metadata\": {\n          \"audio_duration\": 3600,\n          \"number_of_distinct_channels\": 1,\n          \"billing_time\": 3600,\n          \"transcription_time\": 20\n        },\n        \"transcription\": {\n          \"full_transcript\": \"<string>\",\n          \"languages\": [\"en\"],\n          \"utterances\": []\n        }\n      }\n    }\n  ]\n}\n```\n\n### Response Fields\n\n- **first** (string, uri, required): URL to fetch the first page\n- **current** (string, uri, required): URL to fetch the current page\n- **next** (string, uri | null, required): URL to fetch the next page\n- **items** (array, required): List of transcriptions\n\n## Error Responses\n\n- **401**: Unauthorized - Invalid API key"
+  },
+  {
+    "title": "Upload a file",
+    "path": "upload-audio-file",
+    "url": "https://docs.gladia.io/api-reference/v2/upload/audio-file",
+    "keywords": [
+      "upload",
+      "audio",
+      "file",
+      "POST",
+      "multipart",
+      "form-data",
+      "pre-recorded",
+      "video"
+    ],
+    "use_cases": [
+      "How to upload an audio file to Gladia?",
+      "How to upload a video file for transcription?",
+      "How to get a Gladia URL for my audio file?",
+      "When to use file upload vs audio URL?",
+      "How to check audio file metadata after upload?"
+    ],
+    "tags": [
+      "api-reference",
+      "upload",
+      "POST",
+      "pre-recorded",
+      "audio"
+    ],
+    "priority": 8,
+    "content": "# Upload a file\n\nUpload a file for use in a pre-recorded job.\n\n## Endpoint\n\n```\nPOST /v2/upload\n```\n\n## Authorization\n\n- **x-gladia-key** (string, header, required): Your personal Gladia API key\n\n## Request Body\n\nSupports both `multipart/form-data` and `application/json`.\n\n### multipart/form-data\n\n- **audio** (file): The file to be uploaded. This should be an audio or video file.\n\n### application/json\n\nYou can also provide an audio URL in JSON format.\n\n## Example Request\n\n```bash\ncurl --request POST \\\n  --url https://api.gladia.io/v2/upload \\\n  --header 'Content-Type: multipart/form-data' \\\n  --header 'x-gladia-key: <api-key>' \\\n  --form audio='@example-file'\n```\n\n## Response (200 - OK)\n\n```json\n{\n  \"audio_url\": \"https://api.gladia.io/file/6c09400e-23d2-4bd2-be55-96a5ececfa3b\",\n  \"audio_metadata\": {\n    \"id\": \"6c09400e-23d2-4bd2-be55-96a5ececfa3b\",\n    \"filename\": \"short-audio-en-16000.wav\",\n    \"extension\": \"wav\",\n    \"size\": 365702,\n    \"audio_duration\": 4.145782,\n    \"number_of_channels\": 1,\n    \"source\": \"http://files.gladia.io/example/audio-transcription/split_infinity.wav\"\n  }\n}\n```\n\n### Response Fields\n\n- **audio_url** (string, uri, required): Uploaded audio file Gladia URL\n  - Example: `\"https://api.gladia.io/file/6c09400e-23d2-4bd2-be55-96a5ececfa3b\"`\n- **audio_metadata** (object, required): Uploaded audio file detected metadata\n  - **id** (string): File ID\n  - **filename** (string): Original filename\n  - **extension** (string): File extension\n  - **size** (integer): File size in bytes\n  - **audio_duration** (number): Duration in seconds\n  - **number_of_channels** (integer): Number of audio channels\n  - **source** (string): Original source URL if provided\n\n## Usage\n\nAfter uploading, use the returned `audio_url` in the [Initiate a transcription](/api-reference/v2/pre-recorded/init) endpoint."
+  },
+  {
+    "title": "Transcript message (Live)",
+    "path": "live-message-transcript",
+    "url": "https://docs.gladia.io/api-reference/v2/live/message/transcript",
+    "keywords": [
+      "live",
+      "transcript",
+      "message",
+      "websocket",
+      "real-time",
+      "utterance",
+      "is_final",
+      "streaming"
+    ],
+    "use_cases": [
+      "How to receive live transcription results?",
+      "What is the transcript message format in WebSocket?",
+      "How to check if a transcript is final?",
+      "How to parse live transcription utterances?",
+      "When does Gladia send transcript messages?"
+    ],
+    "tags": [
+      "api-reference",
+      "live",
+      "websocket",
+      "transcript",
+      "message"
+    ],
+    "priority": 8,
+    "content": "# Transcript message (Live)\n\nPayload definition for the message `transcript`.\n\nThis message contains the information about the transcript of the audio chunk.\n\n## Message Schema\n\n```json\n{\n  \"session_id\": \"4a39145c-2844-4557-8f34-34883f7be7d9\",\n  \"created_at\": \"2021-09-01T12:00:00.123Z\",\n  \"type\": \"transcript\",\n  \"data\": {\n    \"id\": \"00-00000011\",\n    \"is_final\": true,\n    \"utterance\": {\n      \"start\": 123,\n      \"end\": 123,\n      \"confidence\": 123,\n      \"channel\": 1,\n      \"words\": [\n        {\n          \"word\": \"<string>\",\n          \"start\": 123,\n          \"end\": 123,\n          \"confidence\": 123\n        }\n      ],\n      \"text\": \"<string>\",\n      \"language\": \"en\",\n      \"speaker\": 1\n    }\n  }\n}\n```\n\n## Fields\n\n### Root Level\n\n- **session_id** (string, required): Id of the live session\n  - Example: `\"4a39145c-2844-4557-8f34-34883f7be7d9\"`\n- **created_at** (string, required): Date of creation of the message. The date is formatted as an ISO 8601 string\n  - Example: `\"2021-09-01T12:00:00.123Z\"`\n- **type** (enum, default: transcript, required): Message type\n  - Available options: `transcript`\n- **data** (object, required): The message data\n\n### Data Object\n\n- **id** (string): Unique identifier for this transcript segment\n- **is_final** (boolean): Whether this transcript is final or interim\n  - `true`: Final transcript, will not be updated\n  - `false`: Interim transcript, may be updated with more accurate text\n- **utterance** (object): The transcribed utterance\n  - **start** (number): Start time in milliseconds\n  - **end** (number): End time in milliseconds\n  - **confidence** (number): Confidence score\n  - **channel** (integer): Audio channel number (default: 1)\n  - **words** (array): Array of word objects\n    - **word** (string): The transcribed word\n    - **start** (number): Word start time in milliseconds\n    - **end** (number): Word end time in milliseconds\n    - **confidence** (number): Word confidence score\n  - **text** (string): Full text of the utterance\n  - **language** (string): Detected language code (ISO 639)\n  - **speaker** (integer): Speaker identifier for diarization\n\n## Usage\n\nThis message is received via WebSocket when using the [Live WebSocket](/api-reference/v2/live/websocket) endpoint. Monitor the `is_final` field to determine when a transcript segment is complete and stable."
+  }
+]

@@ -1,0 +1,177 @@
+[
+  {
+    "title": "Custom Spelling",
+    "path": "custom-spelling",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/custom-spelling",
+    "keywords": [
+      "custom spelling",
+      "spelling dictionary",
+      "custom_spelling_config",
+      "spelling variants",
+      "normalize spelling",
+      "word replacement",
+      "transcription customization",
+      "spelling correction"
+    ],
+    "use_cases": [
+      "How to normalize spelling variants in transcripts?",
+      "How to ensure consistent spelling of names and terms?",
+      "When to use custom spelling for technical terminology?",
+      "How to configure spelling dictionary for transcription?",
+      "How to replace spoken words with specific spellings?"
+    ],
+    "tags": ["pre-recorded", "features", "customization"],
+    "priority": 7,
+    "content": "# Custom Spelling\n\nYou can customize how certain words, names or phrases are spelled in the final transcript.\n\nTo use custom spelling, provide a dictionary through the `custom_spelling_config` parameter. This dictionary should contain the correct spelling as the key and a list of one or more possible variations as the value. Custom spelling is useful in scenarios where consistent spelling of specific words is crucial (e.g., technical terms in industry-specific recordings).\n\nThe keys in the dictionary are case sensitive, while the values aren't. Values can contain multiple words.\n\n## Request Example\n\n```json\n{\n  \"custom_spelling\": true,\n  \"custom_spelling_config\": {\n    \"spelling_dictionary\": {\n      \"Gorish\": [\"ghorish\", \"gaurish\", \"gaureish\"],\n      \"Data Science\": [\"data-science\", \"data science\"],\n      \".\": [\"period\", \"full stop\"],\n      \"SQL\": [\"sequel\"]\n    }\n  }\n}\n```\n\nIn this example, the model will ensure that \"Gorish\" is spelled correctly throughout the transcript, even if it is pronounced in various ways such as \"ghorish,\" \"gaurish,\" or \"gaureish.\""
+  },
+  {
+    "title": "Custom Vocabulary",
+    "path": "custom-vocabulary",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/custom-vocabulary",
+    "keywords": [
+      "custom vocabulary",
+      "vocabulary boost",
+      "custom_vocabulary_config",
+      "word recognition",
+      "pronunciations",
+      "intensity",
+      "transcription accuracy",
+      "domain-specific terms"
+    ],
+    "use_cases": [
+      "How to improve recognition of specific words?",
+      "How to configure custom vocabulary with pronunciations?",
+      "When to use vocabulary boost for domain terms?",
+      "How to set intensity for custom vocabulary?",
+      "How to specify pronunciation variations for words?"
+    ],
+    "tags": ["pre-recorded", "features", "customization"],
+    "priority": 8,
+    "content": "# Custom Vocabulary\n\nTo enhance the precision of transcription, especially for recurring words or phrases, use `custom_vocabulary`.\n\n## Request Example\n\n```json\n{\n  \"audio_url\": \"YOUR_AUDIO_URL\",\n  \"custom_vocabulary\": true,\n  \"custom_vocabulary_config\": {\n    \"vocabulary\": [\n      \"Westeros\",\n      {\"value\": \"Stark\"},\n      {\n        \"value\": \"Night's Watch\",\n        \"pronunciations\": [\"Nightz Vatch\"],\n        \"intensity\": 0.4,\n        \"language\": \"de\"\n      }\n    ],\n    \"default_intensity\": 0.6\n  }\n}\n```\n\n## Parameters\n\n### default_intensity\n`number` - The global intensity of the feature (minimum 0, maximum 1, default 0.5).\n\n### vocabulary\n`object` - Array of vocabulary items with the following properties:\n\n#### value\n`string` (required) - The text used to replace in the transcription.\n\n#### pronunciations\n`string` - The pronunciations used in the transcription language, or `vocabulary.language` if present.\n\n#### intensity\n`number` - The intensity of the feature for this particular word (minimum 0, maximum 1, default 0.5).\n\n#### language\n`string` - Specify the language in which it will be pronounced when sound comparison occurs. Default to transcription language."
+  },
+  {
+    "title": "Enhanced Punctuation",
+    "path": "enhanced-punctuation",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/enhanced-punctuation",
+    "keywords": [
+      "enhanced punctuation",
+      "punctuation_enhanced",
+      "comma placement",
+      "sentence breaks",
+      "quotation marks",
+      "readability",
+      "natural flow",
+      "punctuation accuracy"
+    ],
+    "use_cases": [
+      "How to improve punctuation in transcripts?",
+      "When to enable enhanced punctuation?",
+      "How to get natural sentence breaks in transcription?",
+      "How to improve transcript readability with punctuation?",
+      "What is the punctuation_enhanced parameter?"
+    ],
+    "tags": ["pre-recorded", "features", "alpha"],
+    "priority": 7,
+    "content": "# Enhanced Punctuation\n\n**Note:** This feature is in **Alpha**.\n- It may have restricted access in the future.\n- Breaking changes could still be introduced; however, advanced notice will be provided.\n- Results may vary as we are updating the feature.\n\nEnhanced punctuation improves both the accuracy and natural flow of punctuation in transcriptions. It ensures precise comma placement, natural sentence breaks, and better handling of quotation marks.\n\n## Example\n\n**Standard:** \"hello how are you today I am doing fine thanks\"\n\n**Enhanced:** \"Hello, how are you today? I am doing fine, thanks!\"\n\n## Usage\n\nEnable it by sending the `punctuation_enhanced` parameter:\n\n```json\n{\n  \"audio_url\": \"YOUR_AUDIO_URL\",\n  \"punctuation_enhanced\": true\n}\n```"
+  },
+  {
+    "title": "Dual or Multiple Channels",
+    "path": "multiple-channels",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/multiple-channels",
+    "keywords": [
+      "multiple channels",
+      "dual channel",
+      "multi-channel audio",
+      "channel transcription",
+      "stereo audio",
+      "channel key",
+      "utterance channel",
+      "audio channels"
+    ],
+    "use_cases": [
+      "How to transcribe multi-channel audio files?",
+      "How does billing work for multiple channels?",
+      "How to identify which channel an utterance came from?",
+      "When to use multiple channel transcription?",
+      "How are duplicate channels handled?"
+    ],
+    "tags": ["pre-recorded", "features"],
+    "priority": 7,
+    "content": "# Dual or Multiple Channels\n\nIf your audio file has multiple distinct channels, Gladia will transcribe them automatically. In the result, each utterance includes a `channel` key corresponding to the source channel.\n\n## Billing\n\nSending an audio with two different channels (with different content) will be billed as two audios. If your audio has multiple channels with the same content, it will only be billed once.\n\n**TL;DR:** We charge every unique channel in an audio file; we do not charge if channels are duplicates."
+  },
+  {
+    "title": "Name Consistency",
+    "path": "name-consistency",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/name-consistency",
+    "keywords": [
+      "name consistency",
+      "name_consistency",
+      "consistent spelling",
+      "name recognition",
+      "proper names",
+      "spelling normalization",
+      "recruitment calls",
+      "name handling"
+    ],
+    "use_cases": [
+      "How to ensure consistent name spelling in transcripts?",
+      "When to use name consistency feature?",
+      "How to handle unknown names in transcription?",
+      "What is the difference between name consistency and custom vocabulary?",
+      "How to transcribe recruitment calls with name consistency?"
+    ],
+    "tags": ["pre-recorded", "features"],
+    "priority": 7,
+    "content": "# Name Consistency\n\nYou can ask the model to enforce consistent spelling of names using the `name_consistency` parameter. This ensures the same name is spelled the same way throughout the transcript, at the cost of a small amount of added processing time.\n\nThis is especially useful where people's names may be mentioned multiple times but are not known in advance (e.g., recruitment call recordings).\n\n**Note:** To ensure correct spelling of names known in advance, use [custom vocabulary](https://docs.gladia.io/chapters/pre-recorded-stt/features/custom-vocabulary).\n\n## Usage\n\n```json\n{\n  \"audio_url\": \"YOUR_AUDIO_URL\",\n  \"name_consistency\": true\n}\n```"
+  },
+  {
+    "title": "Sentences",
+    "path": "sentences",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/sentences",
+    "keywords": [
+      "sentences",
+      "sentence segmentation",
+      "semantic segmentation",
+      "readable transcription",
+      "sentence output",
+      "translated sentences",
+      "utterances",
+      "sentence structure"
+    ],
+    "use_cases": [
+      "How to get sentence-level segmentation in transcripts?",
+      "How to combine sentences with translation?",
+      "What is the difference between sentences and utterances?",
+      "How to get more readable transcription results?",
+      "How to access sentence data in the API response?"
+    ],
+    "tags": ["pre-recorded", "features"],
+    "priority": 8,
+    "content": "# Sentences\n\nIn addition to getting the transcription split by utterances, you can request semantic sentence segmentation for more readable results.\n\n**Tip:** You can get translated sentences by enabling both `sentences` and `translation`! You'll receive sentences output for the original transcript, and each `translation` result will also contain sentences in the translated language.\n\n## Usage\n\n```json\n{\n  \"sentences\": true\n}\n```\n\n## Response\n\nThe result will contain a `sentences` key (in addition to `utterances`):\n\n```json\n\"sentences\": {\n  \"success\": true,\n  \"is_empty\": false,\n  \"results\": [\n    {\n      \"sentence\": \"Amy, it says you are trained in technology.\",\n      \"start\": 0.4681999999999999,\n      \"end\": 2.45525,\n      \"words\": [...],\n      \"confidence\": 0.95,\n      \"language\": \"en\",\n      \"speaker\": 0,\n      \"channel\": 0\n    }\n  ]\n}\n```"
+  },
+  {
+    "title": "Export Subtitles (SRT/VTT)",
+    "path": "subtitles",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/subtitles",
+    "keywords": [
+      "subtitles",
+      "SRT",
+      "VTT",
+      "captions",
+      "subtitles_config",
+      "caption export",
+      "video subtitles",
+      "subtitle formats"
+    ],
+    "use_cases": [
+      "How to export transcripts as SRT or VTT subtitles?",
+      "How to configure subtitle duration and formatting?",
+      "How to generate subtitles in multiple languages?",
+      "What subtitle configuration options are available?",
+      "How to control characters per row in subtitles?"
+    ],
+    "tags": ["pre-recorded", "features", "export"],
+    "priority": 8,
+    "content": "# Export Subtitles (SRT/VTT)\n\nYou can export completed transcripts in both SRT and VTT formats for subtitles and captions.\n\n**Tip:** You can use the `subtitles` feature alongside `translation`. You'll have subtitles in the original language, and in each targeted translation language.\n\n## Usage\n\n```json\n{\n  \"audio_url\": \"YOUR_AUDIO_URL\",\n  \"subtitles\": true,\n  \"subtitles_config\": {\n    \"formats\": [\"srt\", \"vtt\"],\n    \"minimum_duration\": 1,\n    \"maximum_duration\": 5,\n    \"maximum_characters_per_row\": 42,\n    \"maximum_rows_per_caption\": 2,\n    \"style\": \"compliance\"\n  }\n}\n```\n\n## Configuration Options\n\n### formats\n`enum[\"srt\", \"vtt\"]` - The format of the subtitles.\n\n### minimum_duration\n`number` - The minimum duration of the subtitles in seconds (min 0).\n\n### maximum_duration\n`number` - The maximum duration of the subtitles in seconds (min 1, max 30).\n\n### maximum_characters_per_row\n`number` - The maximum number of characters per row (min 1).\n\n### maximum_rows_per_caption\n`number` - The maximum number of rows per caption (min 1, max 5).\n\n### style\n`enum[\"default\", \"compliance\"]` - The style of the subtitles (\"default\" or \"compliance\").\n\n## Response\n\nThe JSON response adds a `subtitles` array with items like:\n\n```json\n{\n  \"format\": \"srt\",\n  \"subtitles\": \"1\\n00:00:00,210 --> 00:00:04,711.....\"\n}\n```"
+  }
+]

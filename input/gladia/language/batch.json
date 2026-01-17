@@ -1,0 +1,95 @@
+[
+  {
+    "title": "Supported Languages",
+    "path": "supported-languages",
+    "url": "https://docs.gladia.io/chapters/language/supported-languages",
+    "keywords": [
+      "supported languages",
+      "ISO 639-1",
+      "language codes",
+      "auto-discovery",
+      "translation support",
+      "multilingual transcription",
+      "language list",
+      "Gladia languages"
+    ],
+    "use_cases": [
+      "How to find the language code for transcription",
+      "How to check if a language is supported by Gladia",
+      "When to use ISO 639-1 vs ISO 639-3 codes",
+      "How to configure language_config.languages parameter",
+      "What languages support auto-discovery and translation"
+    ],
+    "tags": [
+      "language",
+      "localization",
+      "i18n",
+      "ISO-639",
+      "transcription"
+    ],
+    "priority": 8,
+    "content": "# Supported Languages\n\nNot sure which language is spoken? See [Automatic language detection](https://docs.gladia.io/chapters/language/language-detection). For conversations mixing languages, see [Code switching](https://docs.gladia.io/chapters/language/code-switching).\n\nIn our APIs and results, languages use 2-letter ISO 639-1 codes. When no 639-1 code exists, we use the corresponding ISO 639-3 three-letter code (e.g. `haw` for Hawaiian).\n\nUse the 2-letter code in `language_config.languages` (e.g. `[\"en\", \"fr\"]`).\n\n## Supported Languages Table\n\n| Language | Code | Auto-discovery and code-switch | Translation |\n| --- | --- | --- | --- |\n| Afrikaans | af | Yes | Yes |\n| Albanian | sq | Yes | Yes |\n| Amharic | am | Yes | Yes |\n| Arabic | ar | Yes | Yes |\n| Armenian | hy | Yes | Yes |\n| Assamese | as | Yes | Yes |\n| Azerbaijani | az | Yes | Yes |\n| Bashkir | ba | Yes | Yes |\n| Basque | eu | Yes | Yes |\n| Belarusian | be | Yes | Yes |\n| Bengali | bn | Yes | Yes |\n| Bosnian | bs | Yes | Yes |\n| Breton | br | Yes | Yes |\n| Bulgarian | bg | Yes | Yes |\n| Catalan | ca | Yes | Yes |\n| Chinese | zh | Yes | Yes |\n| Croatian | hr | Yes | Yes |\n| Czech | cs | Yes | Yes |\n| Danish | da | Yes | Yes |\n| Dutch | nl | Yes | Yes |\n| English | en | Yes | Yes |\n| Estonian | et | Yes | Yes |\n| Faroese | fo | Yes | Yes |\n| Finnish | fi | Yes | Yes |\n| French | fr | Yes | Yes |\n| Galician | gl | Yes | Yes |\n| Georgian | ka | Yes | Yes |\n| German | de | Yes | Yes |\n| Greek | el | Yes | Yes |\n| Gujarati | gu | Yes | Yes |\n| Haitian Creole | ht | Yes | Yes |\n| Hausa | ha | Yes | Yes |\n| Hawaiian | haw | Yes | Yes |\n| Hebrew | he | Yes | Yes |\n| Hindi | hi | Yes | Yes |\n| Hungarian | hu | Yes | Yes |\n| Icelandic | is | Yes | Yes |\n| Indonesian | id | Yes | Yes |\n| Italian | it | Yes | Yes |\n| Japanese | ja | Yes | Yes |\n| Javanese | jw | Yes | Yes |\n| Kannada | kn | Yes | Yes |\n| Kazakh | kk | Yes | Yes |\n| Khmer | km | Yes | Yes |\n| Korean | ko | Yes | Yes |\n| Lao | lo | Yes | Yes |\n| Latin | la | Yes | Yes |\n| Latvian | lv | Yes | Yes |\n| Lingala | ln | Yes | Yes |\n| Lithuanian | lt | Yes | Yes |\n| Luxembourgish | lb | Yes | Yes |\n| Macedonian | mk | Yes | Yes |\n| Malagasy | mg | Yes | Yes |\n| Malay | ms | Yes | Yes |\n| Malayalam | ml | Yes | Yes |\n| Maltese | mt | Yes | Yes |\n| Maori | mi | Yes | Yes |\n| Marathi | mr | Yes | Yes |\n| Mongolian | mn | Yes | Yes |\n| Myanmar | my | Yes | Yes |\n| Nepali | ne | Yes | Yes |\n| Norwegian | no | Yes | Yes |\n| Nynorsk | nn | Yes | Yes |\n| Occitan | oc | Yes | Yes |\n| Pashto | ps | Yes | Yes |\n| Persian | fa | Yes | Yes |\n| Polish | pl | Yes | Yes |\n| Portuguese | pt | Yes | Yes |\n| Punjabi | pa | Yes | Yes |\n| Romanian | ro | Yes | Yes |\n| Russian | ru | Yes | Yes |\n| Sanskrit | sa | Yes | Yes |\n| Serbian | sr | Yes | Yes |\n| Shona | sn | Yes | Yes |\n| Sindhi | sd | Yes | Yes |\n| Sinhala | si | Yes | Yes |\n| Slovak | sk | Yes | Yes |\n| Slovenian | sl | Yes | Yes |\n| Somali | so | Yes | Yes |\n| Spanish | es | Yes | Yes |\n| Sundanese | su | Yes | Yes |\n| Swahili | sw | Yes | Yes |\n| Swedish | sv | Yes | Yes |\n| Tagalog | tl | Yes | Yes |\n| Tajik | tg | Yes | Yes |\n| Tamil | ta | Yes | Yes |\n| Tatar | tt | Yes | Yes |\n| Telugu | te | Yes | Yes |\n| Thai | th | Yes | Yes |\n| Tibetan | bo | Yes | Yes |\n| Turkish | tr | Yes | Yes |\n| Turkmen | tk | Yes | Yes |\n| Ukrainian | uk | Yes | Yes |\n| Urdu | ur | Yes | Yes |\n| Uzbek | uz | Yes | Yes |\n| Vietnamese | vi | Yes | Yes |\n| Welsh | cy | Yes | Yes |\n| Wolof | wo | No | Yes |\n| Yiddish | yi | Yes | Yes |\n| Yoruba | yo | Yes | Yes |"
+  },
+  {
+    "title": "Code Switching",
+    "path": "code-switching",
+    "url": "https://docs.gladia.io/chapters/language/code-switching",
+    "keywords": [
+      "code switching",
+      "multilingual",
+      "language switching",
+      "mixed languages",
+      "language detection",
+      "real-time transcription",
+      "language_config",
+      "bilingual"
+    ],
+    "use_cases": [
+      "How to transcribe conversations with multiple languages",
+      "How to enable code switching in Gladia API",
+      "When speakers switch languages mid-conversation",
+      "How to get detected language per utterance",
+      "How to configure language_config for multilingual audio"
+    ],
+    "tags": [
+      "language",
+      "localization",
+      "i18n",
+      "multilingual",
+      "transcription"
+    ],
+    "priority": 8,
+    "content": "# Code Switching\n\nCode switching handles conversations where speakers switch languages mid-utterance or across turns. Gladia can detect and transcribe the active language dynamically, and annotate results with the detected languages code.\n\nFor best accuracy and latency, provide a small set of expected languages. Avoid listing dozens of similar languages.\n\n## How to use code switching?\n\nEnable code switching in the session configuration:\n\n```json\n{\n  \"encoding\": \"wav/pcm\",\n  \"sample_rate\": 16000,\n  \"bit_depth\": 16,\n  \"channels\": 1,\n  \"language_config\": {\n    \"languages\": [\"en\", \"de\", \"fr\"],\n    \"code_switching\": true\n  }\n}\n```\n\nWhen enabled, transcript messages include the detected `language` per utterance and per word. Use the [`transcript` message](https://docs.gladia.io/api-reference/v2/live/message/transcript) schema for details.\n\nYou can also omit `languages` to allow detection across all supported languages, but constraining the set usually improves accuracy.\n\n## Recommendations\n\n- Limit the number of languages to those you expect.\n- Combine with [custom vocabulary](https://docs.gladia.io/chapters/pre-recorded-stt/features#custom-vocabulary) per language for domain terms."
+  },
+  {
+    "title": "Automatic Language Detection",
+    "path": "language-detection",
+    "url": "https://docs.gladia.io/chapters/language/language-detection",
+    "keywords": [
+      "language detection",
+      "automatic detection",
+      "spoken language",
+      "language identification",
+      "language_config",
+      "ISO 639-1",
+      "real-time detection",
+      "speech recognition"
+    ],
+    "use_cases": [
+      "How to automatically detect the spoken language",
+      "How to configure language detection in Gladia API",
+      "When to constrain language detection to specific languages",
+      "How to improve language detection accuracy",
+      "How to get detected language in transcription results"
+    ],
+    "tags": [
+      "language",
+      "localization",
+      "i18n",
+      "detection",
+      "transcription"
+    ],
+    "priority": 8,
+    "content": "# Automatic Language Detection\n\nGladia can automatically detect the spoken language from audio, either within a candidate set you provide or across all supported languages.\n\nProvide a small list of likely languages when possible. It improves accuracy and reduces latency.\n\n## How to use language detection?\n\nYou can either omit `language_config.languages` to search across all supported languages, or pass a constrained list:\n\n### Detect across all languages\n\n```json\n{\n  \"encoding\": \"wav/pcm\",\n  \"sample_rate\": 16000,\n  \"bit_depth\": 16,\n  \"channels\": 1,\n  \"language_config\": {\n    \"languages\": [],\n    \"code_switching\": false\n  }\n}\n```\n\n### Detect within a set of languages\n\n```json\n{\n  \"encoding\": \"wav/pcm\",\n  \"sample_rate\": 16000,\n  \"bit_depth\": 16,\n  \"channels\": 1,\n  \"language_config\": {\n    \"languages\": [\"en\", \"fr\", \"es\"],\n    \"code_switching\": false\n  }\n}\n```\n\nThe detected `language` is returned on each utterance and can vary over time if you also enable [code switching](https://docs.gladia.io/chapters/language/code-switching).\n\n## Tips\n\n- Use [supported languages](https://docs.gladia.io/chapters/language/supported-languages) to pick valid ISO 639-1 codes.\n- Combine with `messages_config.receive_partial_transcripts` in real time to get immediate feedback.\n- For mixed-language conversations, enable [code switching](https://docs.gladia.io/chapters/language/code-switching)."
+  }
+]

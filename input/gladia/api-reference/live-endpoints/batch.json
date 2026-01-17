@@ -1,0 +1,154 @@
+[
+  {
+    "title": "Initiate a Session - Live Transcription",
+    "path": "api-reference/v2/live/init",
+    "url": "https://docs.gladia.io/api-reference/v2/live/init",
+    "keywords": [
+      "live transcription",
+      "websocket session",
+      "POST /v2/live",
+      "initiate session",
+      "audio encoding",
+      "sample rate",
+      "bit depth",
+      "solaria-1 model",
+      "real-time transcription",
+      "streaming audio"
+    ],
+    "use_cases": [
+      "How to start a live transcription session with Gladia API?",
+      "How to configure audio encoding for live streaming?",
+      "When to use POST init before WebSocket connection?",
+      "How to set up custom vocabulary for live transcription?",
+      "How to enable real-time translation during live sessions?"
+    ],
+    "tags": ["api-reference", "live", "endpoints", "POST", "init", "websocket", "session"],
+    "priority": 9,
+    "content": "# Initiate a Session - Live Transcription\n\n**POST /v2/live**\n\nInitiate a new live transcription WebSocket session.\n\n## Example Request\n\n```bash\ncurl --request POST \\\n  --url https://api.gladia.io/v2/live \\\n  --header 'Content-Type: application/json' \\\n  --header 'x-gladia-key: <api-key>' \\\n  --data '{\n    \"encoding\": \"wav/pcm\",\n    \"bit_depth\": 16,\n    \"sample_rate\": 16000,\n    \"channels\": 1,\n    \"model\": \"solaria-1\"\n  }'\n```\n\n## Response (201)\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"created_at\": \"2023-12-28T09:04:17.210Z\",\n  \"url\": \"wss://api.gladia.io/v2/live?token=4a39145c-2844-4557-8f34-34883f7be7d9\"\n}\n```\n\nUse the returned WebSocket url to connect and start sending audio chunks. Use the returned `id` with GET /v2/live/:id to obtain status and results.\n\n## Why initiate with POST instead of connecting directly to the WebSocket?\n\n- **Security**: Generate the WebSocket URL on your backend and keep your API key private. The init call returns a connectable URL and a session `id` that you can safely pass to web, iOS, or Android clients without exposing credentials.\n- **Lower infrastructure load**: The secure URL is generated on your backend, the client can connect directly to Gladia's WebSocket server without a pass-through on your side.\n- **Resilient reconnection**: If the WebSocket disconnects, the session created by the init call lets the client reconnect without losing context.\n\n## Authorization\n\n**x-gladia-key** (header, required): Your personal Gladia API key\n\n## Query Parameters\n\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| region | enum | The region used to process the audio. Options: `us-west`, `eu-west` |\n\n## Body Parameters\n\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| encoding | enum | wav/pcm | Audio encoding format. Options: `wav/pcm`, `wav/alaw`, `wav/ulaw` |\n| bit_depth | enum | 16 | Bit depth. Options: `8`, `16`, `24`, `32` |\n| sample_rate | enum | 16000 | Sample rate. Options: `8000`, `16000`, `32000`, `44100`, `48000` |\n| channels | integer | 1 | Number of channels (1-8) |\n| custom_metadata | object | - | Custom metadata to attach |\n| model | enum | solaria-1 | The model used. Options: `solaria-1` |\n| endpointing | number | 0.05 | Silence duration to finish utterance (0.01-10 seconds) |\n| maximum_duration_without_endpointing | number | 5 | Max duration without endpointing (5-60 seconds) |\n| language_config | object | - | Language configuration |\n| pre_processing | object | - | Pre-processing config (audio_enhancer, speech_threshold) |\n| realtime_processing | object | - | Realtime processing (custom_vocabulary, translation, NER, sentiment) |\n| post_processing | object | - | Post-processing (summarization, chapterization) |\n| messages_config | object | - | WebSocket messages configuration |\n| callback | boolean | false | Enable callbacks |\n| callback_config | object | - | Callback configuration |\n\n## Response\n\n| Field | Type | Description |\n|-------|------|-------------|\n| id | uuid | Job ID |\n| created_at | datetime | Creation date |\n| url | uri | WebSocket URL to connect for sending audio |"
+  },
+  {
+    "title": "Get Result - Live Transcription",
+    "path": "api-reference/v2/live/get",
+    "url": "https://docs.gladia.io/api-reference/v2/live/get",
+    "keywords": [
+      "get result",
+      "live transcription result",
+      "GET /v2/live/:id",
+      "transcription status",
+      "job metadata",
+      "utterances",
+      "full transcript",
+      "audio duration",
+      "billing time"
+    ],
+    "use_cases": [
+      "How to retrieve live transcription results after session ends?",
+      "How to check the status of a live transcription job?",
+      "When to poll for transcription completion?",
+      "How to get word-level timestamps from live transcription?",
+      "How to access translation results from live session?"
+    ],
+    "tags": ["api-reference", "live", "endpoints", "GET", "result", "status"],
+    "priority": 9,
+    "content": "# Get Result - Live Transcription\n\n**GET /v2/live/{id}**\n\nGet the live job's metadata, status, parameters, and results.\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url https://api.gladia.io/v2/live/{id} \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Response (200)\n\n```json\n{\n  \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"request_id\": \"G-45463597\",\n  \"version\": 2,\n  \"status\": \"done\",\n  \"created_at\": \"2023-12-28T09:04:17.210Z\",\n  \"completed_at\": \"2023-12-28T09:04:37.210Z\",\n  \"kind\": \"live\",\n  \"custom_metadata\": { \"user\": \"John Doe\" },\n  \"file\": {\n    \"audio_duration\": 3600,\n    \"number_of_channels\": 1\n  },\n  \"result\": {\n    \"metadata\": {\n      \"audio_duration\": 3600,\n      \"number_of_distinct_channels\": 1,\n      \"billing_time\": 3600,\n      \"transcription_time\": 20\n    },\n    \"transcription\": {\n      \"full_transcript\": \"...\",\n      \"languages\": [\"en\"],\n      \"utterances\": [...]\n    }\n  }\n}\n```\n\n## Authorization\n\n**x-gladia-key** (header, required): Your personal Gladia API key\n\n## Path Parameters\n\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| id | string | Yes | ID of the live job. Example: `45463597-20b7-4af7-b3b3-f5fb778203ab` |\n\n## Response Fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| id | uuid | Job ID |\n| request_id | string | Debug ID |\n| version | integer | API version |\n| status | enum | Job status: `queued`, `processing`, `done`, `error` |\n| created_at | datetime | Creation date |\n| completed_at | datetime | Completion date (when status is done/error) |\n| kind | enum | Always `live` |\n| custom_metadata | object | Custom metadata from initial request |\n| error_code | integer | HTTP status code if error (400-599) |\n| file | object | File data (id, filename, source, audio_duration, number_of_channels) |\n| request_params | object | Parameters used for this transcription |\n| result | object | Transcription results when status is \"done\" |\n\n## Result Object\n\n| Field | Type | Description |\n|-------|------|-------------|\n| metadata | object | Audio duration, billing time, transcription time |\n| transcription | object | Full transcript, languages, utterances, sentences, subtitles |\n| translation | object | Translation results if enabled |\n| summarization | object | Summary if enabled |\n| named_entity_recognition | object | NER results if enabled |\n| sentiment_analysis | object | Sentiment results if enabled |\n| chapterization | object | Chapter results if enabled |"
+  },
+  {
+    "title": "Delete Transcription - Live",
+    "path": "api-reference/v2/live/delete",
+    "url": "https://docs.gladia.io/api-reference/v2/live/delete",
+    "keywords": [
+      "delete transcription",
+      "DELETE /v2/live/:id",
+      "remove live job",
+      "cleanup",
+      "data deletion",
+      "audio file deletion",
+      "GDPR compliance"
+    ],
+    "use_cases": [
+      "How to delete a live transcription and its data?",
+      "When to clean up completed transcription jobs?",
+      "How to remove audio files after transcription?",
+      "How to comply with data retention policies?"
+    ],
+    "tags": ["api-reference", "live", "endpoints", "DELETE", "cleanup"],
+    "priority": 9,
+    "content": "# Delete Transcription - Live\n\n**DELETE /v2/live/{id}**\n\nDelete a live transcription and all its data (audio file, transcription results).\n\n## Example Request\n\n```bash\ncurl --request DELETE \\\n  --url https://api.gladia.io/v2/live/{id} \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Response\n\n**202**: The live job has been successfully deleted.\n\n## Error Responses\n\n**401 Unauthorized**:\n```json\n{\n  \"timestamp\": \"2023-12-28T09:04:17.210Z\",\n  \"path\": \"/v2/live/45463597-20b7-4af7-b3b3-f5fb778203ab\",\n  \"request_id\": \"G-821fe9df\",\n  \"statusCode\": 401,\n  \"message\": \"gladia key not found\"\n}\n```\n\n**403 Forbidden**: You don't have permission to delete this resource.\n\n**404 Not Found**: The transcription job was not found.\n\n## Authorization\n\n**x-gladia-key** (header, required): Your personal Gladia API key\n\n## Path Parameters\n\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| id | string | Yes | ID of the live job. Example: `45463597-20b7-4af7-b3b3-f5fb778203ab` |"
+  },
+  {
+    "title": "Download Audio File - Live",
+    "path": "api-reference/v2/live/get-audio",
+    "url": "https://docs.gladia.io/api-reference/v2/live/get-audio",
+    "keywords": [
+      "download audio",
+      "GET /v2/live/:id/file",
+      "audio file",
+      "recorded audio",
+      "live session audio",
+      "binary download",
+      "audio export"
+    ],
+    "use_cases": [
+      "How to download the audio file from a live transcription session?",
+      "How to retrieve recorded audio for archiving?",
+      "When to download audio for quality review?",
+      "How to export audio from completed live sessions?"
+    ],
+    "tags": ["api-reference", "live", "endpoints", "GET", "audio", "download"],
+    "priority": 9,
+    "content": "# Download Audio File - Live\n\n**GET /v2/live/{id}/file**\n\nDownload the audio file recorded during a live transcription session.\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url https://api.gladia.io/v2/live/{id}/file \\\n  --header 'x-gladia-key: <api-key>' \\\n  --output audio.wav\n```\n\n## Response\n\n**200 OK**: Returns the audio file as binary data (`application/octet-stream`).\n\n## Error Responses\n\n**401 Unauthorized**: Invalid or missing API key.\n\n**404 Not Found**: The transcription job or audio file was not found.\n\n## Authorization\n\n**x-gladia-key** (header, required): Your personal Gladia API key\n\n## Path Parameters\n\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| id | string | Yes | ID of the live job. Example: `45463597-20b7-4af7-b3b3-f5fb778203ab` |\n\n## Response\n\nThe response is a binary file (`application/octet-stream`) containing the audio recorded during the live transcription session."
+  },
+  {
+    "title": "List Transcriptions - Live",
+    "path": "api-reference/v2/live/list",
+    "url": "https://docs.gladia.io/api-reference/v2/live/list",
+    "keywords": [
+      "list transcriptions",
+      "GET /v2/live",
+      "pagination",
+      "filter transcriptions",
+      "transcription history",
+      "status filter",
+      "date filter",
+      "custom metadata filter"
+    ],
+    "use_cases": [
+      "How to list all live transcriptions?",
+      "How to paginate through transcription results?",
+      "How to filter transcriptions by status?",
+      "How to filter transcriptions by date range?",
+      "How to find transcriptions by custom metadata?"
+    ],
+    "tags": ["api-reference", "live", "endpoints", "GET", "list", "pagination"],
+    "priority": 9,
+    "content": "# List Transcriptions - Live\n\n**GET /v2/live**\n\nList all live transcriptions matching the specified parameters with pagination support.\n\n## Example Request\n\n```bash\ncurl --request GET \\\n  --url 'https://api.gladia.io/v2/live?limit=20&status=done' \\\n  --header 'x-gladia-key: <api-key>'\n```\n\n## Response (200)\n\n```json\n{\n  \"first\": \"https://api.gladia.io/v2/live?status=done&offset=0&limit=20\",\n  \"current\": \"https://api.gladia.io/v2/live?status=done&offset=0&limit=20\",\n  \"next\": \"https://api.gladia.io/v2/live?status=done&offset=20&limit=20\",\n  \"items\": [\n    {\n      \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\",\n      \"status\": \"done\",\n      \"created_at\": \"2023-12-28T09:04:17.210Z\",\n      \"kind\": \"live\",\n      ...\n    }\n  ]\n}\n```\n\n## Authorization\n\n**x-gladia-key** (header, required): Your personal Gladia API key\n\n## Query Parameters\n\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| offset | integer | 0 | Starting point for pagination (0 = first item) |\n| limit | integer | 20 | Maximum items to return (min: 1) |\n| date | datetime | - | Filter by specific date (ISO format: YYYY-MM-DD) |\n| before_date | datetime | - | Include items before this date (ISO format) |\n| after_date | datetime | - | Include items after this date (ISO format) |\n| status | enum[] | - | Filter by status: `queued`, `processing`, `done`, `error` |\n| custom_metadata | object | - | Filter by custom metadata. Example: `{\"user\": \"John Doe\"}` |\n\n## Response Fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| first | uri | URL to fetch the first page |\n| current | uri | URL to fetch the current page |\n| next | uri | URL to fetch the next page (null if last page) |\n| items | array | List of live transcription objects |"
+  },
+  {
+    "title": "Live WebSocket - Real-time Transcription",
+    "path": "api-reference/v2/live/websocket",
+    "url": "https://docs.gladia.io/api-reference/v2/live/websocket",
+    "keywords": [
+      "websocket",
+      "WSS",
+      "real-time streaming",
+      "audio chunks",
+      "transcript events",
+      "speech events",
+      "translation events",
+      "sentiment analysis",
+      "named entity recognition",
+      "live audio"
+    ],
+    "use_cases": [
+      "How to connect to the live transcription WebSocket?",
+      "How to send audio chunks via WebSocket?",
+      "How to handle transcript events in real-time?",
+      "How to receive translation results via WebSocket?",
+      "How to stop recording and end a session?",
+      "How to handle speech start and end events?"
+    ],
+    "tags": ["api-reference", "live", "endpoints", "websocket", "streaming", "real-time"],
+    "priority": 9,
+    "content": "# Live WebSocket - Real-time Transcription\n\n**WSS wss://api.gladia.io/v2/live?token={SESSION}**\n\nWebSocket endpoint for sending audio chunks and receiving real-time transcription events.\n\n## Connection\n\nConnect to the WebSocket URL returned from POST /v2/live init endpoint:\n```\nwss://api.gladia.io/v2/live?token=4a39145c-2844-4557-8f34-34883f7be7d9\n```\n\n## Messages You Can Send\n\n### Audio Chunk (JSON)\nSend audio bytes as base64-encoded chunk:\n```json\n{\n  \"type\": \"audio_chunk\",\n  \"data\": {\n    \"chunk\": \"UklGRiQAAABXQVZFZm10IBIAAAABAAEAESsAACJWAAACABAAZGF0YQAAAA==\"\n  }\n}\n```\n\n### Audio Chunk (Binary Frame)\nSend audio bytes as a binary WebSocket frame (more efficient).\n\n### Stop Recording\nInform Gladia that recording is over:\n```json\n{\n  \"type\": \"stop_recording\"\n}\n```\n\n## Messages You Receive\n\n### Transcript\nContains transcription information:\n```json\n{\n  \"session_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"created_at\": \"2025-09-19T12:34:10Z\",\n  \"type\": \"transcript\",\n  \"data\": {\n    \"id\": \"00-00000011\",\n    \"is_final\": true,\n    \"utterance\": {\n      \"start\": 0,\n      \"end\": 0.48,\n      \"confidence\": 0.91,\n      \"channel\": 0,\n      \"words\": [\n        { \"word\": \"Hello\", \"start\": 0, \"end\": 0.35, \"confidence\": 0.91 },\n        { \"word\": \"world\", \"start\": 0.36, \"end\": 0.48, \"confidence\": 0.91 }\n      ],\n      \"text\": \"Hello world.\",\n      \"language\": \"en\"\n    }\n  }\n}\n```\n\n### Speech Start\nIndicates start of detected speech:\n```json\n{\n  \"session_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"type\": \"speech_start\",\n  \"data\": { \"time\": 1.24, \"channel\": 0 }\n}\n```\n\n### Speech End\nIndicates end of detected speech:\n```json\n{\n  \"session_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"type\": \"speech_end\",\n  \"data\": { \"time\": 3.1, \"channel\": 0 }\n}\n```\n\n### Translation\nTranslation of utterances (if enabled):\n```json\n{\n  \"type\": \"translation\",\n  \"data\": {\n    \"utterance_id\": \"utt_001\",\n    \"original_language\": \"es\",\n    \"target_language\": \"en\",\n    \"translated_utterance\": {\n      \"text\": \"good morning\",\n      \"language\": \"en\"\n    }\n  }\n}\n```\n\n### Named Entity Recognition\nNER results (if enabled):\n```json\n{\n  \"type\": \"named_entity_recognition\",\n  \"data\": {\n    \"utterance_id\": \"utt_002\",\n    \"results\": [\n      { \"entity_type\": \"PERSON\", \"text\": \"Alice\" },\n      { \"entity_type\": \"TIME\", \"text\": \"3pm\" }\n    ]\n  }\n}\n```\n\n### Sentiment Analysis\nSentiment results (if enabled):\n```json\n{\n  \"type\": \"sentiment_analysis\",\n  \"data\": {\n    \"utterance_id\": \"utt_003\",\n    \"results\": [\n      { \"sentiment\": \"positive\", \"emotion\": \"joy\", \"text\": \"love this product\" }\n    ]\n  }\n}\n```\n\n### Post-Processing Events\n\n**Post Transcript**: Full transcript after session\n```json\n{ \"type\": \"post_transcript\", \"data\": { \"full_transcript\": \"hello world\" } }\n```\n\n**Final Transcript (Aggregated)**: Complete metadata and transcription\n```json\n{\n  \"type\": \"post_final_transcript\",\n  \"data\": {\n    \"metadata\": { \"audio_duration\": 123.45, \"billing_time\": 120 },\n    \"transcription\": { \"full_transcript\": \"hello world\" }\n  }\n}\n```\n\n**Chapterization**: Chapter breakdown (if enabled)\n```json\n{\n  \"type\": \"post_chapterization\",\n  \"data\": {\n    \"results\": [{ \"headline\": \"Project kickoff\", \"start\": 0, \"end\": 60 }]\n  }\n}\n```\n\n**Summarization**: Summary (if enabled)\n```json\n{\n  \"type\": \"post_summarization\",\n  \"data\": { \"results\": \"The team aligned on goals and next steps.\" }\n}\n```\n\n### Lifecycle Events\n\n**Start Session**: Session has started\n```json\n{ \"type\": \"start_session\", \"session_id\": \"...\" }\n```\n\n**Start Recording**: Recording has begun\n```json\n{ \"type\": \"start_recording\", \"session_id\": \"...\" }\n```\n\n**End Recording**: Recording has ended\n```json\n{ \"type\": \"end_recording\", \"data\": { \"reason\": \"user_request\", \"received_total_bytes\": 1048576 } }\n```\n\n**End Session**: Session has ended\n```json\n{ \"type\": \"end_session\", \"session_id\": \"...\" }\n```\n\n### Acknowledgments\n\n**Audio Chunk Acknowledgment**:\n```json\n{\n  \"type\": \"audio_chunk\",\n  \"acknowledged\": true,\n  \"data\": { \"byte_range\": [0, 4095], \"time_range\": [0, 0.256] }\n}\n```\n\n**Stop Recording Acknowledgment**:\n```json\n{ \"type\": \"stop_recording\", \"acknowledged\": true }\n```"
+  }
+]

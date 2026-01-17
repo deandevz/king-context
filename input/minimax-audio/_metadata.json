@@ -1,0 +1,24 @@
+{
+  "name": "minimax-audio",
+  "display_name": "MiniMax Audio API",
+  "base_url": "https://platform.minimax.io/docs",
+  "crawl_date": "2026-01-16",
+  "version": "v1",
+  "description": "MiniMax Audio APIs including Text-to-Speech, Voice Cloning, Voice Design, and Music Generation",
+  "models": [
+    "speech-2.6-hd",
+    "speech-2.6-turbo",
+    "speech-02-hd",
+    "speech-02-turbo",
+    "music-2.5",
+    "music-2.0"
+  ],
+  "topics": [
+    "text-to-speech",
+    "long-text-speech-async",
+    "voice-cloning",
+    "voice-design",
+    "music-generation",
+    "file-management"
+  ]
+}

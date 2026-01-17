@@ -1,0 +1,196 @@
+[
+  {
+    "title": "Pre-recorded STT Quickstart",
+    "path": "pre-recorded-stt/quickstart",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/quickstart",
+    "keywords": [
+      "quickstart",
+      "pre-recorded",
+      "transcription",
+      "upload",
+      "audio file",
+      "polling",
+      "webhook",
+      "callback",
+      "API",
+      "speech-to-text"
+    ],
+    "use_cases": [
+      "how to transcribe a pre-recorded audio file",
+      "how to upload audio files to Gladia API",
+      "how to get transcription results via polling",
+      "how to configure webhooks for transcription notifications",
+      "when to use callback URLs instead of polling"
+    ],
+    "tags": [
+      "pre-recorded",
+      "stt",
+      "speech-to-text",
+      "quickstart",
+      "transcription"
+    ],
+    "priority": 10,
+    "content": "## Upload your file\n\nThis step is **optional** if you are already working with **audio URLs**.\n\nIf you're working with audio or video files, you'll need to upload it first using our `POST /v2/upload` endpoint with `multipart/form-data` content-type since the `POST /v2/pre-recorded` endpoint only accept audio URLs. If you are already using audio file URLs, proceed to the next step.\n\n```bash\ncurl --request POST \\\n  --url https://api.gladia.io/v2/upload \\\n  --header 'Content-Type: multipart/form-data' \\\n  --header 'x-gladia-key: YOUR_GLADIA_API_KEY' \\\n  --form audio=@/path/to/your/audio/conversation.wav\n```\n\nExample response:\n\n```json\n{\n  \"audio_url\": \"https://api.gladia.io/file/636c70f6-92c1-4026-a8b6-0dfe3ecf826f\",\n  \"audio_metadata\": {\n    \"id\": \"636c70f6-92c1-4026-a8b6-0dfe3ecf826f\",\n    \"filename\": \"conversation.wav\",\n    \"extension\": \"wav\",\n    \"size\": 99515383,\n    \"audio_duration\": 4146.468542,\n    \"number_of_channels\": 2\n  }\n}\n```\n\nWe will now proceed to the next steps using the returned `audio_url`.\n\n## Transcribe\n\nWe'll now POST the transcription request to Gladia's API using the `POST /v2/pre-recorded` endpoint.\n\n`/v2/pre-recorded` only accept `application/json` as Content-Type.\n\n```bash\ncurl --request POST \\\n  --url https://api.gladia.io/v2/pre-recorded \\\n  --header 'Content-Type: application/json' \\\n  --header 'x-gladia-key: YOUR_GLADIA_API_KEY' \\\n  --data '{\n  \"audio_url\": \"YOUR_AUDIO_URL\",\n  \"language_config\": {\n    \"languages\": [],\n    \"code_switching\": false\n  },\n  \"diarization\": true,\n  \"diarization_config\": {\n    \"number_of_speakers\": 3,\n    \"min_speakers\": 1,\n    \"max_speakers\": 5\n  },\n  \"translation\": true,\n  \"translation_config\": {\n    \"model\": \"base\",\n    \"target_languages\": [\"fr\", \"en\"],\n    \"context_adaptation\": true,\n    \"context\": \"Business meeting discussing quarterly results\",\n    \"informal\": false\n  },\n  \"subtitles\": true,\n  \"subtitles_config\": {\n    \"formats\": [\"srt\", \"vtt\"]\n  }\n}'\n```\n\nYou'll get an instant response from the request with an `id` and a `result_url`. The `id` is your transcription ID that you will use to get your transcription result once it's done. `result_url` is returned for convenience. This is a pre-built url with your transcription id in it that you can use to get your result in the next step.\n\n## Get the transcription result\n\nYou can get your transcription results in **3 different ways**:\n\n### Polling\n\nOnce you post your transcription request, you get a transcription `id` and a pre-built `result_url` for convenience. To get the result with this method, you'll just have to GET continuously on the given `result_url` until the status of your transcription is `done`.\n\n### Webhook\n\nYou can configure webhooks at https://app.gladia.io/webhooks to be notified when your transcriptions are done. Once a transcription is done, a `POST` request will be made to the endpoint you configured. The request body is a JSON object containing the transcription `id` that you can use to retrieve your result with our API.\n\n### Callback URL\n\nCallback are HTTP calls that you can use to get notified when your transcripts are ready. Instead of polling and keeping your server busy and maintaining work, you can use the `callback` feature to receive the result to a specified endpoint:\n\n```json\n{\n  \"audio_url\": \"YOUR_AUDIO_URL\",\n  \"callback\": true,\n  \"callback_config\": {\n    \"url\": \"https://yourserverurl.com/your/callback/endpoint/\",\n    \"method\": \"POST\"\n  }\n}\n```\n\nOnce the transcription is done, a request will be made to the url you provided in `callback_config.url` using the HTTP method you provided in `callback_config.method`. Allowed methods are `POST` and `PUT` with the default being `POST`.\n\nThe request body is a JSON object containing the transcription `id` and an `event` property that tells you if it's a success or an error.\n\n## Full code sample\n\nYou can find complete code samples in our Github repository:\n\n- [Typescript/Javascript](https://github.com/gladiaio/gladia-samples/tree/main/typescript)\n- [Python](https://github.com/gladiaio/gladia-samples/tree/main/python)\n- [Browser](https://github.com/gladiaio/gladia-samples/tree/main/javascript-browser)"
+  },
+  {
+    "title": "Pre-recorded Migration from V1 to V2",
+    "path": "pre-recorded-stt/migration-from-v1",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/migration-from-v1",
+    "keywords": [
+      "migration",
+      "v1",
+      "v2",
+      "upgrade",
+      "api changes",
+      "breaking changes",
+      "input changes",
+      "output changes",
+      "deprecation",
+      "pre-recorded"
+    ],
+    "use_cases": [
+      "how to migrate from Gladia V1 to V2 API",
+      "what changed between V1 and V2 pre-recorded API",
+      "how to update transcription parameters for V2",
+      "when to use the new callback vs webhook system"
+    ],
+    "tags": [
+      "pre-recorded",
+      "stt",
+      "speech-to-text",
+      "migration",
+      "v2"
+    ],
+    "priority": 7,
+    "content": "## General flow changes\n\nIn the first version of Gladia API, to get your transcription through an HTTP call, you had to send everything (audio file/url, parameters, etc) in a single HTTP call, and then keep the connection open until you get your result. This was not ideal for many scenarios that could lead to longer waiting time to get your results, or in case of connection errors, not getting your results at all despite the transcription being successful.\n\nIn V2, we addressed this by decomposing the process in multiple steps, and have merged both audio & video endpoints:\n\n### 1. Upload your file\n\nThis step is **optional** if you are already working with **audio URLs**.\n\nIf you're working with audio or video files, you'll need to upload it first using our `/upload` endpoint with `multipart/form-data` content-type since Gladia `/v2/pre-recorded` endpoint only accept audio URLs now.\n\n```bash\ncurl --request POST \\\n  --url https://api.gladia.io/v2/upload \\\n  --header 'Content-Type: multipart/form-data' \\\n  --header 'x-gladia-key: YOUR_GLADIA_API_TOKEN' \\\n  --form audio=@/path/to/your/audio/conversation.wav\n```\n\nExample response:\n\n```json\n{\n  \"audio_url\": \"https://api.gladia.io/file/636c70f6-92c1-4026-a8b6-0dfe3ecf826f\",\n  \"audio_metadata\": {\n    \"id\": \"636c70f6-92c1-4026-a8b6-0dfe3ecf826f\",\n    \"filename\": \"conversation.wav\",\n    \"extension\": \"wav\",\n    \"size\": 99515383,\n    \"audio_duration\": 4146.468542,\n    \"number_of_channels\": 2\n  }\n}\n```\n\n### 2. Transcribe\n\nWe'll now make the transcription request to Gladia's API. Instead of `/audio/text/audio-transcription` now we'll use `/v2/pre-recorded`.\n\nSince `/v2/pre-recorded` does not accept any `audio` file, `Content-Type` is not `multipart/form-data` anymore, but `application/json`.\n\n**V2 Example:**\n\n```bash\ncurl --request POST \\\n  --url https://api.gladia.io/v2/pre-recorded \\\n  --header 'Content-Type: application/json' \\\n  --header 'x-gladia-key: YOUR_GLADIA_API_TOKEN' \\\n  --data '{\n  \"audio_url\": \"YOUR_AUDIO_URL\",\n  \"diarization\": true,\n  \"diarization_config\": {\n    \"number_of_speakers\": 3,\n    \"min_speakers\": 1,\n    \"max_speakers\": 5\n  },\n  \"subtitles\": true,\n  \"subtitles_config\": {\n    \"formats\": [\"srt\", \"vtt\"]\n  },\n  \"translation\": true,\n  \"translation_config\": {\n    \"target_languages\": [\"fr\"]\n  }\n}'\n```\n\n- **Old V1**: The HTTP connection is kept opened until you get your transcription result, and there's no third step.\n- **New V2**: You get an instant response from the request with an `id` and a `result_url`.\n\nThe `id` is your transcription ID that you will use to get your transcription result once it's done. You don't have to keep any HTTP connection open on your side.\n\n### 3. Get the transcription result\n\nAs on V1 you get the transcription results in the previous step, this step is only relevant for V2. You can get your transcription results via:\n\n- **Polling**: GET continuously on the given `result_url` until the status is `done`\n- **Webhook**: Configure webhooks at https://app.gladia.io/webhooks\n- **Callback URL**: Use the `callback` feature to receive the result to a specified endpoint\n\n## Transcription Input & Output changes\n\n### Input changes\n\n| V1 | V2 |\n| --- | --- |\n| `toggle_diarization` | `diarization` |\n| `language_behaviour` | `detect_language`, `enable_code_switching`, `language` |\n| `output_format` | `subtitles` + `subtitles_config` |\n| `webhook_url` | `callback_url` |\n\n### Output changes\n\nThe output structure has changed significantly:\n\n- `prediction` is now `result.transcription.utterances`\n- `time_begin` is now `start`\n- `time_end` is now `end`\n- `transcription` (text) is now `text`\n- `channel` is now an integer instead of string (e.g., `0` instead of `\"channel_0\"`)\n- `prediction_raw` no longer exists\n- Metadata structure simplified under `result.metadata`"
+  },
+  {
+    "title": "Pre-recorded Audio Intelligence",
+    "path": "pre-recorded-stt/audio-intelligence",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/audio-intelligence",
+    "keywords": [
+      "audio intelligence",
+      "translation",
+      "summarization",
+      "named entity recognition",
+      "NER",
+      "sentiment analysis",
+      "emotion analysis",
+      "chapterization",
+      "audio to LLM",
+      "pre-recorded"
+    ],
+    "use_cases": [
+      "how to add translation to transcriptions",
+      "how to generate summaries from audio",
+      "how to detect named entities in speech",
+      "how to analyze sentiment in transcriptions",
+      "when to use chapterization for long audio"
+    ],
+    "tags": [
+      "pre-recorded",
+      "stt",
+      "speech-to-text",
+      "audio-intelligence",
+      "AI features"
+    ],
+    "priority": 9,
+    "content": "Audio intelligence turns raw speech into structured, useful data on top of transcription. Once the words are captured, these features help you understand, organize, and act on the content - from instant translation to key-point summaries, entity detection, chapter markers, emotions, and even custom LLM prompts.\n\n## Available Features\n\n### Translation\nTranslate transcripts and subtitles into multiple languages in one request.\n\n### Summarization\nGenerate concise summaries or bullet points for quick understanding.\n\n### Named Entity Recognition\nDetect and categorize key entities like people, organizations, dates, and more.\n\n### Chapterization\nSegment long audio into chapters with headlines and summaries for easy navigation.\n\n### Sentiment & Emotion Analysis\nUnderstand the tone and emotions expressed across the transcript.\n\n### Audio to LLM\nAsk custom questions and run prompts on your audio like an assistant would."
+  },
+  {
+    "title": "Pre-recorded Features Overview",
+    "path": "pre-recorded-stt/features",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features",
+    "keywords": [
+      "features",
+      "speaker diarization",
+      "subtitles",
+      "SRT",
+      "VTT",
+      "custom vocabulary",
+      "custom spelling",
+      "punctuation",
+      "sentences",
+      "channels"
+    ],
+    "use_cases": [
+      "what features are available for pre-recorded transcription",
+      "how to enable speaker diarization",
+      "how to export subtitles in SRT or VTT format",
+      "how to improve transcription accuracy with custom vocabulary",
+      "when to use multi-channel transcription"
+    ],
+    "tags": [
+      "pre-recorded",
+      "stt",
+      "speech-to-text",
+      "features",
+      "overview"
+    ],
+    "priority": 8,
+    "content": "The core functionality of the Gladia API is its Speech Recognition model, designed to convert spoken language into written text. Additional capabilities like diarization, summarization, translation, custom prompts and more can be enabled by adding parameters to your request.\n\n## Available Features\n\n### Speaker Diarization\nDetect speakers and understand who said what, and when.\n\n### Export subtitles (SRT/VTT)\nGenerate ready-to-use subtitle files in SRT or VTT formats.\n\n### Custom vocabulary\nBoost recognition accuracy for brand, product, and domain terms.\n\n### Custom spelling\nNormalize how specific words, brands, and names are spelled.\n\n### Enhanced punctuation\nImproved punctuation and casing for cleaner, easier-to-read transcripts.\n\n### Sentences\nGroup words into sentences with timing for better readability and parsing.\n\n### Name consistency\nEnforce consistent rendering of speaker and entity names.\n\n### Dual or multiple channels\nTranscribe stereo or multi-channel audio with channel-aware processing.\n\n### Custom metadata\nAttach and propagate metadata to organize and trace your jobs.\n\nWant to know more about the audio intelligence features? Check out our Audio Intelligence chapter."
+  },
+  {
+    "title": "Speaker Diarization",
+    "path": "pre-recorded-stt/features/speaker-diarization",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/speaker-diarization",
+    "keywords": [
+      "speaker diarization",
+      "multiple speakers",
+      "speaker detection",
+      "who said what",
+      "speaker identification",
+      "diarization config",
+      "min speakers",
+      "max speakers",
+      "number of speakers"
+    ],
+    "use_cases": [
+      "how to enable speaker diarization in transcription",
+      "how to detect multiple speakers in audio",
+      "how to improve diarization accuracy",
+      "how to specify the number of speakers",
+      "when to use min/max speaker hints"
+    ],
+    "tags": [
+      "pre-recorded",
+      "stt",
+      "speech-to-text",
+      "diarization",
+      "speakers"
+    ],
+    "priority": 9,
+    "content": "Speaker diarization is the process of detecting multiple speakers in an audio, and understanding which parts of the transcription each speaker said.\n\n## Enabling diarization\n\nDiarization is enabled by sending the `diarization` parameter in the transcription request:\n\n```json\n{\n  \"audio_url\": \"<your audio URL>\",\n  \"diarization\": true\n}\n```\n\n## Response\n\nWhen diarization is enabled, each utterance will contain a `speaker` field, whose value is an index representing the speaker. Speakers will be assigned indexes by **order of appearance** (i.e. the 1st speaker will be speaker 0, the 2nd speaker 1, etc).\n\n```json\n{\n  \"transcription\": {\n    \"utterances\": [\n      {\n        \"words\": [...],\n        \"text\": \"it says you are trained in technology.\",\n        \"language\": \"en\",\n        \"start\": 0.7334100000000001,\n        \"end\": 2.364,\n        \"confidence\": 0.8914285714285715,\n        \"channel\": 0,\n        \"speaker\": 0\n      },\n      ...\n    ]\n  }\n}\n```\n\n## Improving diarization accuracy\n\nYou can improve the accuracy of the diarization by providing the model with hints regarding the expected number or lower/upper bounds of speakers using the `diarization_config.num_of_speakers`, `diarization_config.min_speakers` and `diarization_config.max_speakers` parameters respectively.\n\n**Important:** These parameters are hints, not hard constraints. The actual number of speakers detected by the model may not comply with the provided parameters.\n\n| Key | Type | Description |\n| --- | --- | --- |\n| `diarization_config.number_of_speakers` | number | Guiding number of speakers - instructs the model to detect an exact number of speakers in the audio. |\n| `diarization_config.min_speakers` | number | Instructs the model to detect no less than this number of speakers in the audio. |\n| `diarization_config.max_speakers` | number | Causes the model to detect no more than this number of speakers in the audio. |"
+  },
+  {
+    "title": "Custom Metadata",
+    "path": "pre-recorded-stt/features/custom-metadata",
+    "url": "https://docs.gladia.io/chapters/pre-recorded-stt/features/custom-metadata",
+    "keywords": [
+      "custom metadata",
+      "metadata",
+      "filtering",
+      "job tracking",
+      "internal user ID",
+      "transcription organization",
+      "query parameters",
+      "job identification"
+    ],
+    "use_cases": [
+      "how to add metadata to transcription jobs",
+      "how to filter transcriptions by metadata",
+      "how to track transcriptions by internal user ID",
+      "when to use custom metadata for organization",
+      "how to query transcriptions with specific metadata"
+    ],
+    "tags": [
+      "pre-recorded",
+      "stt",
+      "speech-to-text",
+      "metadata",
+      "filtering"
+    ],
+    "priority": 8,
+    "content": "You can add metadata to your transcription using the `custom_metadata` input during your POST request to `/v2/pre-recorded`. This helps recognize your transcription when fetching via GET `/v2/pre-recorded/:id` and enables filtering in GET `/v2/pre-recorded`.\n\n## Adding custom metadata\n\nFor example:\n\n```json\n\"custom_metadata\": {\n  \"internalUserId\": 2348739875894375,\n  \"paymentMethod\": { \"last4Digits\": 4576 },\n  \"internalUserName\": \"Spencer\"\n}\n```\n\n## Filtering by metadata\n\nFilter results:\n\n```\nhttps://api.gladia.io/v2/pre-recorded?custom_metadata={\"internalUserId\": \"2348739875894375\"}\n```\n\nor\n\n```\nhttps://api.gladia.io/v2/pre-recorded?custom_metadata={\"paymentMethod\": {\"last4Digits\": 4576}, \"internalUserName\": \"Spencer\"}\n```\n\n## Limitations\n\n`custom_metadata` cannot be longer than 2000 characters when stringified."
+  }
+]

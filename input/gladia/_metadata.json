@@ -1,0 +1,19 @@
+{
+  "name": "gladia",
+  "display_name": "Gladia",
+  "source_url": "https://docs.gladia.io",
+  "crawl_date": "2026-01-16",
+  "total_urls": 93,
+  "topics": [
+    "introduction",
+    "pre-recorded-stt",
+    "live-stt",
+    "audio-intelligence",
+    "language",
+    "integrations",
+    "limits-and-specs",
+    "migrations",
+    "recommended-parameters",
+    "api-reference"
+  ]
+}

@@ -1,0 +1,126 @@
+[
+  {
+    "title": "Start Session Webhook",
+    "path": "api-reference/v2/live/webhook/start-session",
+    "url": "https://docs.gladia.io/api-reference/v2/live/webhook/start-session",
+    "keywords": [
+      "webhook",
+      "start session",
+      "live.start_session",
+      "live transcription",
+      "session event",
+      "real-time",
+      "websocket",
+      "notification",
+      "payload"
+    ],
+    "use_cases": [
+      "How to receive notifications when a live session starts",
+      "How to handle the live.start_session webhook event",
+      "When to use the start session webhook for tracking",
+      "How to parse the start session webhook payload"
+    ],
+    "tags": [
+      "api-reference",
+      "live",
+      "webhook",
+      "session",
+      "event"
+    ],
+    "priority": 6,
+    "content": "# Start Session Webhook\n\nPayload definition for the webhook event `live.start_session`.\n\n## Example Payload\n\n```json\n{\n  \"event\": \"live.start_session\",\n  \"payload\": {\n    \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\"\n  }\n}\n```\n\n## Schema\n\n### event\n\n- **Type:** `enum<string>`\n- **Default:** `live.start_session`\n- **Required:** Yes\n- **Available options:** `live.start_session`\n- **Example:** `\"live.start_session\"`\n\n### payload\n\n- **Type:** `object`\n- **Required:** Yes\n\n#### Payload Attributes\n\n- **id** - The unique identifier of the live transcription session"
+  },
+  {
+    "title": "Start Recording Webhook",
+    "path": "api-reference/v2/live/webhook/start-recording",
+    "url": "https://docs.gladia.io/api-reference/v2/live/webhook/start-recording",
+    "keywords": [
+      "webhook",
+      "start recording",
+      "live.start_recording",
+      "live transcription",
+      "recording event",
+      "real-time",
+      "audio recording",
+      "notification",
+      "payload"
+    ],
+    "use_cases": [
+      "How to receive notifications when recording starts",
+      "How to handle the live.start_recording webhook event",
+      "When to use the start recording webhook for tracking",
+      "How to parse the start recording webhook payload"
+    ],
+    "tags": [
+      "api-reference",
+      "live",
+      "webhook",
+      "recording",
+      "event"
+    ],
+    "priority": 6,
+    "content": "# Start Recording Webhook\n\nPayload definition for the webhook event `live.start_recording`.\n\n## Example Payload\n\n```json\n{\n  \"event\": \"live.start_recording\",\n  \"payload\": {\n    \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\"\n  }\n}\n```\n\n## Schema\n\n### event\n\n- **Type:** `enum<string>`\n- **Default:** `live.start_recording`\n- **Required:** Yes\n- **Available options:** `live.start_recording`\n- **Example:** `\"live.start_recording\"`\n\n### payload\n\n- **Type:** `object`\n- **Required:** Yes\n\n#### Payload Attributes\n\n- **id** - The unique identifier of the live transcription session"
+  },
+  {
+    "title": "End Recording Webhook",
+    "path": "api-reference/v2/live/webhook/end-recording",
+    "url": "https://docs.gladia.io/api-reference/v2/live/webhook/end-recording",
+    "keywords": [
+      "webhook",
+      "end recording",
+      "live.end_recording",
+      "live transcription",
+      "recording complete",
+      "stop recording",
+      "notification",
+      "payload",
+      "event"
+    ],
+    "use_cases": [
+      "How to receive notifications when recording ends",
+      "How to handle the live.end_recording webhook event",
+      "When to use the end recording webhook for cleanup",
+      "How to parse the end recording webhook payload"
+    ],
+    "tags": [
+      "api-reference",
+      "live",
+      "webhook",
+      "recording",
+      "event"
+    ],
+    "priority": 6,
+    "content": "# End Recording Webhook\n\nPayload definition for the webhook event `live.end_recording`.\n\n## Example Payload\n\n```json\n{\n  \"event\": \"live.end_recording\",\n  \"payload\": {\n    \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\"\n  }\n}\n```\n\n## Schema\n\n### event\n\n- **Type:** `enum<string>`\n- **Default:** `live.end_recording`\n- **Required:** Yes\n- **Available options:** `live.end_recording`\n- **Example:** `\"live.end_recording\"`\n\n### payload\n\n- **Type:** `object`\n- **Required:** Yes\n\n#### Payload Attributes\n\n- **id** - The unique identifier of the live transcription session"
+  },
+  {
+    "title": "End Session Webhook",
+    "path": "api-reference/v2/live/webhook/end-session",
+    "url": "https://docs.gladia.io/api-reference/v2/live/webhook/end-session",
+    "keywords": [
+      "webhook",
+      "end session",
+      "live.end_session",
+      "live transcription",
+      "session complete",
+      "close session",
+      "notification",
+      "payload",
+      "event"
+    ],
+    "use_cases": [
+      "How to receive notifications when a live session ends",
+      "How to handle the live.end_session webhook event",
+      "When to use the end session webhook for cleanup",
+      "How to parse the end session webhook payload"
+    ],
+    "tags": [
+      "api-reference",
+      "live",
+      "webhook",
+      "session",
+      "event"
+    ],
+    "priority": 6,
+    "content": "# End Session Webhook\n\nPayload definition for the webhook event `live.end_session`.\n\n## Example Payload\n\n```json\n{\n  \"event\": \"live.end_session\",\n  \"payload\": {\n    \"id\": \"45463597-20b7-4af7-b3b3-f5fb778203ab\"\n  }\n}\n```\n\n## Schema\n\n### event\n\n- **Type:** `enum<string>`\n- **Default:** `live.end_session`\n- **Required:** Yes\n- **Available options:** `live.end_session`\n- **Example:** `\"live.end_session\"`\n\n### payload\n\n- **Type:** `object`\n- **Required:** Yes\n\n#### Payload Attributes\n\n- **id** - The unique identifier of the live transcription session"
+  }
+]
