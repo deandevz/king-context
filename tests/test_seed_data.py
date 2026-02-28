@@ -7,7 +7,7 @@ from unittest.mock import patch, call
 
 import pytest
 
-from seed_data import seed_all, seed_one, DATA_DIR
+from king_context.seed_data import seed_all, seed_one, DATA_DIR
 
 
 class TestSeedAll:
@@ -40,8 +40,8 @@ class TestSeedAll:
         (tmp_path / "doc1.json").write_text(json.dumps(doc1))
         (tmp_path / "doc2.json").write_text(json.dumps(doc2))
 
-        with patch("seed_data.DATA_DIR", tmp_path), \
-             patch("seed_data.insert_documentation") as mock_insert:
+        with patch("king_context.seed_data.DATA_DIR", tmp_path), \
+             patch("king_context.seed_data.insert_documentation") as mock_insert:
             mock_insert.return_value = 1  # Mock return value (number of sections)
 
             seed_all()
@@ -70,8 +70,8 @@ class TestSeedAll:
 
         (tmp_path / "progress.json").write_text(json.dumps(doc))
 
-        with patch("seed_data.DATA_DIR", tmp_path), \
-             patch("seed_data.insert_documentation") as mock_insert:
+        with patch("king_context.seed_data.DATA_DIR", tmp_path), \
+             patch("king_context.seed_data.insert_documentation") as mock_insert:
             mock_insert.return_value = 3  # 3 sections
 
             seed_all()
@@ -81,8 +81,8 @@ class TestSeedAll:
 
     def test_seed_all_handles_empty_directory(self, tmp_path, capsys):
         """seed_all should handle empty data directory gracefully."""
-        with patch("seed_data.DATA_DIR", tmp_path), \
-             patch("seed_data.insert_documentation") as mock_insert:
+        with patch("king_context.seed_data.DATA_DIR", tmp_path), \
+             patch("king_context.seed_data.insert_documentation") as mock_insert:
 
             # Should not raise any exception
             seed_all()
@@ -106,8 +106,8 @@ class TestSeedAll:
         (tmp_path / "config.txt").write_text("some config")
         (tmp_path / "data.json.bak").write_text("{}")
 
-        with patch("seed_data.DATA_DIR", tmp_path), \
-             patch("seed_data.insert_documentation") as mock_insert:
+        with patch("king_context.seed_data.DATA_DIR", tmp_path), \
+             patch("king_context.seed_data.insert_documentation") as mock_insert:
             mock_insert.return_value = 0
 
             seed_all()
@@ -136,7 +136,7 @@ class TestSeedOne:
         json_file = tmp_path / "single.json"
         json_file.write_text(json.dumps(doc))
 
-        with patch("seed_data.insert_documentation") as mock_insert:
+        with patch("king_context.seed_data.insert_documentation") as mock_insert:
             mock_insert.return_value = 2
 
             seed_one(json_file)
@@ -161,7 +161,7 @@ class TestSeedOne:
         json_file = tmp_path / "test_progress.json"
         json_file.write_text(json.dumps(doc))
 
-        with patch("seed_data.insert_documentation") as mock_insert:
+        with patch("king_context.seed_data.insert_documentation") as mock_insert:
             mock_insert.return_value = 4
 
             seed_one(json_file)
@@ -182,7 +182,7 @@ class TestSeedOne:
         json_file = tmp_path / "empty.json"
         json_file.write_text(json.dumps(doc))
 
-        with patch("seed_data.insert_documentation") as mock_insert:
+        with patch("king_context.seed_data.insert_documentation") as mock_insert:
             mock_insert.return_value = 0
 
             seed_one(json_file)
@@ -203,7 +203,7 @@ class TestSeedOne:
         json_file = tmp_path / "nosections.json"
         json_file.write_text(json.dumps(doc))
 
-        with patch("seed_data.insert_documentation") as mock_insert:
+        with patch("king_context.seed_data.insert_documentation") as mock_insert:
             mock_insert.return_value = 0
 
             seed_one(json_file)

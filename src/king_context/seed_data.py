@@ -6,9 +6,10 @@ Lê arquivos de data/*.json e insere no SQLite.
 import json
 from pathlib import Path
 
-from db import init_db, insert_documentation
+from king_context import PROJECT_ROOT
+from king_context.db import init_db, insert_documentation
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = PROJECT_ROOT / "data"
 
 
 def seed_all() -> None:
