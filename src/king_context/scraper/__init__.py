@@ -4,6 +4,7 @@ from king_context.scraper.filter import filter_urls, FilterResult
 from king_context.scraper.fetch import fetch_pages, FetchResult, PageResult
 from king_context.scraper.chunk import chunk_page, chunk_pages, Chunk
 from king_context.scraper.enrich import enrich_chunks, EnrichedChunk, validate_enrichment, estimate_cost
+from king_context.scraper.export import export_to_json, save_and_index
 
 __all__ = [
     "ScraperConfig", "load_config", "ConfigError",
@@ -12,4 +13,5 @@ __all__ = [
     "fetch_pages", "FetchResult", "PageResult",
     "chunk_page", "chunk_pages", "Chunk",
     "enrich_chunks", "EnrichedChunk", "validate_enrichment", "estimate_cost",
+    "export_to_json", "save_and_index",
 ]
