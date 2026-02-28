@@ -7,10 +7,14 @@ dependencies = [
     "fastmcp>=0.4.0",
     "sentence-transformers>=2.2.0",
     "numpy>=1.24.0",
+    "python-dotenv>=1.0.0",
+    "firecrawl-py>=1.0.0",
+    "httpx>=0.27.0",
 ]
 
 [project.scripts]
 king-context = "king_context.server:main"
+king-scrape = "king_context.scraper.cli:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -203,13 +203,17 @@ No black boxes. You always know which layer returned your results and how long i
 
 ## Roadmap
 
-### In Progress
+### Scraper Pipeline
 
-- **Scraping Skills** — Claude Code skills for semi-automated documentation extraction. Currently functional but not production-ready. Contributions welcome.
+The `king-scrape` CLI automates documentation extraction end-to-end: discovers URLs on a site, filters for documentation pages, fetches and chunks the content, enriches each chunk with structured metadata via LLM, and exports a ready-to-use JSON file indexed into the database.
+
+```bash
+king-scrape https://docs.stripe.com
+```
+
+Requires `FIRECRAWL_API_KEY` and `OPENROUTER_API_KEY`. Full usage guide in [src/king_context/scraper/SCRAPER.md](src/king_context/scraper/SCRAPER.md).
 
 ### Planned
-
-- **Automated Scraping Pipeline** — A system to crawl, extract, and index documentation with minimal manual intervention
 - **Community Documentation Registry** — Shared, versioned documentation packages maintained by the community
 - **Methodology Documentation** — This project is one component of a broader methodology for LLM-assisted development (replacing SDD/BMAD approaches). Separate repository coming soon.
 
@@ -240,7 +244,8 @@ king-context/
 │   ├── __init__.py         # PROJECT_ROOT constant
 │   ├── server.py           # MCP server (FastMCP)
 │   ├── db.py               # Cascade search engine + SQLite
-│   └── seed_data.py        # Database seeding
+│   ├── seed_data.py        # Database seeding
+│   └── scraper/            # Scraping pipeline (king-scrape CLI)
 ├── tests/                  # Test suite
 │   ├── conftest.py         # Shared fixtures
 │   ├── test_db.py          # Database & search tests
