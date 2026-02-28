@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import numpy as np
 
-import db
+import king_context.db as db
 
 
 class TestLoadEmbeddings:
@@ -28,13 +28,13 @@ class TestLoadEmbeddings:
 
     def test_load_embeddings_sets_embedding_model(self):
         """_load_embeddings should set db._embedding_model when model loads successfully."""
-        from server import _load_embeddings
+        from king_context.server import _load_embeddings
 
         # Mock SentenceTransformer to avoid slow loading
         mock_model = MagicMock()
-        with patch("server.SentenceTransformer", return_value=mock_model):
-            with patch("server.EMBEDDINGS_PATH") as mock_emb_path:
-                with patch("server.SECTION_MAPPING_PATH") as mock_map_path:
+        with patch("king_context.server.SentenceTransformer", return_value=mock_model):
+            with patch("king_context.server.EMBEDDINGS_PATH") as mock_emb_path:
+                with patch("king_context.server.SECTION_MAPPING_PATH") as mock_map_path:
                     # Make files appear to exist
                     mock_emb_path.exists.return_value = False
                     mock_map_path.exists.return_value = False
@@ -46,14 +46,14 @@ class TestLoadEmbeddings:
 
     def test_load_embeddings_loads_embeddings_when_file_exists(self):
         """_load_embeddings should load embeddings.npy into db._embeddings when file exists."""
-        from server import _load_embeddings
+        from king_context.server import _load_embeddings
 
         mock_model = MagicMock()
         test_embeddings = np.array([[0.1, 0.2], [0.3, 0.4]])
 
-        with patch("server.SentenceTransformer", return_value=mock_model):
-            with patch("server.EMBEDDINGS_PATH") as mock_emb_path:
-                with patch("server.SECTION_MAPPING_PATH") as mock_map_path:
+        with patch("king_context.server.SentenceTransformer", return_value=mock_model):
+            with patch("king_context.server.EMBEDDINGS_PATH") as mock_emb_path:
+                with patch("king_context.server.SECTION_MAPPING_PATH") as mock_map_path:
                     mock_emb_path.exists.return_value = True
                     mock_map_path.exists.return_value = False
 
@@ -66,14 +66,14 @@ class TestLoadEmbeddings:
 
     def test_load_embeddings_loads_section_mapping_when_file_exists(self):
         """_load_embeddings should load section_mapping.json into db._section_id_to_idx."""
-        from server import _load_embeddings
+        from king_context.server import _load_embeddings
 
         mock_model = MagicMock()
         test_mapping = {"1": 0, "2": 1, "3": 2}
 
-        with patch("server.SentenceTransformer", return_value=mock_model):
-            with patch("server.EMBEDDINGS_PATH") as mock_emb_path:
-                with patch("server.SECTION_MAPPING_PATH") as mock_map_path:
+        with patch("king_context.server.SentenceTransformer", return_value=mock_model):
+            with patch("king_context.server.EMBEDDINGS_PATH") as mock_emb_path:
+                with patch("king_context.server.SECTION_MAPPING_PATH") as mock_map_path:
                     mock_emb_path.exists.return_value = False
                     mock_map_path.exists.return_value = True
 
@@ -90,13 +90,13 @@ class TestLoadEmbeddings:
 
     def test_load_embeddings_handles_missing_files_gracefully(self):
         """_load_embeddings should not crash when embedding files are missing."""
-        from server import _load_embeddings
+        from king_context.server import _load_embeddings
 
         mock_model = MagicMock()
 
-        with patch("server.SentenceTransformer", return_value=mock_model):
-            with patch("server.EMBEDDINGS_PATH") as mock_emb_path:
-                with patch("server.SECTION_MAPPING_PATH") as mock_map_path:
+        with patch("king_context.server.SentenceTransformer", return_value=mock_model):
+            with patch("king_context.server.EMBEDDINGS_PATH") as mock_emb_path:
+                with patch("king_context.server.SECTION_MAPPING_PATH") as mock_map_path:
                     # Files do not exist
                     mock_emb_path.exists.return_value = False
                     mock_map_path.exists.return_value = False
@@ -113,13 +113,13 @@ class TestLoadEmbeddings:
 
     def test_load_embeddings_handles_corrupt_files_gracefully(self):
         """_load_embeddings should handle corrupt files without crashing."""
-        from server import _load_embeddings
+        from king_context.server import _load_embeddings
 
         mock_model = MagicMock()
 
-        with patch("server.SentenceTransformer", return_value=mock_model):
-            with patch("server.EMBEDDINGS_PATH") as mock_emb_path:
-                with patch("server.SECTION_MAPPING_PATH") as mock_map_path:
+        with patch("king_context.server.SentenceTransformer", return_value=mock_model):
+            with patch("king_context.server.EMBEDDINGS_PATH") as mock_emb_path:
+                with patch("king_context.server.SECTION_MAPPING_PATH") as mock_map_path:
                     mock_emb_path.exists.return_value = True
                     mock_map_path.exists.return_value = True
 
@@ -134,13 +134,13 @@ class TestLoadEmbeddings:
 
     def test_load_embeddings_startup_time_reasonable(self):
         """_load_embeddings should complete within reasonable time when mocked."""
-        from server import _load_embeddings
+        from king_context.server import _load_embeddings
 
         mock_model = MagicMock()
 
-        with patch("server.SentenceTransformer", return_value=mock_model):
-            with patch("server.EMBEDDINGS_PATH") as mock_emb_path:
-                with patch("server.SECTION_MAPPING_PATH") as mock_map_path:
+        with patch("king_context.server.SentenceTransformer", return_value=mock_model):
+            with patch("king_context.server.EMBEDDINGS_PATH") as mock_emb_path:
+                with patch("king_context.server.SECTION_MAPPING_PATH") as mock_map_path:
                     mock_emb_path.exists.return_value = False
                     mock_map_path.exists.return_value = False
 

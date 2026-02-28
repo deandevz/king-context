@@ -50,3 +50,10 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+
+# Claude Code
+CLAUDE.md
+
+# Skill output
+pr-create/
+commit-create/

@@ -3,19 +3,19 @@ King Context - Local-first, token-efficient documentation server.
 """
 
 import json
-from pathlib import Path
 from fastmcp import FastMCP
 from typing import Optional, Dict, Any
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-import db
-from db import init_db, search_cascade, list_documentations, insert_documentation
+from king_context import PROJECT_ROOT
+import king_context.db as db
+from king_context.db import init_db, search_cascade, list_documentations, insert_documentation
 
 # Paths for embedding files
-EMBEDDINGS_PATH = Path(__file__).parent / "data" / "embeddings.npy"
-SECTION_MAPPING_PATH = Path(__file__).parent / "data" / "_internal" / "section_mapping.json"
+EMBEDDINGS_PATH = PROJECT_ROOT / "data" / "embeddings.npy"
+SECTION_MAPPING_PATH = PROJECT_ROOT / "data" / "_internal" / "section_mapping.json"
 
 
 def _load_embeddings() -> None:
@@ -184,7 +184,12 @@ def add_doc(doc_json: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the MCP server."""
     init_db()
     _load_embeddings()
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

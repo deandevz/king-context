@@ -101,7 +101,9 @@ This tool is not universally better. It excels in specific conditions:
 git clone https://github.com/your-org/king-context.git
 cd king-context
 
-# Install dependencies
+# Create virtual environment and install
+python -m venv .venv
+source .venv/bin/activate
 pip install -e .
 ```
 
@@ -110,7 +112,7 @@ pip install -e .
 Using the CLI:
 
 ```bash
-claude mcp add king-context -- python server.py
+claude mcp add king-context -- king-context
 ```
 
 Or manually add to your MCP configuration:
@@ -119,8 +121,7 @@ Or manually add to your MCP configuration:
 {
   "mcpServers": {
     "king-context": {
-      "command": "python",
-      "args": ["server.py"],
+      "command": "king-context",
       "cwd": "/path/to/king-context"
     }
   }
@@ -131,7 +132,10 @@ Or manually add to your MCP configuration:
 
 ```bash
 # Place documentation JSON in data/
-python seed_data.py
+python -m king_context.seed_data
+
+# Or reset and reseed
+./scripts/run-seed-data.sh
 ```
 
 ### Usage
@@ -232,15 +236,28 @@ Contributions needed:
 
 ```
 king-context/
-├── server.py           # MCP server implementation
-├── db.py               # Cascade search engine + SQLite
-├── seed_data.py        # Database seeding
-├── data/               # Documentation JSONs + embeddings
-│   ├── *.json          # Indexed documentations
-│   ├── embeddings.npy  # Section embeddings
-│   └── _internal/      # Mapping files
-├── docs.db             # SQLite database
-└── tests/              # Test suite
+├── src/king_context/       # Core Python package
+│   ├── __init__.py         # PROJECT_ROOT constant
+│   ├── server.py           # MCP server (FastMCP)
+│   ├── db.py               # Cascade search engine + SQLite
+│   └── seed_data.py        # Database seeding
+├── tests/                  # Test suite
+│   ├── conftest.py         # Shared fixtures
+│   ├── test_db.py          # Database & search tests
+│   ├── test_server.py      # MCP tool tests
+│   ├── test_seed_data.py   # Seeding tests
+│   ├── test_embeddings.py  # Dependency tests
+│   └── test_load_embeddings.py
+├── scripts/                # Utility scripts
+│   └── run-seed-data.sh    # Reset & reseed database
+├── data/                   # Documentation JSONs + embeddings
+│   ├── *.json              # Indexed documentations
+│   ├── embeddings.npy      # Section embeddings
+│   └── _internal/          # Mapping files
+├── input/                  # Raw docs before processing
+├── docs/                   # Design documents
+├── pyproject.toml          # Project configuration
+└── docs.db                 # SQLite database (generated)
 ```
 
 ---

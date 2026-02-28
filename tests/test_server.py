@@ -4,14 +4,14 @@ Tests for King Context server.
 
 import pytest
 from unittest.mock import patch, MagicMock
-from server import search_docs, list_docs, show_context, add_doc
+from king_context.server import search_docs, list_docs, show_context, add_doc
 
 
-# Access the underlying functions from the FunctionTool wrappers
-_search_docs = search_docs.fn
-_list_docs = list_docs.fn
-_show_context = show_context.fn
-_add_doc = add_doc.fn
+# In FastMCP 3.x, @mcp.tool() returns the original function directly
+_search_docs = search_docs
+_list_docs = list_docs
+_show_context = show_context
+_add_doc = add_doc
 
 
 class TestSearchDocs:
@@ -32,7 +32,7 @@ class TestSearchDocs:
             }
         }
 
-        with patch("server.search_cascade", return_value=expected_result) as mock_cascade:
+        with patch("king_context.server.search_cascade", return_value=expected_result) as mock_cascade:
             result = _search_docs(query="authentication", doc_name="openrouter", max_results=3)
 
             mock_cascade.assert_called_once_with(
@@ -55,7 +55,7 @@ class TestSearchDocs:
             }
         }
 
-        with patch("server.search_cascade", return_value=expected_result) as mock_cascade:
+        with patch("king_context.server.search_cascade", return_value=expected_result) as mock_cascade:
             result = _search_docs(query="unknown query")
 
             mock_cascade.assert_called_once_with(
@@ -78,7 +78,7 @@ class TestSearchDocs:
             }
         }
 
-        with patch("server.search_cascade", return_value=expected_result) as mock_cascade:
+        with patch("king_context.server.search_cascade", return_value=expected_result) as mock_cascade:
             result = _search_docs(query="oauth")
 
             assert "transparency" in result
@@ -99,7 +99,7 @@ class TestListDocs:
             {"name": "fastmcp", "display_name": "FastMCP", "version": "2.1", "section_count": 8}
         ]
 
-        with patch("server.list_documentations", return_value=mock_docs) as mock_list:
+        with patch("king_context.server.list_documentations", return_value=mock_docs) as mock_list:
             result = _list_docs()
 
             mock_list.assert_called_once()
@@ -111,7 +111,7 @@ class TestListDocs:
             {"name": "fastmcp", "display_name": "FastMCP", "version": "2.1", "section_count": 8}
         ]
 
-        with patch("server.list_documentations", return_value=mock_docs):
+        with patch("king_context.server.list_documentations", return_value=mock_docs):
             result = _list_docs()
 
             assert "docs" in result
@@ -121,7 +121,7 @@ class TestListDocs:
 
     def test_list_docs_with_empty_list(self):
         """list_docs should handle empty documentation list."""
-        with patch("server.list_documentations", return_value=[]):
+        with patch("king_context.server.list_documentations", return_value=[]):
             result = _list_docs()
 
             assert result["docs"] == []
@@ -133,7 +133,7 @@ class TestListDocs:
             {"name": "test-doc", "display_name": "Test Doc", "version": "0.1", "section_count": 3}
         ]
 
-        with patch("server.list_documentations", return_value=mock_docs):
+        with patch("king_context.server.list_documentations", return_value=mock_docs):
             result = _list_docs()
 
             doc = result["docs"][0]
@@ -161,7 +161,7 @@ class TestShowContext:
             }
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result) as mock_cascade:
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result) as mock_cascade:
             result = _show_context(query="authentication", doc_name="openrouter")
 
             mock_cascade.assert_called_once_with(
@@ -185,7 +185,7 @@ class TestShowContext:
             }
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result):
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result):
             result = _show_context(query="auth")
 
             assert "query" in result
@@ -208,7 +208,7 @@ class TestShowContext:
             }
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result):
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result):
             result = _show_context(query="test query", doc_name="my-docs")
 
             assert result["query"] == "test query"
@@ -227,7 +227,7 @@ class TestShowContext:
             }
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result):
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result):
             result = _show_context(query="anything")
 
             assert result["doc_name"] is None
@@ -248,7 +248,7 @@ class TestShowContext:
             }
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result):
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result):
             result = _show_context(query="test")
 
             # Token estimate based on the full context_preview string length / 4
@@ -273,7 +273,7 @@ class TestShowContext:
             }
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result):
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result):
             result = _show_context(query="test")
 
             assert result["chunks_count"] == 3
@@ -291,7 +291,7 @@ class TestShowContext:
             }
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result):
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result):
             result = _show_context(query="nonexistent")
 
             assert result["chunks_count"] == 0
@@ -312,7 +312,7 @@ class TestShowContext:
             "transparency": expected_transparency
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result):
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result):
             result = _show_context(query="test")
 
             assert result["transparency"] == expected_transparency
@@ -333,7 +333,7 @@ class TestShowContext:
             }
         }
 
-        with patch("server.search_cascade", return_value=mock_cascade_result):
+        with patch("king_context.server.search_cascade", return_value=mock_cascade_result):
             result = _show_context(query="auth")
 
             context = result["context_preview"]
@@ -430,7 +430,7 @@ class TestAddDoc:
         """add_doc should call insert_documentation from db module with valid input."""
         doc_json = self._valid_doc_json()
 
-        with patch("server.insert_documentation", return_value=42) as mock_insert:
+        with patch("king_context.server.insert_documentation", return_value=42) as mock_insert:
             result = _add_doc(doc_json=doc_json)
 
             mock_insert.assert_called_once_with(doc_json)
@@ -439,7 +439,7 @@ class TestAddDoc:
         """add_doc should return correct format on success."""
         doc_json = self._valid_doc_json()
 
-        with patch("server.insert_documentation", return_value=42):
+        with patch("king_context.server.insert_documentation", return_value=42):
             result = _add_doc(doc_json=doc_json)
 
             assert result["success"] is True
@@ -453,7 +453,7 @@ class TestAddDoc:
         doc_json["sections"].append(self._valid_section())
         doc_json["sections"].append(self._valid_section())
 
-        with patch("server.insert_documentation", return_value=1):
+        with patch("king_context.server.insert_documentation", return_value=1):
             result = _add_doc(doc_json=doc_json)
 
             assert result["sections_indexed"] == 3
@@ -463,7 +463,7 @@ class TestAddDoc:
         doc_json = self._valid_doc_json()
         doc_json["sections"] = []
 
-        with patch("server.insert_documentation", return_value=1):
+        with patch("king_context.server.insert_documentation", return_value=1):
             result = _add_doc(doc_json=doc_json)
 
             assert result["success"] is True
@@ -473,7 +473,7 @@ class TestAddDoc:
         """add_doc should handle exceptions from insert_documentation."""
         doc_json = self._valid_doc_json()
 
-        with patch("server.insert_documentation", side_effect=Exception("DB error")):
+        with patch("king_context.server.insert_documentation", side_effect=Exception("DB error")):
             result = _add_doc(doc_json=doc_json)
 
             assert result["success"] is False

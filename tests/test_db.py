@@ -11,19 +11,8 @@ import json
 import numpy as np
 
 # We need to patch DB_PATH before importing db module
-import db
-from db import search_cascade, _normalize_query
-
-
-@pytest.fixture
-def temp_db(tmp_path, monkeypatch):
-    """Create a temporary database path for testing."""
-    temp_db_path = tmp_path / "test_docs.db"
-    monkeypatch.setattr(db, "DB_PATH", temp_db_path)
-    yield temp_db_path
-    # Cleanup
-    if temp_db_path.exists():
-        temp_db_path.unlink()
+import king_context.db as db
+from king_context.db import search_cascade, _normalize_query
 
 
 class TestInitDb:
@@ -211,11 +200,11 @@ class TestInitDb:
 class TestSearchCascade:
     """Tests for the search_cascade function."""
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_returns_cache_hit_first(
         self,
         mock_update_cache,
@@ -248,11 +237,11 @@ class TestSearchCascade:
         mock_search_fts.assert_not_called()
         mock_update_cache.assert_not_called()
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_falls_back_to_metadata_on_cache_miss(
         self,
         mock_update_cache,
@@ -287,11 +276,11 @@ class TestSearchCascade:
         # Should update cache with first result
         mock_update_cache.assert_called_once()
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_falls_back_to_fts_on_metadata_miss(
         self,
         mock_update_cache,
@@ -325,11 +314,11 @@ class TestSearchCascade:
         # Should update cache with first result
         mock_update_cache.assert_called_once()
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_returns_not_found_when_all_miss(
         self,
         mock_update_cache,
@@ -358,11 +347,11 @@ class TestSearchCascade:
         # Should not update cache when nothing found
         mock_update_cache.assert_not_called()
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_normalizes_query(
         self,
         mock_update_cache,
@@ -388,11 +377,11 @@ class TestSearchCascade:
         # FTS now always requests 20 candidates for hybrid reranking
         mock_search_fts.assert_called_once_with(mock_conn, normalized, None, 20)
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_passes_doc_name_filter(
         self,
         mock_update_cache,
@@ -416,11 +405,11 @@ class TestSearchCascade:
         # FTS now always requests 20 candidates for hybrid reranking
         mock_search_fts.assert_called_with(mock_conn, "test", "langchain", 20)
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_passes_max_results(
         self,
         mock_update_cache,
@@ -443,11 +432,11 @@ class TestSearchCascade:
         # FTS always requests 20 candidates for hybrid reranking, not max_results
         mock_search_fts.assert_called_with(mock_conn, "test", None, 20)
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_latency_is_tracked(
         self,
         mock_update_cache,
@@ -470,11 +459,11 @@ class TestSearchCascade:
         assert isinstance(result["transparency"]["latency_ms"], float)
         assert result["transparency"]["latency_ms"] >= 0
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
     def test_closes_connection(
         self,
         mock_update_cache,
@@ -2125,12 +2114,12 @@ class TestRerankWithEmbeddings:
 class TestSearchCascadeHybridRerank:
     """Tests for hybrid reranking in search_cascade."""
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
-    @patch('db._rerank_with_embeddings')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
+    @patch('king_context.db._rerank_with_embeddings')
     def test_uses_hybrid_rerank_method_when_embeddings_available(
         self,
         mock_rerank,
@@ -2165,12 +2154,12 @@ class TestSearchCascadeHybridRerank:
         assert result["chunks"] == reranked_chunks
         assert "fts_hit" in result["transparency"]["search_path"]
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
-    @patch('db._rerank_with_embeddings')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
+    @patch('king_context.db._rerank_with_embeddings')
     def test_falls_back_to_fts_when_embeddings_unavailable(
         self,
         mock_rerank,
@@ -2202,12 +2191,12 @@ class TestSearchCascadeHybridRerank:
         assert result["chunks"] == fts_chunks
         assert "fts_hit" in result["transparency"]["search_path"]
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
-    @patch('db._rerank_with_embeddings')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
+    @patch('king_context.db._rerank_with_embeddings')
     def test_requests_20_candidates_from_fts_for_reranking(
         self,
         mock_rerank,
@@ -2234,12 +2223,12 @@ class TestSearchCascadeHybridRerank:
         # Third positional arg or max_results kwarg should be 20
         assert call_args[0][3] == 20  # 4th positional arg is max_results
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
-    @patch('db._rerank_with_embeddings')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
+    @patch('king_context.db._rerank_with_embeddings')
     def test_rerank_called_with_correct_params(
         self,
         mock_rerank,
@@ -2264,12 +2253,12 @@ class TestSearchCascadeHybridRerank:
 
         mock_rerank.assert_called_once_with("my query", fts_chunks, 7)
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
-    @patch('db._rerank_with_embeddings')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
+    @patch('king_context.db._rerank_with_embeddings')
     def test_updates_cache_with_first_reranked_result(
         self,
         mock_rerank,
@@ -2300,12 +2289,12 @@ class TestSearchCascadeHybridRerank:
         # Cache should be updated with section_id of first reranked result (5)
         mock_update_cache.assert_called_once_with(mock_conn, "test query", "langchain", 5)
 
-    @patch('db._get_connection')
-    @patch('db._check_cache')
-    @patch('db._search_metadata')
-    @patch('db._search_fts')
-    @patch('db._update_cache')
-    @patch('db._rerank_with_embeddings')
+    @patch('king_context.db._get_connection')
+    @patch('king_context.db._check_cache')
+    @patch('king_context.db._search_metadata')
+    @patch('king_context.db._search_fts')
+    @patch('king_context.db._update_cache')
+    @patch('king_context.db._rerank_with_embeddings')
     def test_hybrid_rerank_with_empty_results_after_filtering(
         self,
         mock_rerank,

@@ -6,21 +6,22 @@ Handles SQLite + FTS5 schema and cascade search.
 import sqlite3
 import json
 import time
-from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from king_context import PROJECT_ROOT
+
 # Module-level state for embedding model and embeddings
 _embedding_model: Optional[SentenceTransformer] = None
 _embeddings: Optional[np.ndarray] = None
 _section_id_to_idx: Dict[int, int] = {}
 
-DB_PATH = Path(__file__).parent / "docs.db"
-EMBEDDINGS_PATH = Path(__file__).parent / "data" / "embeddings.npy"
-SECTION_MAPPING_PATH = Path(__file__).parent / "data" / "_internal" / "section_mapping.json"
+DB_PATH = PROJECT_ROOT / "docs.db"
+EMBEDDINGS_PATH = PROJECT_ROOT / "data" / "embeddings.npy"
+SECTION_MAPPING_PATH = PROJECT_ROOT / "data" / "_internal" / "section_mapping.json"
 
 
 def init_db() -> None:
