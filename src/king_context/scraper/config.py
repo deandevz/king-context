@@ -13,7 +13,7 @@ class ConfigError(Exception):
 class ScraperConfig:
     firecrawl_api_key: str = ""
     openrouter_api_key: str = ""
-    enrichment_model: str = "openai/gpt-4o-mini"
+    enrichment_model: str = "google/gemini-3-flash-preview" ## Cheap and Fast Model for enrichment.
     enrichment_batch_size: int = 10
     chunk_max_tokens: int = 1000
     chunk_min_tokens: int = 100

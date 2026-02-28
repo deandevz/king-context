@@ -57,8 +57,9 @@ async def discover_urls(base_url: str, config: ScraperConfig) -> DiscoveryResult
 
     app = FirecrawlApp(api_key=config.firecrawl_api_key)
     loop = asyncio.get_running_loop()
-    raw = await loop.run_in_executor(None, lambda: app.map_url(base_url))
-    urls = raw if isinstance(raw, list) else raw.get("links", [])
+    raw = await loop.run_in_executor(None, lambda: app.map(base_url))
+    links = raw.links if hasattr(raw, "links") else (raw if isinstance(raw, list) else raw.get("links", []))
+    urls = [lnk.url if hasattr(lnk, "url") else str(lnk) for lnk in (links or [])]
 
     discovered_at = datetime.now(timezone.utc).isoformat()
     result = DiscoveryResult(

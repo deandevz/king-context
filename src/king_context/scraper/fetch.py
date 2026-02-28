@@ -41,8 +41,8 @@ async def _fetch_one(
     async with semaphore:
         try:
             loop = asyncio.get_running_loop()
-            raw = await loop.run_in_executor(None, lambda: app.scrape_url(url))
-            markdown = raw.get("markdown", "") if isinstance(raw, dict) else str(raw)
+            raw = await loop.run_in_executor(None, lambda: app.scrape(url, formats=["markdown"]))
+            markdown = raw.markdown if hasattr(raw, "markdown") else (raw.get("markdown", "") if isinstance(raw, dict) else str(raw))
             slug = _url_to_slug(url)
             (pages_dir / f"{slug}.md").write_text(markdown)
             return PageResult(url=url, markdown=markdown, success=True, error=None)
