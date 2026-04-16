@@ -1,125 +1,84 @@
 # King Context
 
-A local-first, token-efficient documentation server for LLM context injection via the Model Context Protocol.
+Local-first, token-efficient documentation for LLM agents. Scrape any docs site, enrich with structured metadata, and serve to AI agents via a fast CLI — reducing token usage by 70% while enabling first-shot accurate implementations.
 
-**Status:** Open Source | **License:** MIT
-
----
-
-## Why This Exists
-
-Cloud-based documentation tools like Context7 work well, but they come with inherent limitations:
-
-- **Opacity** — No visibility into what documentation is actually indexed
-- **Dependency** — Relying on third parties to update documentation
-- **Cost** — Token-heavy responses that inflate API usage
-- **Latency** — Network round-trips for every query
-
-This project provides a transparent, community-maintainable alternative where you control the documentation, the indexing, and the token budget.
+**Status:** Active Development | **License:** MIT
 
 ---
 
-## Core Innovation: Cascade Search
+## Real-World Validation
 
-The system implements a **4-layer prioritized search strategy** that stops at the first hit:
+An LLM with no prior knowledge of the MiniMax TTS API used King Context to:
+
+1. Search indexed docs → found the right API section in 1 query
+2. Read ~2,800 tokens of documentation (vs 15,000+ tokens reading the raw page)
+3. Produced a **working Python script on the first execution** — zero corrections needed
 
 ```
-1. CACHE        (<1ms)   → Previously successful queries
-2. METADATA     (<5ms)   → Structured fields: keywords, use_cases, tags
-3. FTS5         (<10ms)  → Full-text search with BM25 ranking
-4. HYBRID       (<15ms)  → Semantic reranking via embeddings (optional)
+search → preview → read → implement → working
 ```
 
-This architecture ensures that **90% of queries resolve at the metadata layer**, returning focused chunks instead of flooding context with redundant information.
+**70% fewer tokens. First-shot accuracy.** Full details in [`validation/minimax-tts-first-shot/`](validation/minimax-tts-first-shot/).
 
 ---
 
-## Benchmark Results
-
-Comparative analysis against Context7 across multiple APIs (ElevenLabs, Gladia, OpenRouter):
-
-| Metric | King Context | Context7 | Improvement |
-|--------|--------------|----------|-------------|
-| Avg tokens/query | 968 | 3,125 | **3.2x fewer** |
-| Latency (metadata) | 1.15ms | 200-500ms | **170x faster** |
-| Latency (FTS) | 97.83ms | 200-500ms | **2-5x faster** |
-| Duplicate results | 0 | 11 | **Zero waste** |
-| Relevance score | 3.2/5 | 2.8/5 | +14% |
-| Implementability | 4.4/5 | 4.0/5 | +10% |
-
-**Token reduction: 59-69% across all tested queries.**
-
-Full benchmark methodology and raw data available in [BENCHMARK.md](BENCHMARK.md).
-
----
-
-## Trade-offs
-
-This tool is not universally better. It excels in specific conditions:
-
-| Strength | Limitation |
-|----------|------------|
-| Millisecond latency (local) | Requires indexed documentation |
-| Predictable token costs | Keyword-based queries work best |
-| Zero duplications | Natural language queries less effective |
-| Full transparency | Documentation quality determines results |
-| Offline capability | No broad web search |
-
-**Quality depends on documentation quality.** If your indexed docs comprehensively cover the API, this system will outperform cloud alternatives in accuracy, token efficiency, and latency. If documentation is sparse or poorly structured, results will reflect that.
-
----
-
-## Architecture
+## How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     MCP Server (FastMCP)                    │
-├─────────────────────────────────────────────────────────────┤
-│  Tools:                                                     │
-│  ├── search_docs(query, doc_name?, max_results?)           │
-│  ├── list_docs()                                           │
-│  ├── show_context(query, doc_name?)                        │
-│  └── add_doc(doc_json)                                     │
-├─────────────────────────────────────────────────────────────┤
-│                    Cascade Search Engine                    │
-│  ┌─────────┐  ┌──────────┐  ┌──────┐  ┌────────┐          │
-│  │  Cache  │→ │ Metadata │→ │ FTS5 │→ │ Hybrid │          │
-│  └─────────┘  └──────────┘  └──────┘  └────────┘          │
-├─────────────────────────────────────────────────────────────┤
-│  SQLite + FTS5         │  Embeddings (all-MiniLM-L6-v2)    │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────┐     ┌─────────────┐     ┌──────────────┐     ┌───────────┐
+│  king-scrape │ ──→ │  data/*.json │ ──→ │  kctx index  │ ──→ │ .king-    │
+│  (scraper)   │     │  (enriched)  │     │              │     │  context/ │
+└─────────────┘     └─────────────┘     └──────────────┘     └─────┬─────┘
+                                                                    │
+                                                              ┌─────▼─────┐
+                                                              │ kctx CLI  │
+                                                              │ search/   │
+                                                              │ read/grep │
+                                                              └───────────┘
 ```
+
+1. **Scrape** — `king-scrape` discovers pages, fetches, chunks, and enriches them with structured metadata (keywords, use_cases, tags, priority) via LLM
+2. **Index** — `kctx index` builds a file-based data store optimized for fast lookups
+3. **Search** — `kctx search` finds the right section through metadata scoring — no full-text scanning, no embeddings needed for 90% of queries
+
+The metadata enrichment is what makes it efficient: instead of dumping entire pages into context, agents search by keywords/use_cases and read only the sections they need.
 
 ---
 
 ## Quick Start
 
-### Installation
-
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/king-context.git
+git clone https://github.com/deandevz/king-context.git
 cd king-context
-
-# Create virtual environment and install
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
 
-### CLI Usage (Recommended)
-
-The `kctx` CLI is the recommended way for AI agents to access documentation. It operates on a file-based `.king-context/` data store — no SQLite required for reads.
+### Scrape documentation
 
 ```bash
-# Index documentation from scraped data
-kctx index data/elevenlabs-api.json    # index one doc
-kctx index --all                        # index all data/*.json
+# Scrape and index an entire docs site
+king-scrape https://docs.stripe.com --name stripe --yes
+kctx index data/stripe.json
 
+# Scrape with resume support (re-run to continue if interrupted)
+king-scrape https://docs.stripe.com --name stripe --yes
+
+# Run individual steps
+king-scrape https://docs.stripe.com --name stripe --stop-after fetch
+king-scrape https://docs.stripe.com --name stripe --step chunk
+king-scrape https://docs.stripe.com --name stripe --step export
+```
+
+Requires `FIRECRAWL_API_KEY` and `OPENROUTER_API_KEY` in `.env`. The scraper has **intra-step resume**: fetch skips already-downloaded pages, enrich skips already-processed batches.
+
+### Search documentation (CLI)
+
+```bash
 # List available docs
 kctx list
 
-# Search by keywords/use cases (metadata only, no content — token efficient)
+# Search by keywords/use cases (metadata only — token efficient)
 kctx search "streaming audio"
 kctx search "auth" --doc elevenlabs-api --top 3
 
@@ -129,7 +88,6 @@ kctx read elevenlabs-api websocket-streaming
 
 # Browse by topic
 kctx topics elevenlabs-api
-kctx topics elevenlabs-api --tag api-reference
 
 # Grep content for exact patterns
 kctx grep "Client(" --doc httpx --context 3
@@ -137,55 +95,113 @@ kctx grep "Client(" --doc httpx --context 3
 
 All commands support `--json` for machine-parseable output.
 
-A Claude Code skill (`.claude/skills/king-context/skill.md`) teaches agents the optimal search strategy: check learned shortcuts, list, search, preview, then read — finding the right section in ≤3 CLI calls.
+---
 
-### MCP Server (Legacy)
+## Why a CLI Instead of MCP
 
-The MCP server is still available for tools that integrate via the Model Context Protocol.
+The MCP server approach works, but the CLI is significantly more efficient for AI agents:
 
-Using the CLI:
+| | CLI (`kctx`) | MCP Server |
+|---|---|---|
+| **Storage** | Plain files (`.king-context/`) | SQLite database |
+| **Dependencies** | Zero (reads files) | SQLite + FTS5 + embeddings |
+| **Token cost** | Metadata-only search results | Full content in responses |
+| **Agent control** | Agent decides what to read | Server decides what to return |
+| **Preview** | `--preview` before full read | No preview mode |
+
+The CLI gives agents a **progressive disclosure** pattern: search → preview → read. Each step costs tokens only if the agent decides to go deeper. With MCP, the server returns full content immediately.
+
+---
+
+## Claude Code Skills (Beta)
+
+Skills teach Claude Code how to use King Context effectively. Currently available:
+
+### `king-context` skill
+Search strategy with self-learning. Finds the right documentation section in ≤3 CLI calls, saves shortcuts for future sessions.
+
+### `scraper-workflow` skill
+Orchestrates the full scraping pipeline with two modes:
+- **Workflow A (OpenRouter)** — fully automated via `king-scrape`
+- **Workflow B (Claude Code sub-agents)** — uses Haiku for enrichment, Sonnet for filtering, no external API key needed
+
+Supports smart URL resolution (deep page → docs root), topic filtering (scrape only TTS docs from a site with 141 pages), and resume detection.
+
+> **Note:** Skills are in active development and may change.
+
+---
+
+## Benchmark Results
+
+Tested against Context7 across multiple APIs (ElevenLabs, Gladia, OpenRouter):
+
+| Metric | King Context | Context7 | Improvement |
+|--------|--------------|----------|-------------|
+| Avg tokens/query | 968 | 3,125 | **3.2x fewer** |
+| Latency (metadata) | 1.15ms | 200-500ms | **170x faster** |
+| Duplicate results | 0 | 11 | **Zero waste** |
+
+**Token reduction: 59-69% across all tested queries.** Full methodology in [BENCHMARK.md](BENCHMARK.md).
+
+---
+
+## Architecture
+
+### CLI (`kctx`) — Recommended
+
+File-based search on `.king-context/` directory. No database required for reads.
+
+```
+.king-context/
+├── elevenlabs-api/
+│   ├── _meta.json              # doc metadata + reverse indexes
+│   ├── websocket-streaming.md  # section content
+│   ├── authentication.md
+│   └── ...
+└── stripe/
+    └── ...
+```
+
+Search scores sections by matching query terms against keyword and use_case indexes stored in `_meta.json`. No FTS5, no embeddings — just fast file reads.
+
+### MCP Server — Legacy
+
+Still available for tools that integrate via the Model Context Protocol:
 
 ```bash
 claude mcp add king-context -- king-context
+python -m king_context.seed_data   # seed SQLite database
 ```
 
-Or manually add to your MCP configuration:
+Uses a 4-layer cascade search (cache → metadata → FTS5 → hybrid embeddings) on SQLite. See [BENCHMARK.md](BENCHMARK.md) for details.
 
-```json
-{
-  "mcpServers": {
-    "king-context": {
-      "command": "king-context",
-      "cwd": "/path/to/king-context"
-    }
-  }
-}
-```
+### Scraper (`king-scrape`)
+
+Pipeline: discover → filter → fetch → chunk → enrich → export.
 
 ```bash
-# Seed the SQLite database (required for MCP)
-python -m king_context.seed_data
+king-scrape <url>                    # full pipeline
+king-scrape <url> --stop-after fetch # partial run
+king-scrape <url> --step export      # resume from step
+king-scrape <url> --no-llm-filter    # heuristic filter only
 ```
+
+Each step saves checkpoints to `.temp-docs/<domain>/`. Interrupted scrapes resume automatically.
 
 ---
 
 ## Documentation Schema
 
-Each indexed documentation follows this structure:
+Every indexed documentation follows this enriched structure:
 
 ```json
 {
   "name": "api-name",
-  "display_name": "API Display Name",
-  "version": "v1",
-  "base_url": "https://docs.example.com",
   "sections": [
     {
       "title": "Authentication",
-      "path": "auth",
-      "url": "https://docs.example.com/auth",
-      "keywords": ["auth", "api-key", "bearer", "token"],
-      "use_cases": ["how to authenticate", "setup api key"],
+      "keywords": ["auth", "api-key", "bearer-token"],
+      "use_cases": ["Configure API authentication", "Rotate API keys"],
       "tags": ["security", "setup"],
       "priority": 10,
       "content": "# Authentication\n\n..."
@@ -194,61 +210,16 @@ Each indexed documentation follows this structure:
 }
 ```
 
-The `keywords`, `use_cases`, and `tags` fields enable the metadata search layer, which is the primary driver of token efficiency.
-
----
-
-## Transparency
-
-Every search response includes metadata about how results were found:
-
-```json
-{
-  "transparency": {
-    "method": "metadata",
-    "latency_ms": 1.30,
-    "search_path": ["cache_miss", "metadata_hit"],
-    "from_cache": false
-  }
-}
-```
-
-No black boxes. You always know which layer returned your results and how long it took.
+The `keywords`, `use_cases`, `tags`, and `priority` fields are what make search efficient — agents find the right section through structured metadata instead of scanning content.
 
 ---
 
 ## Roadmap
 
-### Scraper Pipeline
-
-The `king-scrape` CLI automates documentation extraction end-to-end: discovers URLs on a site, filters for documentation pages, fetches and chunks the content, enriches each chunk with structured metadata via LLM, and exports a ready-to-use JSON file indexed into the database.
-
-```bash
-king-scrape https://docs.stripe.com
-```
-
-Requires `FIRECRAWL_API_KEY` and `OPENROUTER_API_KEY`. Full usage guide in [src/king_context/scraper/SCRAPER.md](src/king_context/scraper/SCRAPER.md).
-
-### Planned
-- **Community Documentation Registry** — Shared, versioned documentation packages maintained by the community
-- **Methodology Documentation** — This project is one component of a broader methodology for LLM-assisted development (replacing SDD/BMAD approaches). Separate repository coming soon.
-
----
-
-## Contributing
-
-This project is intentionally open source because:
-
-1. **Transparency** — You should know exactly what documentation is being injected into your LLM context
-2. **Independence** — No dependency on third-party update cycles
-3. **Community Quality** — Documentation improves faster when maintained collectively
-
-Contributions needed:
-
-- Documentation packages for popular APIs/frameworks
-- Improvements to scraping and extraction skills
-- Testing across different use cases
-- Performance optimizations
+- **Community Documentation Registry** — shared, versioned documentation packages (`kctx install stripe@v1`). The goal is a community-maintained library of pre-enriched docs for popular APIs and frameworks
+- **NPM/PyPI-style distribution** — publish King Context as a standalone package installable via `pip install king-context`
+- **Skill improvements** — the scraper workflow skill is in beta. Improving sub-agent reliability, parallel execution, and checkpoint handling
+- **Methodology documentation** — King Context is one component of a broader methodology for LLM-assisted development. Separate repository planned
 
 ---
 
@@ -256,35 +227,39 @@ Contributions needed:
 
 ```
 king-context/
-├── src/king_context/       # MCP server package
-│   ├── server.py           # MCP server (FastMCP)
-│   ├── db.py               # Cascade search engine + SQLite
-│   ├── seed_data.py        # Database seeding
-│   └── scraper/            # Scraping pipeline (king-scrape CLI)
 ├── src/context_cli/        # CLI package (kctx)
 │   ├── cli.py              # Entry point with subcommands
-│   ├── store.py            # .king-context/ path resolution
-│   ├── indexer.py           # JSON → file structure indexer
 │   ├── searcher.py         # Metadata-based search engine
 │   ├── reader.py           # Section reader with preview
+│   ├── indexer.py          # JSON → file structure indexer
 │   ├── formatter.py        # Output formatting (plain/JSON)
 │   └── grep.py             # Content-level regex search
+├── src/king_context/       # MCP server + scraper
+│   ├── server.py           # MCP server (FastMCP)
+│   ├── db.py               # Cascade search engine + SQLite
+│   └── scraper/            # Scraping pipeline (king-scrape)
 ├── .king-context/          # File-based data store (generated)
+├── data/                   # Documentation JSONs (generated)
+├── validation/             # Real-world test cases
 ├── tests/                  # Test suite
-├── data/                   # Documentation JSONs + embeddings
-├── scripts/                # Utility scripts
-├── pyproject.toml          # Project configuration
-└── docs.db                 # SQLite database (generated)
+└── .claude/skills/         # Claude Code skills (beta)
 ```
+
+---
+
+## Contributing
+
+Contributions needed:
+
+- **Documentation packages** for popular APIs and frameworks
+- **Scraper improvements** — better URL discovery, chunking strategies
+- **Skill refinements** — making the Claude Code workflows more reliable
+- **Testing** across different documentation sites and use cases
+
+This project is open source because documentation tooling for LLMs should be transparent, community-driven, and independent of any single provider.
 
 ---
 
 ## License
 
 MIT License. Use it, fork it, improve it.
-
----
-
-## Acknowledgments
-
-Built as an alternative to proprietary documentation tools. Inspired by the need for transparent, efficient, and community-driven LLM tooling.
