@@ -296,16 +296,16 @@ print(f"WORK_DIR={WORK_DIR}")
 PREP_EOF
 ```
 
-##### Phase 2: Launch enricher sub-agents in small groups (2-3 at a time)
+##### Phase 2: Launch enricher agents ONE AT A TIME, sequentially
 
 **CRITICAL RULES:**
-1. **MUST use `subagent_type="enricher"`** — this is a custom agent defined in `.claude/agents/enricher.md` with Bash/Read/Write permissions and Haiku model. Do NOT create generic agents or use `model="haiku"`.
-2. Launch **2-3 agents at a time**, wait for them to complete, then launch the next group. Do NOT launch all at once — mass parallelism causes failures.
+1. **MUST call the `enricher` agent** defined in `.claude/agents/enricher.md`. Use `Agent(description="Enrich batch N", prompt="...")` — the agent is invoked by name via the Agent tool, NOT as a sub-agent type. This is important: calling it as a full agent gives it Bash/Read/Write permissions.
+2. **ONE agent at a time, sequentially.** Wait for each to complete before launching the next. Parallel launches lose permissions.
 3. The orchestrator sends ONLY the batch number and domain path. The enricher reads chunks from disk, generates metadata, validates, and writes the result — all by itself.
 4. **The orchestrator NEVER copies, pastes, or rewrites chunk content or metadata JSON.** All data flows through disk.
 5. **NEVER fall back to Workflow A or inline enrichment.** If an enricher agent fails, retry it. If it fails 3 times, skip that batch and continue.
 
-For each group of 2-3 batches from Phase 1:
+For each batch from Phase 1, launch one agent and wait for it to complete:
 
 ```
 Agent(
