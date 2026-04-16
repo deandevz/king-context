@@ -295,7 +295,7 @@ PREP_EOF
 **CRITICAL RULES:**
 1. Send ALL `Agent` tool calls in a SINGLE message for true parallelism. Use `run_in_background=true`.
 2. **PASTE the chunk content directly into each agent prompt.** Copy the text between `===BATCH N===` and `===END BATCH N===` from Phase 1 output and paste it into the prompt below. Do NOT rewrite, reformulate, or summarize — paste as-is.
-3. Sub-agents have NO file access. Everything they need must be in the prompt.
+3. Each sub-agent generates metadata, validates it, AND writes the result to disk via Bash. The orchestrator NEVER touches the JSON content.
 
 For each batch block from Phase 1 output, spawn one agent:
 
@@ -304,109 +304,133 @@ Agent(
   model="haiku",
   run_in_background=true,
   description="Enrich batch N (M chunks)",
-  prompt="Generate metadata for M documentation chunks. Return a JSON array.
+  prompt="You are enriching M documentation chunks with metadata. You must:
+1. Generate a JSON array with one object per chunk
+2. Validate the metadata format
+3. Write the result to disk using the Python script below
 
-Each object must have:
+Each metadata object must have:
 - \"keywords\": 5-12 strings (technical terms, API names, methods)
 - \"use_cases\": 2-7 strings (start with verbs: \"Use when...\", \"Configure when...\")
 - \"tags\": 1-5 strings (broad categories)
 - \"priority\": int 1-10 (10=core, 1=edge case)
 
-Return ONLY a JSON array. No markdown, no explanation, no code fences.
+Here are the chunks:
 
-Example: [{\"keywords\":[\"api-key\",\"auth\",\"bearer\"],\"use_cases\":[\"Use when authenticating\"],\"tags\":[\"auth\"],\"priority\":8}]
+<PASTE BATCH N CONTENT HERE — the ---CHUNK X--- blocks, as-is>
 
-Chunks:
+After generating the metadata, save it by running this Bash command (replace the JSON array inside the script):
 
-<PASTE BATCH N CONTENT HERE — the ---CHUNK X--- blocks from Phase 1 output, as-is>
+python3 << 'ENRICH_EOF'
+import json, re
+from pathlib import Path
+
+WORK_DIR = Path(\".king-context/_temp/<DOMAIN>\")
+ENRICHED_DIR = WORK_DIR / \"enriched\"
+ENRICHED_DIR.mkdir(exist_ok=True)
+BATCH_IDX = <N>
+GLOBAL_OFFSET = <OFFSET>
+
+# Your generated metadata — paste your JSON array here
+raw_metadata = <YOUR JSON ARRAY HERE>
+
+# Load chunk data
+all_chunks = []
+for f in sorted((WORK_DIR / \"chunks\").glob(\"*.json\")):
+    all_chunks.extend(json.loads(f.read_text()))
+
+# Validate and merge
+RANGES = {\"keywords\": (5, 12), \"use_cases\": (2, 7), \"tags\": (1, 5)}
+merged, failed = [], []
+for i, m in enumerate(raw_metadata):
+    idx = GLOBAL_OFFSET + i
+    if idx >= len(all_chunks):
+        break
+    errs = [f\"{k}: need {lo}-{hi}, got {len(m.get(k,[]))}\" for k,(lo,hi) in RANGES.items()
+            if not isinstance(m.get(k), list) or not (lo <= len(m[k]) <= hi)]
+    if not isinstance(m.get(\"priority\"), int) or not (1 <= m.get(\"priority\",0) <= 10):
+        errs.append(\"priority: need int 1-10\")
+    if errs:
+        print(f\"  WARN chunk {idx}: {errs}\")
+        failed.append(idx)
+        continue
+    chunk = all_chunks[idx]
+    merged.append({
+        \"title\": chunk[\"title\"], \"path\": chunk[\"path\"],
+        \"url\": chunk[\"source_url\"], \"content\": chunk[\"content\"],
+        \"keywords\": m[\"keywords\"], \"use_cases\": m[\"use_cases\"],
+        \"tags\": m[\"tags\"], \"priority\": m[\"priority\"],
+    })
+
+out = ENRICHED_DIR / f\"batch_{BATCH_IDX:04d}.json\"
+out.write_text(json.dumps(merged, indent=2))
+print(f\"Batch {BATCH_IDX}: {len(merged)} ok, {len(failed)} failed -> {out.name}\")
+if failed:
+    print(f\"  Failed chunks: {failed}\")
+ENRICH_EOF
 "
 )
 ```
 
-**DO NOT** put validation rules in the sub-agent prompt — keep it short. Validation happens in Phase 3.
+The sub-agent handles everything: generate → validate → write to disk. The orchestrator's context is never polluted with metadata JSON.
 
-##### Phase 3: Validate and save (after EACH agent completes)
+##### Phase 3: Verify results (after ALL agents complete)
 
-**CRITICAL: NEVER use Write/Edit tools to save metadata JSON. ALWAYS use the Bash Python script below.** Writing JSON through the Write tool wastes context tokens (the entire JSON passes through your context window). The Python script below reads from disk, merges, and writes to disk — zero context cost.
-
-As each background agent completes, IMMEDIATELY run this `Bash` validation script. Do NOT wait for all agents — process each as it arrives:
+After all sub-agents finish, the orchestrator runs ONE verification script:
 
 ```python
-python3 << 'SAVE_EOF'
-import json, re
+python3 << 'VERIFY_EOF'
+import json
 from pathlib import Path
 
 WORK_DIR = Path(".king-context/_temp/<DOMAIN>")
 ENRICHED_DIR = WORK_DIR / "enriched"
-BATCH_IDX = <N>  # which batch just completed
 
-# 1. Parse sub-agent response
-raw = '''<PASTE THE SUB-AGENT'S TEXT RESPONSE HERE>'''
-
-# Extract JSON (handles markdown fences, extra text)
-try:
-    metadata = json.loads(raw)
-except json.JSONDecodeError:
-    match = re.search(r'\[.*\]', raw, re.DOTALL)
-    metadata = json.loads(match.group()) if match else None
-    if not metadata:
-        print(f"ERROR batch {BATCH_IDX}: invalid JSON. Retry this batch.")
-        exit(1)
-
-# 2. Load chunk data for this batch
-batch_info = json.loads(Path(f"/tmp/enrich_batch_{BATCH_IDX}.json").read_text())
+# Load all chunks to get expected count
 all_chunks = []
 for f in sorted((WORK_DIR / "chunks").glob("*.json")):
     all_chunks.extend(json.loads(f.read_text()))
 
-# 3. Validate and merge with chunk data
-RANGES = {"keywords": (5, 12), "use_cases": (2, 7), "tags": (1, 5)}
-merged, failed = [], []
+# Merge all batch files into cumulative checkpoint
+all_enriched = []
+for bf in sorted(ENRICHED_DIR.glob("batch_*.json")):
+    all_enriched.extend(json.loads(bf.read_text()))
 
-for i, ci in enumerate(batch_info["chunks"]):
-    idx = ci["idx"]
-    if i >= len(metadata):
-        failed.append(idx); continue
-    m = metadata[i]
-    errs = [f"{k}: need {lo}-{hi}, got {len(m.get(k,[]))}" for k,(lo,hi) in RANGES.items()
-            if not isinstance(m.get(k), list) or not (lo <= len(m[k]) <= hi)]
-    if not isinstance(m.get("priority"), int) or not (1 <= m.get("priority",0) <= 10):
-        errs.append("priority: need int 1-10")
-    if errs:
-        print(f"  WARN chunk {idx}: {errs}")
-        failed.append(idx); continue
-    chunk = all_chunks[idx]
-    merged.append({
-        "title": chunk["title"], "path": chunk["path"],
-        "url": chunk["source_url"], "content": chunk["content"],
-        "keywords": m["keywords"], "use_cases": m["use_cases"],
-        "tags": m["tags"], "priority": m["priority"],
-    })
+# Deduplicate by title (in case of retries)
+seen = set()
+unique = []
+for item in all_enriched:
+    if item["title"] not in seen:
+        seen.add(item["title"])
+        unique.append(item)
 
-# 4. Save cumulative checkpoint
-existing = []
-prev = sorted(ENRICHED_DIR.glob("batch_*.json"))
-if prev:
-    existing = json.loads(prev[-1].read_text())
-cumulative = existing + merged
-out = ENRICHED_DIR / f"batch_{BATCH_IDX:04d}.json"
-out.write_text(json.dumps(cumulative, indent=2))
-print(f"Batch {BATCH_IDX}: {len(merged)} ok + {len(failed)} failed → {len(cumulative)} total in {out.name}")
-if failed:
-    print(f"  Retry these chunks individually: {failed}")
-SAVE_EOF
+# Save final cumulative checkpoint (export.py reads the last batch file)
+final = ENRICHED_DIR / f"batch_final.json"
+final.write_text(json.dumps(unique, indent=2))
+
+print(f"Total chunks: {len(all_chunks)}")
+print(f"Enriched: {len(unique)}")
+print(f"Missing: {len(all_chunks) - len(unique)}")
+print(f"Saved to: {final.name}")
+VERIFY_EOF
 ```
+
+If `Missing > 0`, retry the missing chunks individually (see below).
 
 ##### Retry failed chunks
 
-If any chunks failed validation, retry them ONE AT A TIME with a focused Haiku call:
+If any chunks failed validation or are missing, retry them ONE AT A TIME with a focused Haiku call. The sub-agent must also write to disk:
 
 ```
-Agent(model="haiku", prompt="Generate metadata for this documentation chunk.
-Return ONE JSON object: {\"keywords\":[5-12 items],\"use_cases\":[2-7 items],\"tags\":[1-5 items],\"priority\":1-10}
+Agent(model="haiku", prompt="Generate metadata for this documentation chunk and save it to disk.
+
+Metadata format: {\"keywords\":[5-12 items],\"use_cases\":[2-7 items],\"tags\":[1-5 items],\"priority\":1-10}
 
 Title: <title>
-<content>")
+<content>
+
+After generating, run: python3 -c \"import json; from pathlib import Path; ...save to .king-context/_temp/<DOMAIN>/enriched/retry_<IDX>.json...\"
+")
 ```
 
 Then run the save script again to add the retried chunk to the cumulative checkpoint.
