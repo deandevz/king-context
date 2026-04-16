@@ -7,22 +7,22 @@ Documentation search and scraping tools are available in this project.
 
 ~~~bash
 # Search indexed documentation
-kctx list                              # list all indexed docs
-kctx search "query"                    # search by keywords/use_cases
-kctx search "query" --doc <name>       # search within one doc
-kctx read <doc> <section> --preview    # preview a section
-kctx read <doc> <section>              # read full section
-kctx topics <doc>                      # browse by tags
-kctx grep "pattern"                    # regex search across docs
+.king-context/bin/kctx list                              # list all indexed docs
+.king-context/bin/kctx search "query"                    # search by keywords/use_cases
+.king-context/bin/kctx search "query" --doc <name>       # search within one doc
+.king-context/bin/kctx read <doc> <section> --preview    # preview a section
+.king-context/bin/kctx read <doc> <section>              # read full section
+.king-context/bin/kctx topics <doc>                      # browse by tags
+.king-context/bin/kctx grep "pattern"                    # regex search across docs
 
 # Index documentation
-kctx index .king-context/data/<file>.json   # index one doc
-kctx index --all                            # index all docs
+.king-context/bin/kctx index .king-context/data/<file>.json   # index one doc
+.king-context/bin/kctx index --all                            # index all docs
 
 # Scrape new documentation
-king-scrape <url>                      # full pipeline
-king-scrape <url> --name <name>        # with custom name
-king-scrape <url> --yes                # skip confirmation
+.king-context/bin/king-scrape <url>                      # full pipeline
+.king-context/bin/king-scrape <url> --name <name>        # with custom name
+.king-context/bin/king-scrape <url> --yes                # skip confirmation
 ~~~
 
 ### Configuration

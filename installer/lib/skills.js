@@ -41,13 +41,10 @@ function copyDirRecursive(src, dest) {
 function mergeSettings(projectDir) {
   const filePath = path.join(projectDir, '.claude', 'settings.local.json');
   const newEntries = {
-    env: {
-      PATH: '.king-context/bin:${PATH}',
-    },
     permissions: {
       allow: [
-        'Bash(kctx *)',
-        'Bash(king-scrape *)',
+        'Bash(.king-context/bin/kctx *)',
+        'Bash(.king-context/bin/king-scrape *)',
       ],
     },
   };
@@ -63,12 +60,6 @@ function mergeSettings(projectDir) {
     }
   } else {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  }
-
-  // Merge env
-  if (!existing.env) existing.env = {};
-  if (!existing.env.PATH || !existing.env.PATH.includes('.king-context/bin')) {
-    existing.env.PATH = newEntries.env.PATH;
   }
 
   // Merge permissions.allow
