@@ -5,6 +5,11 @@ from king_context import seed_data
 from king_context.scraper.enrich import EnrichedChunk
 
 
+def _sanitize_path(path: str) -> str:
+    """Sanitize section path for filesystem safety — replace / with - to avoid subdirs."""
+    return path.replace("/", "-").strip("-")
+
+
 def export_to_json(
     enriched_chunks: list[EnrichedChunk],
     doc_name: str,
@@ -19,7 +24,7 @@ def export_to_json(
     sections = [
         {
             "title": chunk.title,
-            "path": chunk.path,
+            "path": _sanitize_path(chunk.path),
             "url": chunk.url,
             "keywords": chunk.keywords,
             "use_cases": chunk.use_cases,

@@ -327,6 +327,8 @@ Chunks:
 
 ##### Phase 3: Validate and save (after EACH agent completes)
 
+**CRITICAL: NEVER use Write/Edit tools to save metadata JSON. ALWAYS use the Bash Python script below.** Writing JSON through the Write tool wastes context tokens (the entire JSON passes through your context window). The Python script below reads from disk, merges, and writes to disk — zero context cost.
+
 As each background agent completes, IMMEDIATELY run this `Bash` validation script. Do NOT wait for all agents — process each as it arrives:
 
 ```python

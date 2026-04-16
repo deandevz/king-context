@@ -50,7 +50,7 @@ def test_export_section_fields():
         assert field in section, f"Missing field: {field}"
 
     assert section["title"] == chunk.title
-    assert section["path"] == chunk.path
+    assert section["path"] == "docs-test-section"  # sanitized: /docs/test-section → docs-test-section
     assert section["url"] == chunk.url
     assert section["keywords"] == chunk.keywords
     assert section["use_cases"] == chunk.use_cases
