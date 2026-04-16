@@ -108,44 +108,70 @@ Agents find the right section through structured metadata instead of scanning ra
 
 ## Quick Start
 
+Install King Context in any project with a single command:
+
 ```bash
-git clone https://github.com/deandevz/king-context.git
-cd king-context
-python -m venv .venv && source .venv/bin/activate
-pip install -e .
+npx @king-context/cli@0.1.0 init
+```
+
+This creates a `.king-context/` directory with everything you need — Python venv, CLI tools, Claude Code skills, and configuration templates. No manual setup required.
+
+Then configure your API keys:
+
+```bash
+cp .king-context/.env.example .env
+# Edit .env and add:
+#   FIRECRAWL_API_KEY=...    (required for scraping)
+#   OPENROUTER_API_KEY=...   (optional, for automated enrichment)
+```
+
+Verify the installation:
+
+```bash
+npx @king-context/cli doctor
 ```
 
 ### Scrape documentation
 
 ```bash
 # Scrape and index an entire docs site
-king-scrape https://docs.stripe.com --name stripe --yes
-kctx index data/stripe.json
+.king-context/bin/king-scrape https://docs.stripe.com --name stripe --yes
+.king-context/bin/kctx index .king-context/data/stripe.json
 
 # Resume interrupted scrapes (re-run the same command)
-king-scrape https://docs.stripe.com --name stripe --yes
+.king-context/bin/king-scrape https://docs.stripe.com --name stripe --yes
 
 # Run individual pipeline steps
-king-scrape <url> --name <name> --stop-after fetch   # stop after fetching
-king-scrape <url> --name <name> --step chunk          # resume from chunking
-king-scrape <url> --name <name> --step export         # resume from export
+.king-context/bin/king-scrape <url> --name <name> --stop-after fetch   # stop after fetching
+.king-context/bin/king-scrape <url> --name <name> --step chunk          # resume from chunking
+.king-context/bin/king-scrape <url> --name <name> --step export         # resume from export
 ```
 
-Requires `FIRECRAWL_API_KEY` and `OPENROUTER_API_KEY` in `.env`. The scraper has **intra-step resume**: fetch skips already-downloaded pages, enrich skips already-processed batches.
+Or just ask Claude Code: `"scrape the docs from https://docs.stripe.com, name it stripe"` — the installed skill handles the full pipeline.
+
+Requires `FIRECRAWL_API_KEY` in `.env`. `OPENROUTER_API_KEY` is optional (only for automated enrichment; Claude Code sub-agents can do it without). The scraper has **intra-step resume**: fetch skips already-downloaded pages, enrich skips already-processed batches.
 
 ### Search documentation
 
 ```bash
-kctx list                                        # list available docs
-kctx search "streaming audio"                    # search across all docs
-kctx search "auth" --doc stripe --top 3          # search within a specific doc
-kctx read stripe authentication --preview        # preview before reading
-kctx read stripe authentication                  # full read
-kctx topics stripe                               # browse by topic
-kctx grep "Bearer" --doc stripe --context 3      # grep for exact patterns
+.king-context/bin/kctx list                                        # list available docs
+.king-context/bin/kctx search "streaming audio"                    # search across all docs
+.king-context/bin/kctx search "auth" --doc stripe --top 3          # search within a specific doc
+.king-context/bin/kctx read stripe authentication --preview        # preview before reading
+.king-context/bin/kctx read stripe authentication                  # full read
+.king-context/bin/kctx topics stripe                               # browse by topic
+.king-context/bin/kctx grep "Bearer" --doc stripe --context 3      # grep for exact patterns
 ```
 
-All commands support `--json` for machine-parseable output. Full CLI guide with usage examples in [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md).
+All commands support `--json` for machine-parseable output.
+
+### Update
+
+```bash
+npx @king-context/cli update
+```
+
+Updates CLI tools and skills without touching your indexed documentation.
 
 ### Real example: MiniMax TTS (first-shot)
 
