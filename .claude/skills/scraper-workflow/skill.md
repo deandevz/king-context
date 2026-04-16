@@ -19,7 +19,28 @@ The user chooses the workflow. If they don't specify, check for `OPENROUTER_API_
 
 ## Step 1: Resolve URL
 
-If the user provides a URL, use it directly. If they provide only a name:
+Determine the **base docs URL** for discovery (map) and the **topic filter** if the user wants a subset.
+
+### 1a. Extract base URL
+
+The Firecrawl `map` endpoint needs the **root of the docs site**, not a specific page. If the user gives a deep page URL, strip it to the docs root:
+
+```
+User gives:        https://platform.minimax.io/docs/guides/speech-voice-clone
+Base URL for map:  https://platform.minimax.io/docs
+```
+
+**Rules for extracting base URL**:
+- If URL contains `/docs/`, cut at `/docs` (keep `/docs`)
+- If URL contains `/api/`, `/reference/`, `/guides/`, cut at that segment
+- If URL is already a root (e.g., `https://docs.stripe.com`), use as-is
+- When in doubt, use `<scheme>://<host>` (domain root)
+
+The deep page URL the user gave is a **reference hint** for what topic they care about — keep it for step 1c.
+
+### 1b. No URL provided — search or ask
+
+If the user provides only a name (e.g., "MiniMax docs"):
 
 1. Search the web: `"<name> official documentation site"`
 2. If found (e.g., `docs.stripe.com`, `reactjs.org/docs`):
@@ -27,9 +48,107 @@ If the user provides a URL, use it directly. If they provide only a name:
 3. If not found:
    - Ask: "I couldn't find the docs URL. What's the documentation URL?"
 
+### 1c. Detect topic filter
+
+Check if the user wants only a **subset** of the docs. Signals:
+
+- Explicit topic: "only TTS", "just the audio docs", "only authentication"
+- Reference URL implies topic: `/docs/guides/speech-voice-clone` → topic is speech/TTS/voice/audio
+- Keyword: "related to", "about", "that covers"
+
+If a topic filter is detected, save it for Step 2a. If not, scrape everything.
+
 ---
 
-## Step 2: Detect Resume
+## Step 2: Discover and Filter by Topic
+
+### 2a. Discover all URLs
+
+Use the Firecrawl map via Python to discover all pages from the **base URL** (not the user's deep link):
+
+```python
+python3 -c "
+import json, os
+from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv(Path('.env'))
+from firecrawl import FirecrawlApp
+
+app = FirecrawlApp(api_key=os.environ['FIRECRAWL_API_KEY'])
+result = app.map('<BASE_URL>', limit=5000)
+urls = [lnk.url if hasattr(lnk, 'url') else str(lnk) for lnk in result.links]
+print(json.dumps(urls, indent=2))
+"
+```
+
+### 2b. Topic filtering (when user requested a subset)
+
+If a topic filter was detected in Step 1c, filter the discovered URLs **before** fetching.
+
+**Strategy — two-pass filter**:
+
+1. **Keyword pass (fast)**: filter URLs whose path contains topic-related keywords
+   ```
+   Topic: "TTS/audio"
+   Keywords: speech, voice, audio, t2a, tts, clone, cloning, sound
+   → Keep URLs matching any keyword in path
+   ```
+
+2. **Sonnet pass (if needed)**: if there are ambiguous URLs (e.g., `/docs/guides/pricing` — relevant to speech pricing?), spawn a Sonnet sub-agent to classify:
+   ```
+   Agent(model="sonnet", prompt="""
+   I'm scraping documentation about: <TOPIC DESCRIPTION>
+
+   Classify these URLs — are they relevant to the topic?
+   - "keep" if the URL is about or directly related to the topic
+   - "skip" if the URL is about something unrelated
+
+   Respond ONLY with JSON: {"<url>": "keep"|"skip", ...}
+
+   URLs:
+   <list of ambiguous URLs>
+   """)
+   ```
+
+3. **Report to user**: "Found N total URLs, filtered to M pages about <topic>. Proceed?"
+
+### 2c. Prepare work directory
+
+Write the filtered URLs into the standard work directory format so `king-scrape` can use them:
+
+```python
+python3 -c "
+import json
+from pathlib import Path
+
+work_dir = Path('.temp-docs/<DOMAIN_SLUG>')
+work_dir.mkdir(parents=True, exist_ok=True)
+
+# Write discovered URLs
+disc = {'base_url': '<BASE_URL>', 'discovered_at': '<ISO_DATE>', 'total_urls': <TOTAL>, 'urls': <ALL_URLS>}
+(work_dir / 'discovered_urls.json').write_text(json.dumps(disc, indent=2))
+
+# Write filtered URLs (only the topic-relevant ones in accepted)
+filt = {'accepted': <TOPIC_URLS>, 'rejected': <SKIPPED_URLS>, 'maybe': [], 'filter_method': 'topic', 'llm_fallback_used': False}
+(work_dir / 'filtered_urls.json').write_text(json.dumps(filt, indent=2))
+
+# Write manifest
+manifest = {
+    'discovery': {'status': 'done', 'total_urls': <TOTAL>},
+    'filtering': {'status': 'done'}
+}
+(work_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2))
+print(f'Prepared work dir with {len(<TOPIC_URLS>)} URLs')
+"
+```
+
+This lets you skip `king-scrape`'s discover+filter steps and go straight to fetch.
+
+**When there is NO topic filter**: skip Step 2 entirely and let `king-scrape <base_url>` handle discover+filter normally.
+
+---
+
+## Step 3: Detect Resume
 
 Before starting any pipeline, check for existing progress:
 
@@ -48,14 +167,22 @@ Before starting any pipeline, check for existing progress:
 
 ---
 
-## Step 3: Run the Pipeline
+## Step 4: Run the Pipeline
 
 ### Workflow A: OpenRouter (automated)
 
-One command does everything:
+**If topic filter was applied (Step 2)**: the work dir already has `filtered_urls.json` with only the relevant URLs and manifest with discover+filter done. Start from fetch:
 
 ```bash
-king-scrape <url> --yes
+king-scrape <base_url> --yes --step fetch
+```
+
+This resumes from fetch (discover+filter already done via Step 2), then continues through chunk → enrich → export.
+
+**If NO topic filter (scraping everything)**: one command does everything:
+
+```bash
+king-scrape <base_url> --yes
 ```
 
 This runs: discover → filter (with LLM) → fetch → chunk → enrich → export.
@@ -74,17 +201,23 @@ Done. Report: "Indexed `<name>` — N sections."
 
 This workflow gives you control over filtering and enrichment using sub-agents.
 
-#### Step 3a: Scrape up to fetch
+#### Step 4a: Fetch pages
+
+**If topic filter was applied (Step 2)**: the work dir already has the filtered URLs. Go straight to fetch:
 
 ```bash
-king-scrape <url> --no-llm-filter --stop-after fetch
+king-scrape <base_url> --step fetch
 ```
 
-This runs: discover → filter (heuristic only) → fetch. It stops after fetching all pages.
+**If NO topic filter**: run discover + heuristic filter + fetch:
+
+```bash
+king-scrape <base_url> --no-llm-filter --stop-after fetch
+```
 
 Fetch has **resume support** — if interrupted, re-running the same command skips already-downloaded pages.
 
-#### Step 3b: Smart filter (optional, sub-agent Sonnet)
+#### Step 4b: Smart filter (optional, sub-agent Sonnet)
 
 Read the filtered URLs:
 
@@ -111,13 +244,13 @@ URLs:
 
 Parse the result and update `filtered_urls.json` — move reclassified URLs from `maybe` to `accepted` or `rejected`.
 
-#### Step 3c: Chunk
+#### Step 4c: Chunk
 
 ```bash
-king-scrape <url> --step chunk
+king-scrape <base_url> --step chunk
 ```
 
-#### Step 3d: Enrich (sub-agent Haiku)
+#### Step 4d: Enrich (sub-agent Haiku)
 
 Read chunks from `.temp-docs/<domain>/chunks/`. Check `.temp-docs/<domain>/enriched/` for existing batch files (resume support).
 
@@ -169,13 +302,13 @@ Chunk 2 - Title: <title>
    - Each batch file contains ALL enriched chunks so far (cumulative)
    - Numbering continues from existing files (e.g., if batch_0002.json exists, next is batch_0003.json)
 
-#### Step 3e: Export
+#### Step 4e: Export
 
 ```bash
-king-scrape <url> --step export
+king-scrape <base_url> --step export
 ```
 
-#### Step 3f: Index
+#### Step 4f: Index
 
 ```bash
 kctx index data/<name>.json
@@ -248,15 +381,32 @@ Cumulative array — the last batch file has ALL enriched chunks:
 
 ## Examples
 
-### Simple: scrape with OpenRouter
+### Simple: scrape everything with OpenRouter
 ```
 User: "scrape the Stripe docs from https://docs.stripe.com"
+→ No topic filter — scrape everything
 → king-scrape https://docs.stripe.com --yes
 → kctx index data/stripe.json
 → "Indexed stripe — 145 sections."
 ```
 
-### With sub-agents
+### Topic filter: only a subset of docs
+```
+User: "I want only the TTS/audio docs from https://platform.minimax.io/docs/guides/speech-voice-clone, use claude code"
+→ Step 1a: Deep URL detected → base URL = https://platform.minimax.io/docs
+→ Step 1c: Topic detected from URL hint + user request → "TTS, audio, speech, voice"
+→ Step 2a: Map base URL → 141 URLs found
+→ Step 2b: Keyword filter (speech, voice, audio, t2a, clone) → 23 URLs
+→ Step 2c: Write work dir with 23 filtered URLs
+→ "Found 141 total URLs, filtered to 23 about TTS/audio/speech. Proceed?"
+→ [user confirms]
+→ Step 4a: king-scrape ... --step fetch (only fetches the 23 URLs)
+→ Step 4c-4d: chunk + enrich with Haiku sub-agents
+→ Step 4e-4f: export + index
+→ "Indexed minimax-tts — 23 sections."
+```
+
+### With sub-agents (full site)
 ```
 User: "scrape Stripe docs using claude code"
 → king-scrape https://docs.stripe.com --no-llm-filter --stop-after fetch
