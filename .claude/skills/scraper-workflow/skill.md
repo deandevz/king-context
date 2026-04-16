@@ -243,9 +243,9 @@ If maybe > 10, use a Sonnet sub-agent to reclassify (batch of 50 URLs per call).
 
 **This is the critical step. Follow the 3 phases exactly.**
 
-##### Phase 1: Prepare batches
+##### Phase 1: Prepare and print batches
 
-Use `Bash` to run a Python script that reads chunks, checks for resume, and writes batch files:
+Use `Bash` to run a Python script that reads chunks, checks for resume, and **prints each batch as a formatted text block to stdout**. Do NOT write files to `/tmp` — sub-agents cannot access them.
 
 ```python
 python3 << 'PREP_EOF'
@@ -275,65 +275,52 @@ if not remaining:
     print("All chunks already enriched. Skip to export.")
     exit(0)
 
-# Write batch files to /tmp for sub-agents
-batches = []
+# Print each batch as a formatted block — orchestrator will paste these into agent prompts
+print(f"TOTAL_BATCHES={len(range(0, len(remaining), BATCH_SIZE))}")
+print(f"TOTAL_CHUNKS={len(remaining)}")
 for i in range(0, len(remaining), BATCH_SIZE):
     batch = remaining[i:i+BATCH_SIZE]
-    batch_idx = len(batch_files) + len(batches)
-    info = {
-        "batch_idx": batch_idx,
-        "global_offset": already_enriched + i,
-        "chunks": [{"idx": already_enriched + i + j, "title": c["title"], "content": c["content"][:1500]} for j, c in enumerate(batch)],
-    }
-    path = f"/tmp/enrich_batch_{batch_idx}.json"
-    Path(path).write_text(json.dumps(info))
-    batches.append({"idx": batch_idx, "count": len(batch), "path": path})
-
-print(f"Prepared {len(batches)} batches ({len(remaining)} chunks)")
-for b in batches:
-    print(f"  Batch {b['idx']}: {b['count']} chunks → {b['path']}")
+    batch_idx = len(batch_files) + (i // BATCH_SIZE)
+    print(f"\n===BATCH {batch_idx} ({len(batch)} chunks)===")
+    for j, c in enumerate(batch):
+        print(f"\n---CHUNK {already_enriched + i + j}---")
+        print(f"Title: {c['title']}")
+        print(c["content"][:1500])
+    print(f"===END BATCH {batch_idx}===")
 PREP_EOF
 ```
 
 ##### Phase 2: Launch ALL Haiku sub-agents in ONE message
 
-**CRITICAL**: Send ALL `Agent` tool calls in a SINGLE message for true parallelism. Use `run_in_background=true` on each one.
+**CRITICAL RULES:**
+1. Send ALL `Agent` tool calls in a SINGLE message for true parallelism. Use `run_in_background=true`.
+2. **PASTE the chunk content directly into each agent prompt.** Copy the text between `===BATCH N===` and `===END BATCH N===` from Phase 1 output and paste it into the prompt below. Do NOT rewrite, reformulate, or summarize — paste as-is.
+3. Sub-agents have NO file access. Everything they need must be in the prompt.
 
-For each batch file from Phase 1, spawn one agent:
+For each batch block from Phase 1 output, spawn one agent:
 
 ```
 Agent(
   model="haiku",
   run_in_background=true,
   description="Enrich batch N (M chunks)",
-  prompt="<see template below>"
-)
-```
-
-**Sub-agent prompt template** (keep SHORT — Haiku works better with concise prompts):
-
-```
-Generate metadata for N documentation chunks. Return a JSON array.
+  prompt="Generate metadata for M documentation chunks. Return a JSON array.
 
 Each object must have:
-- "keywords": 5-12 strings (technical terms, API names, methods)
-- "use_cases": 2-7 strings (start with verbs: "Use when...", "Configure when...")  
-- "tags": 1-5 strings (broad categories)
-- "priority": int 1-10 (10=core, 1=edge case)
+- \"keywords\": 5-12 strings (technical terms, API names, methods)
+- \"use_cases\": 2-7 strings (start with verbs: \"Use when...\", \"Configure when...\")
+- \"tags\": 1-5 strings (broad categories)
+- \"priority\": int 1-10 (10=core, 1=edge case)
 
 Return ONLY a JSON array. No markdown, no explanation, no code fences.
 
-Example: [{"keywords":["api-key","auth","bearer"],"use_cases":["Use when authenticating"],"tags":["auth"],"priority":8}]
+Example: [{\"keywords\":[\"api-key\",\"auth\",\"bearer\"],\"use_cases\":[\"Use when authenticating\"],\"tags\":[\"auth\"],\"priority\":8}]
 
 Chunks:
 
----CHUNK 0---
-Title: <title>
-<content>
-
----CHUNK 1---
-Title: <title>
-<content>
+<PASTE BATCH N CONTENT HERE — the ---CHUNK X--- blocks from Phase 1 output, as-is>
+"
+)
 ```
 
 **DO NOT** put validation rules in the sub-agent prompt — keep it short. Validation happens in Phase 3.
