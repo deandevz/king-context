@@ -14,7 +14,7 @@ function header(title) {
   console.log();
 }
 function step(msg) { process.stdout.write(`  \u2026 ${msg}`); }
-function stepDone(msg) { process.stdout.write(`\r  ${OK} ${msg}\n`); }
-function stepFail(msg) { process.stdout.write(`\r  ${FAIL} ${msg}\n`); }
+function stepDone(msg) { process.stdout.write(`\r\x1b[2K  ${OK} ${msg}\n`); }
+function stepFail(msg) { process.stdout.write(`\r\x1b[2K  ${FAIL} ${msg}\n`); }
 
 module.exports = { ok, fail, warn, header, step, stepDone, stepFail, OK, FAIL, WARN };
