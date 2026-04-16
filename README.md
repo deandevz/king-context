@@ -107,7 +107,41 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-### Configure Claude Code
+### CLI Usage (Recommended)
+
+The `kctx` CLI is the recommended way for AI agents to access documentation. It operates on a file-based `.king-context/` data store — no SQLite required for reads.
+
+```bash
+# Index documentation from scraped data
+kctx index data/elevenlabs-api.json    # index one doc
+kctx index --all                        # index all data/*.json
+
+# List available docs
+kctx list
+
+# Search by keywords/use cases (metadata only, no content — token efficient)
+kctx search "streaming audio"
+kctx search "auth" --doc elevenlabs-api --top 3
+
+# Read a section (preview first, then full)
+kctx read elevenlabs-api websocket-streaming --preview
+kctx read elevenlabs-api websocket-streaming
+
+# Browse by topic
+kctx topics elevenlabs-api
+kctx topics elevenlabs-api --tag api-reference
+
+# Grep content for exact patterns
+kctx grep "Client(" --doc httpx --context 3
+```
+
+All commands support `--json` for machine-parseable output.
+
+A Claude Code skill (`.claude/skills/king-context/skill.md`) teaches agents the optimal search strategy: check learned shortcuts, list, search, preview, then read — finding the right section in ≤3 CLI calls.
+
+### MCP Server (Legacy)
+
+The MCP server is still available for tools that integrate via the Model Context Protocol.
 
 Using the CLI:
 
@@ -128,27 +162,9 @@ Or manually add to your MCP configuration:
 }
 ```
 
-### Seed Documentation
-
 ```bash
-# Place documentation JSON in data/
+# Seed the SQLite database (required for MCP)
 python -m king_context.seed_data
-
-# Or reset and reseed
-./scripts/run-seed-data.sh
-```
-
-### Usage
-
-```python
-# Search documentation
-search_docs("authentication", doc_name="openrouter")
-
-# List available docs
-list_docs()
-
-# Preview context injection (with token estimate)
-show_context("websocket streaming", doc_name="elevenlabs")
 ```
 
 ---
@@ -240,27 +256,23 @@ Contributions needed:
 
 ```
 king-context/
-├── src/king_context/       # Core Python package
-│   ├── __init__.py         # PROJECT_ROOT constant
+├── src/king_context/       # MCP server package
 │   ├── server.py           # MCP server (FastMCP)
 │   ├── db.py               # Cascade search engine + SQLite
 │   ├── seed_data.py        # Database seeding
 │   └── scraper/            # Scraping pipeline (king-scrape CLI)
+├── src/context_cli/        # CLI package (kctx)
+│   ├── cli.py              # Entry point with subcommands
+│   ├── store.py            # .king-context/ path resolution
+│   ├── indexer.py           # JSON → file structure indexer
+│   ├── searcher.py         # Metadata-based search engine
+│   ├── reader.py           # Section reader with preview
+│   ├── formatter.py        # Output formatting (plain/JSON)
+│   └── grep.py             # Content-level regex search
+├── .king-context/          # File-based data store (generated)
 ├── tests/                  # Test suite
-│   ├── conftest.py         # Shared fixtures
-│   ├── test_db.py          # Database & search tests
-│   ├── test_server.py      # MCP tool tests
-│   ├── test_seed_data.py   # Seeding tests
-│   ├── test_embeddings.py  # Dependency tests
-│   └── test_load_embeddings.py
-├── scripts/                # Utility scripts
-│   └── run-seed-data.sh    # Reset & reseed database
 ├── data/                   # Documentation JSONs + embeddings
-│   ├── *.json              # Indexed documentations
-│   ├── embeddings.npy      # Section embeddings
-│   └── _internal/          # Mapping files
-├── input/                  # Raw docs before processing
-├── docs/                   # Design documents
+├── scripts/                # Utility scripts
 ├── pyproject.toml          # Project configuration
 └── docs.db                 # SQLite database (generated)
 ```
