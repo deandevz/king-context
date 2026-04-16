@@ -61,3 +61,9 @@ commit-create/
 
 # Scraper temp files
 .temp-docs/
+
+.claude/skills/tlc-spec-driven/
+.agents/
+.cursor/
+.specs/
+.king-context/
