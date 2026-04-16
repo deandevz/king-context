@@ -58,24 +58,48 @@ async def fetch_pages(
     pages_dir = output_dir / "pages"
     pages_dir.mkdir(parents=True, exist_ok=True)
 
+    existing_slugs = {f.stem for f in pages_dir.glob("*.md")}
+    pending_urls = [u for u in urls if _url_to_slug(u) not in existing_slugs]
+    skipped = len(urls) - len(pending_urls)
+
+    if skipped > 0:
+        print(f"Resuming: {skipped} pages already fetched, {len(pending_urls)} remaining")
+
     app = FirecrawlApp(api_key=config.firecrawl_api_key)
     semaphore = asyncio.Semaphore(config.concurrency)
 
-    tasks = [_fetch_one(url, semaphore, pages_dir, app) for url in urls]
+    total = len(urls)
+    progress = {"completed": skipped, "failed": 0}
+
+    async def _fetch_and_track(url: str) -> PageResult:
+        result = await _fetch_one(url, semaphore, pages_dir, app)
+        if result.success:
+            progress["completed"] += 1
+        else:
+            progress["failed"] += 1
+        _update_step(output_dir, "fetch", {
+            "status": "in_progress",
+            "total": total,
+            "completed": progress["completed"],
+            "failed": progress["failed"],
+        })
+        return result
+
+    tasks = [_fetch_and_track(url) for url in pending_urls]
     results: list[PageResult] = list(await asyncio.gather(*tasks))
 
-    completed = sum(1 for r in results if r.success)
-    failed = sum(1 for r in results if not r.success)
+    completed = progress["completed"]
+    failed = progress["failed"]
 
     _update_step(output_dir, "fetch", {
         "status": "done",
-        "total": len(urls),
+        "total": total,
         "completed": completed,
         "failed": failed,
     })
 
     return FetchResult(
-        total=len(urls),
+        total=total,
         completed=completed,
         failed=failed,
         results=results,
