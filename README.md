@@ -147,6 +147,29 @@ kctx grep "Bearer" --doc stripe --context 3      # grep for exact patterns
 
 All commands support `--json` for machine-parseable output. Full CLI guide with usage examples in [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md).
 
+### Real example: MiniMax TTS (first-shot)
+
+This is a real session — Claude had zero knowledge of the MiniMax API:
+
+```bash
+$ kctx list
+  minimax-tts  66 sections
+
+$ kctx search "text to speech HTTP" --doc minimax-tts
+  1. T2A HTTP API Reference (speech-t2a-http-content) score=14.50
+
+$ kctx read minimax-tts speech-t2a-http-content --preview    # ~400 tokens
+  # Confirmed: endpoint URL, auth, request/response format
+
+$ kctx read minimax-tts speech-t2a-http-content              # ~1,100 tokens
+  # Full spec: models, voice_setting, audio_setting, curl example
+
+$ kctx grep "English_" --doc minimax-tts                     # confirm voice ID
+  voice_id: "English_expressive_narrator"
+```
+
+**5 commands. ~2,800 tokens. Working Python script on first execution.** See [`validation/minimax-tts-first-shot/`](validation/minimax-tts-first-shot/) for the full code and detailed token breakdown.
+
 ---
 
 ## Claude Code Skills (Beta)
