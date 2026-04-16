@@ -7,6 +7,7 @@ import httpx
 
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
+from king_context.scraper.discover import _update_step
 
 
 ENRICHMENT_PROMPT = """\
@@ -157,6 +158,7 @@ async def enrich_chunks(
         enriched_dir.mkdir(parents=True, exist_ok=True)
 
     batch_size = config.enrichment_batch_size
+    total_chunks = len(chunks)
 
     for batch_num, start in enumerate(range(0, len(chunks), batch_size)):
         batch = chunks[start:start + batch_size]
@@ -183,5 +185,19 @@ async def enrich_chunks(
             (enriched_dir / f"batch_{batch_num:04d}.json").write_text(
                 json.dumps(checkpoint, indent=2)
             )
+
+        if output_dir is not None:
+            _update_step(output_dir, "enrichment", {
+                "status": "in_progress",
+                "enriched": len(enriched),
+                "total": total_chunks,
+            })
+
+    if output_dir is not None:
+        _update_step(output_dir, "enrichment", {
+            "status": "done",
+            "enriched": len(enriched),
+            "total": total_chunks,
+        })
 
     return enriched
