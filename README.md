@@ -222,7 +222,7 @@ Uses the 4-layer cascade search (cache → metadata → FTS5 → hybrid embeddin
 
 ### Scraper — `king-scrape`
 
-Pipeline: discover → filter → fetch → chunk → enrich → export. Each step saves checkpoints to `.temp-docs/<domain>/`. Interrupted scrapes resume automatically.
+Pipeline: discover → filter → fetch → chunk → enrich → export. Each step saves checkpoints to `.king-context/_temp/<domain>/`. Interrupted scrapes resume automatically.
 
 ---
 

@@ -11,7 +11,7 @@ def test_fetch_pages_success(tmp_path):
     config = ScraperConfig(firecrawl_api_key="fc-test")
 
     mock_app = MagicMock()
-    mock_app.scrape_url.return_value = {"markdown": "# Page Content"}
+    mock_app.scrape.return_value = {"markdown": "# Page Content"}
 
     urls = [
         "https://docs.example.com/api/intro",
@@ -35,13 +35,13 @@ def test_fetch_pages_success(tmp_path):
 def test_fetch_handles_failure(tmp_path):
     config = ScraperConfig(firecrawl_api_key="fc-test")
 
-    def side_effect(url):
+    def side_effect(url, **kwargs):
         if "failing" in url:
             raise RuntimeError("Network error")
         return {"markdown": "# Good Page"}
 
     mock_app = MagicMock()
-    mock_app.scrape_url.side_effect = side_effect
+    mock_app.scrape.side_effect = side_effect
 
     urls = [
         "https://docs.example.com/api/good",
@@ -75,7 +75,7 @@ def test_fetch_respects_concurrency(tmp_path):
         return {"markdown": "# Content"}
 
     mock_app = MagicMock()
-    mock_app.scrape_url.side_effect = slow_scrape
+    mock_app.scrape.side_effect = slow_scrape
 
     urls = [f"https://docs.example.com/page-{i}" for i in range(6)]
 
@@ -89,7 +89,7 @@ def test_fetch_updates_manifest(tmp_path):
     config = ScraperConfig(firecrawl_api_key="fc-test")
 
     mock_app = MagicMock()
-    mock_app.scrape_url.return_value = {"markdown": "# Content"}
+    mock_app.scrape.return_value = {"markdown": "# Content"}
 
     urls = ["https://docs.example.com/api/intro"]
 

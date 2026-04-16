@@ -12,6 +12,12 @@ dependencies = [
     "httpx>=0.27.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "pytest-asyncio>=0.25.0",
+]
+
 [project.scripts]
 king-context = "king_context.server:main"
 king-scrape = "king_context.scraper.cli:main"
@@ -26,3 +32,4 @@ packages = ["src/king_context", "src/context_cli"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"

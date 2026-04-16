@@ -1,4 +1,4 @@
-"""Indexer — reads data/*.json monolithic files and generates .king-context/ structure."""
+"""Indexer — reads .king-context/data/*.json monolithic files and generates .king-context/docs/ structure."""
 
 import json
 import shutil

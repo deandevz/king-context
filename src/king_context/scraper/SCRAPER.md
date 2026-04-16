@@ -23,13 +23,13 @@ pip install -e .
 king-scrape https://docs.stripe.com
 ```
 
-This runs the full pipeline: discovers all URLs on the site, filters for documentation pages, fetches them as Markdown, splits into chunks, enriches each chunk with metadata via LLM, and exports a JSON file to `data/stripe.json`. The file is automatically indexed into the King Context database.
+This runs the full pipeline: discovers all URLs on the site, filters for documentation pages, fetches them as Markdown, splits into chunks, enriches each chunk with metadata via LLM, and exports a JSON file to `.king-context/data/stripe.json`.
 
 The doc name is inferred from the URL (`docs.stripe.com` → `stripe`). Override it with `--name` and `--display-name`.
 
 ## How the Pipeline Works
 
-The scraper runs 6 sequential stages. Each stage saves its output to a working directory at `~/.temp-docs/{domain}/`, enabling resumption if anything fails.
+The scraper runs 6 sequential stages. Each stage saves its output to a working directory at `.king-context/_temp/{domain}/`, enabling resumption if anything fails.
 
 ### 1. Discover
 
@@ -66,7 +66,7 @@ Processed in batches with checkpoints saved after each batch. Before starting, t
 
 ### 6. Export
 
-Assembles all enriched chunks into a single JSON file matching King Context's documentation schema, saves it to `data/{name}.json`, and indexes it into the SQLite database so the MCP server can serve it immediately.
+Assembles all enriched chunks into a single JSON file matching King Context's documentation schema and saves it to `.king-context/data/{name}.json`.
 
 ## CLI Reference
 
@@ -101,10 +101,10 @@ king-scrape https://docs.stripe.com --step enrich --model openai/gpt-4o-mini
 
 ## Working Directory
 
-Each scrape creates a working directory at `~/.temp-docs/{domain}/` containing:
+Each scrape creates a working directory at `.king-context/_temp/{domain}/` containing:
 
 ```
-~/.temp-docs/docs-stripe-com/
+.king-context/_temp/docs-stripe-com/
 ├── manifest.json           # Progress tracker
 ├── discovered_urls.json    # All found URLs
 ├── filtered_urls.json      # Classification results
@@ -140,4 +140,4 @@ The final JSON file follows King Context's documentation schema:
 }
 ```
 
-This is the same format used by `data/*.json` files in the project. Once indexed, sections are searchable through King Context's 4-layer cascade (cache → metadata → FTS5 → embeddings).
+This is the same format used by `.king-context/data/*.json` files. Once indexed, sections are searchable through `kctx` CLI commands.

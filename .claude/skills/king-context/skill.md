@@ -91,8 +91,8 @@ kctx grep "pattern" --json                 # JSON output
 
 ### Index documentation
 ```bash
-kctx index data/example.json              # index one doc
-kctx index --all                           # index all data/*.json
+kctx index .king-context/data/example.json # index one doc
+kctx index --all                           # index all .king-context/data/*.json
 ```
 
 ---

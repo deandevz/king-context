@@ -39,7 +39,7 @@ def test_load_config_overrides(monkeypatch):
 def test_config_defaults():
     config = ScraperConfig()
 
-    assert config.enrichment_model == "openai/gpt-4o-mini"
+    assert config.enrichment_model == "google/gemini-3-flash-preview"
     assert config.enrichment_batch_size == 10
     assert config.chunk_max_tokens == 1000
     assert config.chunk_min_tokens == 100

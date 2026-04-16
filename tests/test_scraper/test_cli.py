@@ -99,7 +99,7 @@ def test_cli_parse_args_basic():
     assert args.url == "https://docs.stripe.com"
     assert args.name is None
     assert args.step is None
-    assert args.model == "google/gemini-flash-2.0"
+    assert args.model == "google/gemini-3-flash-preview"
     assert args.chunk_max_tokens == 800
     assert args.chunk_min_tokens == 50
     assert args.concurrency == 5

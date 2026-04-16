@@ -11,10 +11,10 @@ Orchestrate the full documentation scraping pipeline: discover, filter, fetch, c
 **READ THESE BEFORE DOING ANYTHING:**
 
 1. **You (the orchestrator) NEVER generate enrichment metadata.** Only sub-agents generate keywords/use_cases/tags/priority. If a sub-agent fails, retry or skip — NEVER fill in the data yourself. Generating it yourself is hallucination.
-2. **After each sub-agent returns, save a checkpoint file** to `.king-context/_temp/<domain>/enriched/batch_NNNN.json` using a Python script. This is mandatory — `king-scrape --step export` reads these files.
+2. **After each sub-agent returns, save a checkpoint file** to `.king-context/_temp/<domain>/enriched/batch_NNNN.json` using a Python script. This is mandatory — `.king-context/bin/king-scrape --step export` reads these files.
 3. **ALWAYS pass `--name <name>`** to every `king-scrape` command. Without it, the export generates a generic name.
-4. **Index with `kctx index`** (CLI, stores in `.king-context/`). NEVER use `seed_data` or `python -m king_context.seed_data` — that seeds the old MCP database.
-5. **ALWAYS use `--stop-after`** in Workflow B to prevent king-scrape from running steps you want to handle via sub-agents.
+4. **Index with `.king-context/bin/kctx index`** (CLI, stores in `.king-context/`). NEVER use `seed_data` or `python -m king_context.seed_data` — that seeds the old MCP database.
+5. **ALWAYS use `--stop-after`** in Workflow B to prevent .king-context/bin/king-scrape from running steps you want to handle via sub-agents.
 
 ---
 
@@ -156,7 +156,7 @@ print(f'Prepared work dir with {len(<TOPIC_URLS>)} URLs')
 
 This lets you skip `king-scrape`'s discover+filter steps and go straight to fetch.
 
-**When there is NO topic filter**: skip Step 2 entirely and let `king-scrape <base_url>` handle discover+filter normally.
+**When there is NO topic filter**: skip Step 2 entirely and let `.king-context/bin/king-scrape <base_url>` handle discover+filter normally.
 
 ---
 
@@ -186,7 +186,7 @@ Before starting any pipeline, check for existing progress:
 **If topic filter was applied (Step 2)**: the work dir already has `filtered_urls.json` with only the relevant URLs and manifest with discover+filter done. Start from fetch:
 
 ```bash
-king-scrape <base_url> --name <name> --yes --step fetch
+.king-context/bin/king-scrape <base_url> --name <name> --yes --step fetch
 ```
 
 This resumes from fetch (discover+filter already done via Step 2), then continues through chunk → enrich → export.
@@ -194,7 +194,7 @@ This resumes from fetch (discover+filter already done via Step 2), then continue
 **If NO topic filter (scraping everything)**: one command does everything:
 
 ```bash
-king-scrape <base_url> --name <name> --yes
+.king-context/bin/king-scrape <base_url> --name <name> --yes
 ```
 
 This runs: discover → filter (with LLM) → fetch → chunk → enrich → export.
@@ -204,7 +204,7 @@ The `--yes` flag skips the enrichment cost confirmation prompt.
 After it completes, index into the CLI (NOT seed_data):
 
 ```bash
-kctx index .king-context/data/<name>.json
+.king-context/bin/kctx index .king-context/data/<name>.json
 ```
 
 Done. Report: "Indexed `<name>` — N sections."
@@ -218,16 +218,16 @@ This workflow runs fetch+chunk via `king-scrape`, then enriches via sub-agents, 
 **If topic filter was applied (Step 2)**: work dir has filtered URLs. Fetch + chunk, then stop:
 
 ```bash
-king-scrape <base_url> --name <name> --stop-after chunk --step fetch
+.king-context/bin/king-scrape <base_url> --name <name> --stop-after chunk --step fetch
 ```
 
 **If NO topic filter**: discover + heuristic filter + fetch + chunk, then stop:
 
 ```bash
-king-scrape <base_url> --name <name> --no-llm-filter --stop-after chunk
+.king-context/bin/king-scrape <base_url> --name <name> --no-llm-filter --stop-after chunk
 ```
 
-**IMPORTANT**: Always use `--stop-after chunk` to prevent king-scrape from running enrichment (we'll do that with sub-agents).
+**IMPORTANT**: Always use `--stop-after chunk` to prevent .king-context/bin/king-scrape from running enrichment (we'll do that with sub-agents).
 
 #### Step 4b: Smart filter (optional, sub-agent Sonnet)
 
@@ -429,7 +429,7 @@ If retry also fails → skip and warn: "Chunk N skipped — sub-agent couldn't g
 After all batches are saved to `enriched/`:
 
 ```bash
-king-scrape <base_url> --name <name> --step export --no-auto-seed
+.king-context/bin/king-scrape <base_url> --name <name> --step export --no-auto-seed
 ```
 
 `--no-auto-seed` prevents auto-indexing into the old MCP database.
@@ -439,12 +439,12 @@ king-scrape <base_url> --name <name> --step export --no-auto-seed
 Index into the CLI (`.king-context/`):
 
 ```bash
-kctx index .king-context/data/<name>.json
+.king-context/bin/kctx index .king-context/data/<name>.json
 ```
 
 **NEVER use `seed_data` or `python -m king_context.seed_data`.** Those seed the old MCP server, not the CLI.
 
-Report: "Indexed `<name>` — N sections. Use: `kctx search 'query' --doc <name>`"
+Report: "Indexed `<name>` — N sections. Use: `.king-context/bin/kctx search 'query' --doc <name>`"
 
 ---
 
@@ -459,7 +459,7 @@ Report: "Indexed `<name>` — N sections. Use: `kctx search 'query' --doc <name>
 | Fetch fails for a page | Already handled by scraper (logs and continues) |
 | `king-scrape` command fails | Read stderr, report to user with suggestion |
 | No chunks generated | "No content extracted. Check if the URL is valid." |
-| `kctx index` path too long | Paths with `/` in section names create subdirs — sanitize with Python before indexing |
+| `.king-context/bin/kctx index` path too long | Paths with `/` in section names create subdirs — sanitize with Python before indexing |
 
 ---
 
@@ -478,8 +478,8 @@ Report: "Indexed `<name>` — N sections. Use: `kctx search 'query' --doc <name>
 ```
 User: "scrape the Stripe docs from https://docs.stripe.com"
 → No topic filter — scrape everything
-→ king-scrape https://docs.stripe.com --name stripe --yes
-→ kctx index .king-context/data/stripe.json
+→ .king-context/bin/king-scrape https://docs.stripe.com --name stripe --yes
+→ .king-context/bin/kctx index .king-context/data/stripe.json
 → "Indexed stripe — 145 sections."
 ```
 
@@ -492,22 +492,22 @@ User: "I want only the TTS/audio docs from https://platform.minimax.io/docs/guid
 → Step 2b: Keyword filter → 23 TTS URLs
 → Step 2c: Write work dir with 23 filtered URLs
 → "Found 141 total, filtered to 23 TTS/audio pages. Proceed?"
-→ Step 4a: king-scrape ... --name minimax-tts --stop-after chunk --step fetch
+→ Step 4a: .king-context/bin/king-scrape ... --name minimax-tts --stop-after chunk --step fetch
 → Step 4c: For each batch of 5-8 chunks:
     → Haiku sub-agent returns JSON array of metadata
     → Python script validates, merges with chunk data, saves to enriched/batch_NNNN.json
-→ Step 4d: king-scrape ... --name minimax-tts --step export --no-auto-seed
-→ Step 4e: kctx index .king-context/data/minimax-tts.json
+→ Step 4d: .king-context/bin/king-scrape ... --name minimax-tts --step export --no-auto-seed
+→ Step 4e: .king-context/bin/kctx index .king-context/data/minimax-tts.json
 → "Indexed minimax-tts — 66 sections."
 ```
 
 ### With sub-agents (full site)
 ```
 User: "scrape Stripe docs using claude code"
-→ king-scrape https://docs.stripe.com --name stripe --no-llm-filter --stop-after chunk
+→ .king-context/bin/king-scrape https://docs.stripe.com --name stripe --no-llm-filter --stop-after chunk
 → [Haiku sub-agents enrich batches → Python script saves checkpoints]
-→ king-scrape https://docs.stripe.com --name stripe --step export --no-auto-seed
-→ kctx index .king-context/data/stripe.json
+→ .king-context/bin/king-scrape https://docs.stripe.com --name stripe --step export --no-auto-seed
+→ .king-context/bin/kctx index .king-context/data/stripe.json
 → "Indexed stripe — 145 sections."
 ```
 

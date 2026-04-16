@@ -199,7 +199,7 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
             if not enriched:
                 enriched = _load_enriched_from_checkpoints(work_dir)
             doc_data = export_to_json(enriched, name, display_name, args.url)
-            output_path = PROJECT_ROOT / "data" / f"{name}.json"
+            output_path = PROJECT_ROOT / ".king-context" / "data" / f"{name}.json"
             auto_seed = not getattr(args, "no_auto_seed", False)
             save_and_index(doc_data, output_path, auto_seed=auto_seed)
             _update_step(work_dir, "export", {"status": "done", "output": str(output_path)})
@@ -218,7 +218,7 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
         if manifest.get(key, {}).get("status") == "done":
             print(f"  {s}: done")
     if not target_step or target_step == "export":
-        print(f"  Output: data/{name}.json")
+        print(f"  Output: .king-context/data/{name}.json")
 
 
 def _build_parser() -> argparse.ArgumentParser:

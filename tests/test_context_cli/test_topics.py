@@ -78,8 +78,8 @@ def _build_doc(store_dir, doc_name="test-api"):
 @pytest.fixture
 def store_with_topics(tmp_path, monkeypatch):
     """Create a store with one doc and patch STORE_DIR."""
-    store_dir = tmp_path / ".king-context"
-    store_dir.mkdir()
+    store_dir = tmp_path / ".king-context" / "docs"
+    store_dir.mkdir(parents=True)
     _build_doc(store_dir)
 
     import context_cli.cli as cli_mod
@@ -159,8 +159,8 @@ def test_topics_json_output(store_with_topics, monkeypatch, capsys):
 
 def test_topics_doc_not_found(tmp_path, monkeypatch, capsys):
     """When the doc does not exist, an error message with available docs is shown."""
-    store_dir = tmp_path / ".king-context"
-    store_dir.mkdir()
+    store_dir = tmp_path / ".king-context" / "docs"
+    store_dir.mkdir(parents=True)
 
     # Create a different doc so the error can list available docs
     _build_doc(store_dir, doc_name="other-api")

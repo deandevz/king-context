@@ -2,5 +2,5 @@
 
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-STORE_DIR = PROJECT_ROOT / ".king-context"
+PROJECT_ROOT = Path.cwd()
+STORE_DIR = PROJECT_ROOT / ".king-context" / "docs"

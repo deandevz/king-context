@@ -11,7 +11,7 @@ from king_context import PROJECT_ROOT
 from king_context.scraper.config import ScraperConfig
 
 
-TEMP_DOCS_DIR = PROJECT_ROOT / ".temp-docs"
+TEMP_DOCS_DIR = PROJECT_ROOT / ".king-context" / "_temp"
 
 
 @dataclass
