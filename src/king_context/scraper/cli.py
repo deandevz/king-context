@@ -186,10 +186,11 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
                 f"  cost estimate: ${cost['estimated_cost']:.4f} "
                 f"({cost['total_chunks']} chunks, model: {cost['model']})"
             )
-            confirm = input("  Proceed with enrichment? [y/N] ").strip().lower()
-            if confirm != "y":
-                print("  Enrichment cancelled.")
-                return
+            if not getattr(args, "yes", False):
+                confirm = input("  Proceed with enrichment? [y/N] ").strip().lower()
+                if confirm != "y":
+                    print("  Enrichment cancelled.")
+                    return
             enriched = await enrich_chunks(chunks, config, output_dir=work_dir)
             _update_step(work_dir, "enrichment", {"status": "done", "total_enriched": len(enriched)})
             print(f"  enriched {len(enriched)} chunks")
@@ -203,6 +204,12 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
             save_and_index(doc_data, output_path, auto_seed=auto_seed)
             _update_step(work_dir, "export", {"status": "done", "output": str(output_path)})
             print(f"  saved {len(enriched)} sections to {output_path}")
+
+        # --stop-after: halt pipeline after the requested step
+        stop_after = getattr(args, "stop_after", None)
+        if stop_after and step == stop_after:
+            print(f"  Stopped after '{step}' as requested.")
+            break
 
     manifest = _load_manifest(work_dir)
     print("\n=== Pipeline Summary ===")
@@ -279,6 +286,19 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="include_maybe",
         action="store_true",
         help="Include URLs classified as 'maybe' in the fetch step",
+    )
+    parser.add_argument(
+        "--stop-after",
+        dest="stop_after",
+        choices=PIPELINE_STEPS,
+        default=None,
+        help="Run the pipeline up to and including this step, then stop",
+    )
+    parser.add_argument(
+        "--yes", "-y",
+        dest="yes",
+        action="store_true",
+        help="Skip interactive confirmations (e.g. enrichment cost prompt)",
     )
     return parser
 
