@@ -149,18 +149,61 @@ async def enrich_chunks(
     config: ScraperConfig,
     output_dir: Path | None = None,
 ) -> list[EnrichedChunk]:
-    """Enrich chunks in batches, saving a checkpoint JSON after each batch."""
+    """Enrich chunks in batches, saving a checkpoint JSON after each batch.
+
+    Supports resume: if ``output_dir`` contains prior batch files under
+    ``enriched/``, already-processed chunks are skipped and new batches
+    continue numbering from where the previous run left off.
+    """
     enriched: list[EnrichedChunk] = []
     enriched_dir: Path | None = None
+    batch_offset = 0
 
     if output_dir is not None:
         enriched_dir = output_dir / "enriched"
         enriched_dir.mkdir(parents=True, exist_ok=True)
 
-    batch_size = config.enrichment_batch_size
-    total_chunks = len(chunks)
+        # --- resume detection ---
+        existing_batches = sorted(enriched_dir.glob("batch_*.json"))
+        if existing_batches:
+            last_batch_path = existing_batches[-1]
+            previous_data = json.loads(last_batch_path.read_text())
+            already_enriched = len(previous_data)
 
-    for batch_num, start in enumerate(range(0, len(chunks), batch_size)):
+            # Reconstruct EnrichedChunk objects from the saved data
+            for item in previous_data:
+                enriched.append(EnrichedChunk(
+                    title=item["title"],
+                    path=item["path"],
+                    url=item["url"],
+                    content=item["content"],
+                    keywords=item["keywords"],
+                    use_cases=item["use_cases"],
+                    tags=item["tags"],
+                    priority=item["priority"],
+                ))
+
+            total_chunks = len(chunks)
+            print(f"Resuming: {already_enriched}/{total_chunks} chunks already enriched")
+
+            if already_enriched >= total_chunks:
+                _update_step(output_dir, "enrichment", {
+                    "status": "done",
+                    "enriched": already_enriched,
+                    "total": total_chunks,
+                })
+                return enriched
+
+            # Skip already-processed chunks
+            chunks = chunks[already_enriched:]
+            # Next batch number continues from existing count
+            batch_offset = len(existing_batches)
+
+    batch_size = config.enrichment_batch_size
+    total_chunks = len(chunks) + len(enriched)  # original total
+
+    for batch_idx, start in enumerate(range(0, len(chunks), batch_size)):
+        batch_num = batch_offset + batch_idx
         batch = chunks[start:start + batch_size]
         results = await asyncio.gather(*[_enrich_one(c, config) for c in batch])
 
