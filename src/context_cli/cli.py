@@ -11,8 +11,8 @@ from context_cli.formatter import (
     format_list,
     format_search,
     format_section,
+    format_topics,
 )
-from context_cli.formatter import format_topics
 from context_cli.grep import grep_docs
 from context_cli.indexer import index_all, index_doc
 from context_cli.reader import read_section
