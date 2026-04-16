@@ -239,38 +239,93 @@ python3 -c "import json; d=json.load(open('.temp-docs/<domain>/filtered_urls.jso
 
 If maybe > 10, use a Sonnet sub-agent to reclassify (batch of 50 URLs per call). Otherwise skip.
 
-#### Step 4c: Enrich (sub-agent Haiku)
+#### Step 4c: Enrich (Haiku sub-agents)
 
-**This is the critical step. Follow exactly.**
+**This is the critical step. Follow the 3 phases exactly.**
 
-1. Read all chunks from `.temp-docs/<domain>/chunks/`
-2. Check `.temp-docs/<domain>/enriched/` for existing batch files (resume)
-3. Split remaining chunks into batches of 5-8
+##### Phase 1: Prepare batches
 
-**For each batch**, spawn a Haiku sub-agent. The sub-agent prompt MUST include:
-- The exact chunks to enrich (title + content)
-- Clear instruction to return ONLY a JSON array
-- The validation rules
+Use `Bash` to run a Python script that reads chunks, checks for resume, and writes batch files:
 
-**Sub-agent prompt template:**
+```python
+python3 << 'PREP_EOF'
+import json
+from pathlib import Path
+
+WORK_DIR = Path(".temp-docs/<DOMAIN>")
+CHUNKS_DIR = WORK_DIR / "chunks"
+ENRICHED_DIR = WORK_DIR / "enriched"
+ENRICHED_DIR.mkdir(exist_ok=True)
+BATCH_SIZE = 7
+
+# Load all chunks
+all_chunks = []
+for f in sorted(CHUNKS_DIR.glob("*.json")):
+    all_chunks.extend(json.loads(f.read_text()))
+
+# Resume: check existing enriched batches
+already_enriched = 0
+batch_files = sorted(ENRICHED_DIR.glob("batch_*.json"))
+if batch_files:
+    already_enriched = len(json.loads(batch_files[-1].read_text()))
+    print(f"Resume: {already_enriched}/{len(all_chunks)} already enriched")
+
+remaining = all_chunks[already_enriched:]
+if not remaining:
+    print("All chunks already enriched. Skip to export.")
+    exit(0)
+
+# Write batch files to /tmp for sub-agents
+batches = []
+for i in range(0, len(remaining), BATCH_SIZE):
+    batch = remaining[i:i+BATCH_SIZE]
+    batch_idx = len(batch_files) + len(batches)
+    info = {
+        "batch_idx": batch_idx,
+        "global_offset": already_enriched + i,
+        "chunks": [{"idx": already_enriched + i + j, "title": c["title"], "content": c["content"][:1500]} for j, c in enumerate(batch)],
+    }
+    path = f"/tmp/enrich_batch_{batch_idx}.json"
+    Path(path).write_text(json.dumps(info))
+    batches.append({"idx": batch_idx, "count": len(batch), "path": path})
+
+print(f"Prepared {len(batches)} batches ({len(remaining)} chunks)")
+for b in batches:
+    print(f"  Batch {b['idx']}: {b['count']} chunks → {b['path']}")
+PREP_EOF
+```
+
+##### Phase 2: Launch ALL Haiku sub-agents in ONE message
+
+**CRITICAL**: Send ALL `Agent` tool calls in a SINGLE message for true parallelism. Use `run_in_background=true` on each one.
+
+For each batch file from Phase 1, spawn one agent:
 
 ```
-Agent(model="haiku", prompt="""
-You are a documentation metadata specialist. Generate metadata for these chunks.
+Agent(
+  model="haiku",
+  run_in_background=true,
+  description="Enrich batch N (M chunks)",
+  prompt="<see template below>"
+)
+```
 
-For EACH chunk below, generate:
-- keywords: 5-12 specific technical terms (API names, methods, config keys)
-- use_cases: 2-7 practical scenarios (start with verbs: "Use when", "Configure when")
-- tags: 1-5 broad category labels
-- priority: integer 1-10 (10 = core concept, 1 = edge case)
+**Sub-agent prompt template** (keep SHORT — Haiku works better with concise prompts):
 
-RESPOND WITH ONLY A VALID JSON ARRAY. No explanation, no markdown, no code fences.
-One object per chunk, SAME ORDER as input.
+```
+Generate metadata for N documentation chunks. Return a JSON array.
 
-Example output format:
-[{"keywords":["k1","k2","k3","k4","k5"],"use_cases":["Use when...","Configure when..."],"tags":["api"],"priority":7},{"keywords":["k1","k2","k3","k4","k5"],"use_cases":["Use when..."],"tags":["guide"],"priority":5}]
+Each object must have:
+- "keywords": 5-12 strings (technical terms, API names, methods)
+- "use_cases": 2-7 strings (start with verbs: "Use when...", "Configure when...")  
+- "tags": 1-5 strings (broad categories)
+- "priority": int 1-10 (10=core, 1=edge case)
 
-Chunks to enrich:
+Return ONLY a JSON array. No markdown, no explanation, no code fences.
+
+Example: [{"keywords":["api-key","auth","bearer"],"use_cases":["Use when authenticating"],"tags":["auth"],"priority":8}]
+
+Chunks:
 
 ---CHUNK 0---
 Title: <title>
@@ -279,108 +334,105 @@ Title: <title>
 ---CHUNK 1---
 Title: <title>
 <content>
-""")
 ```
 
-**After EACH sub-agent returns — run a Python script to validate, merge, and save:**
+**DO NOT** put validation rules in the sub-agent prompt — keep it short. Validation happens in Phase 3.
 
-This is NOT optional. You MUST run this script after each sub-agent batch. Do NOT do the merging yourself — use this script:
+##### Phase 3: Validate and save (after EACH agent completes)
+
+As each background agent completes, IMMEDIATELY run this `Bash` validation script. Do NOT wait for all agents — process each as it arrives:
 
 ```python
-python3 << 'ENRICH_EOF'
-import json
+python3 << 'SAVE_EOF'
+import json, re
 from pathlib import Path
 
-WORK_DIR = Path(".temp-docs/<domain>")
+WORK_DIR = Path(".temp-docs/<DOMAIN>")
 ENRICHED_DIR = WORK_DIR / "enriched"
-ENRICHED_DIR.mkdir(exist_ok=True)
+BATCH_IDX = <N>  # which batch just completed
 
-# Sub-agent raw response (paste the JSON array the sub-agent returned)
-raw_response = '''<PASTE SUB-AGENT JSON RESPONSE HERE>'''
+# 1. Parse sub-agent response
+raw = '''<PASTE THE SUB-AGENT'S TEXT RESPONSE HERE>'''
 
-# Parse sub-agent response
+# Extract JSON (handles markdown fences, extra text)
 try:
-    metadata_list = json.loads(raw_response)
+    metadata = json.loads(raw)
 except json.JSONDecodeError:
-    # Try to extract JSON from markdown fences
-    import re
-    match = re.search(r'\[.*\]', raw_response, re.DOTALL)
-    if match:
-        metadata_list = json.loads(match.group())
-    else:
-        print("ERROR: Sub-agent did not return valid JSON. Retry this batch.")
+    match = re.search(r'\[.*\]', raw, re.DOTALL)
+    metadata = json.loads(match.group()) if match else None
+    if not metadata:
+        print(f"ERROR batch {BATCH_IDX}: invalid JSON. Retry this batch.")
         exit(1)
 
-# The chunks for this batch (indices into the full chunk list)
-batch_chunk_indices = <LIST_OF_CHUNK_INDICES>  # e.g., [0,1,2,3,4,5,6]
-
-# Load all chunks
+# 2. Load chunk data for this batch
+batch_info = json.loads(Path(f"/tmp/enrich_batch_{BATCH_IDX}.json").read_text())
 all_chunks = []
 for f in sorted((WORK_DIR / "chunks").glob("*.json")):
     all_chunks.extend(json.loads(f.read_text()))
 
-# Validate and merge
-VALID_RANGES = {"keywords": (5, 12), "use_cases": (2, 7), "tags": (1, 5)}
-failed = []
-merged = []
+# 3. Validate and merge with chunk data
+RANGES = {"keywords": (5, 12), "use_cases": (2, 7), "tags": (1, 5)}
+merged, failed = [], []
 
-for i, idx in enumerate(batch_chunk_indices):
-    if i >= len(metadata_list):
-        failed.append(idx)
-        continue
-    m = metadata_list[i]
+for i, ci in enumerate(batch_info["chunks"]):
+    idx = ci["idx"]
+    if i >= len(metadata):
+        failed.append(idx); continue
+    m = metadata[i]
+    errs = [f"{k}: need {lo}-{hi}, got {len(m.get(k,[]))}" for k,(lo,hi) in RANGES.items()
+            if not isinstance(m.get(k), list) or not (lo <= len(m[k]) <= hi)]
+    if not isinstance(m.get("priority"), int) or not (1 <= m.get("priority",0) <= 10):
+        errs.append("priority: need int 1-10")
+    if errs:
+        print(f"  WARN chunk {idx}: {errs}")
+        failed.append(idx); continue
     chunk = all_chunks[idx]
-    errors = []
-    for field, (lo, hi) in VALID_RANGES.items():
-        if not isinstance(m.get(field), list) or not (lo <= len(m[field]) <= hi):
-            errors.append(f"{field}: expected {lo}-{hi} items")
-    if not isinstance(m.get("priority"), int) or not (1 <= m["priority"] <= 10):
-        errors.append("priority: must be int 1-10")
-    if errors:
-        print(f"  WARNING: chunk {idx} failed validation: {errors}")
-        failed.append(idx)
-        continue
     merged.append({
-        "title": chunk["title"],
-        "path": chunk["path"],
-        "url": chunk["source_url"],
-        "content": chunk["content"],
-        "keywords": m["keywords"],
-        "use_cases": m["use_cases"],
-        "tags": m["tags"],
-        "priority": m["priority"],
+        "title": chunk["title"], "path": chunk["path"],
+        "url": chunk["source_url"], "content": chunk["content"],
+        "keywords": m["keywords"], "use_cases": m["use_cases"],
+        "tags": m["tags"], "priority": m["priority"],
     })
 
-# Load existing enriched data (cumulative)
+# 4. Save cumulative checkpoint
 existing = []
-batch_files = sorted(ENRICHED_DIR.glob("batch_*.json"))
-if batch_files:
-    existing = json.loads(batch_files[-1].read_text())
-
-# Save cumulative checkpoint
-all_enriched = existing + merged
-batch_num = len(batch_files)
-out_path = ENRICHED_DIR / f"batch_{batch_num:04d}.json"
-out_path.write_text(json.dumps(all_enriched, indent=2))
-print(f"Saved {len(merged)} new + {len(existing)} existing = {len(all_enriched)} total to {out_path.name}")
+prev = sorted(ENRICHED_DIR.glob("batch_*.json"))
+if prev:
+    existing = json.loads(prev[-1].read_text())
+cumulative = existing + merged
+out = ENRICHED_DIR / f"batch_{BATCH_IDX:04d}.json"
+out.write_text(json.dumps(cumulative, indent=2))
+print(f"Batch {BATCH_IDX}: {len(merged)} ok + {len(failed)} failed → {len(cumulative)} total in {out.name}")
 if failed:
-    print(f"Failed chunks (retry individually): {failed}")
-ENRICH_EOF
+    print(f"  Retry these chunks individually: {failed}")
+SAVE_EOF
 ```
 
-**If chunks fail validation**: retry those specific chunks individually with a single Haiku sub-agent call per chunk. If still fails, skip and warn the user.
+##### Retry failed chunks
 
-**NEVER write enrichment data yourself. The Python script above does the merging.**
+If any chunks failed validation, retry them ONE AT A TIME with a focused Haiku call:
+
+```
+Agent(model="haiku", prompt="Generate metadata for this documentation chunk.
+Return ONE JSON object: {\"keywords\":[5-12 items],\"use_cases\":[2-7 items],\"tags\":[1-5 items],\"priority\":1-10}
+
+Title: <title>
+<content>")
+```
+
+Then run the save script again to add the retried chunk to the cumulative checkpoint.
+
+If retry also fails → skip and warn: "Chunk N skipped — sub-agent couldn't generate valid metadata."
 
 #### Step 4d: Export
 
-After all batches are saved to `enriched/`, run export:
+After all batches are saved to `enriched/`:
 
 ```bash
 king-scrape <base_url> --name <name> --step export --no-auto-seed
 ```
 
-Use `--no-auto-seed` to prevent auto-indexing into the MCP database.
+`--no-auto-seed` prevents auto-indexing into the old MCP database.
 
 #### Step 4e: Index
 
@@ -390,47 +442,9 @@ Index into the CLI (`.king-context/`):
 kctx index data/<name>.json
 ```
 
-**NEVER use `seed_data` or `python -m king_context.seed_data`.** Those seed the old MCP server database, not the CLI.
+**NEVER use `seed_data` or `python -m king_context.seed_data`.** Those seed the old MCP server, not the CLI.
 
 Report: "Indexed `<name>` — N sections. Use: `kctx search 'query' --doc <name>`"
-
----
-
-## Checkpoint Data Contracts
-
-### Chunk input format (from `chunks/<slug>.json`):
-
-```json
-{
-  "title": "string",
-  "breadcrumb": "string",
-  "content": "string",
-  "source_url": "string",
-  "path": "string",
-  "token_count": 123
-}
-```
-
-### Enriched output format (saved to `enriched/batch_NNNN.json`):
-
-Cumulative array — the last batch file has ALL enriched chunks:
-
-```json
-[
-  {
-    "title": "string",
-    "path": "string",
-    "url": "string",
-    "content": "string",
-    "keywords": ["string"],
-    "use_cases": ["string"],
-    "tags": ["string"],
-    "priority": 1-10
-  }
-]
-```
-
-**Important**: `url` in enriched = `source_url` from chunk. The sub-agent generates ONLY `keywords`, `use_cases`, `tags`, `priority`. You merge them with the chunk's `title`, `path`, `url`, `content`.
 
 ---
 
@@ -440,11 +454,12 @@ Cumulative array — the last batch file has ALL enriched chunks:
 |-------|--------|
 | `FIRECRAWL_API_KEY` not set | Tell user: "Set FIRECRAWL_API_KEY in .env" |
 | `OPENROUTER_API_KEY` not set (Workflow A) | Suggest Workflow B |
-| Sub-agent returns invalid JSON | Retry once. If still fails, skip the chunk and warn |
-| Sub-agent metadata fails validation | Retry once with individual chunk. If fails, skip and warn |
+| Sub-agent returns invalid JSON | Extract from markdown fences. If fails, retry batch once |
+| Sub-agent metadata fails validation | Retry individual chunks (not whole batch). If fails, skip + warn |
 | Fetch fails for a page | Already handled by scraper (logs and continues) |
 | `king-scrape` command fails | Read stderr, report to user with suggestion |
-| No chunks generated | "No content extracted. Check if the URL is valid and accessible." |
+| No chunks generated | "No content extracted. Check if the URL is valid." |
+| `kctx index` path too long | Paths with `/` in section names create subdirs — sanitize with Python before indexing |
 
 ---
 
