@@ -23,7 +23,8 @@ def _make_doc(store_dir, name, display_name="Test Doc", version="v1",
 
 def test_get_store_dir_returns_path():
     result = get_store_dir()
-    assert result.name == ".king-context"
+    assert result.name == "docs"
+    assert result.parent.name == ".king-context"
     assert result.is_absolute()
 
 

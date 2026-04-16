@@ -49,7 +49,7 @@ king-scrape <url> --no-llm-filter    # disable LLM filter (heuristic only)
 - **server.py** — FastMCP server entry point. Exposes 4 MCP tools: `search_docs`, `list_docs`, `show_context`, `add_doc`. Loads embedding model and data at startup, then delegates to `db.py`. Entry point: `main()`.
 - **db.py** — Search engine and database layer. Implements `search_cascade()` with 4 layers: `_check_cache()` → `_search_metadata()` → `_search_fts()` → `_rerank_with_embeddings()`. All SQLite/FTS5 operations live here. Module-level state holds the embedding model, numpy array, and section mapping.
 - **seed_data.py** — Data loading. `seed_all()` indexes all `data/*.json`; `seed_one(path)` indexes a single file.
-- **`__init__.py`** — Defines `PROJECT_ROOT` constant used by all modules to resolve paths relative to the project root.
+- **`__init__.py`** — Defines `PROJECT_ROOT = Path.cwd()` used by all modules to resolve paths relative to CWD.
 
 **Database (SQLite + FTS5) — `docs.db` at project root:**
 
@@ -99,11 +99,37 @@ Files in `data/*.json` follow this structure — the metadata fields (`keywords`
 - Patch targets use full module paths: `king_context.db.xxx`, `king_context.server.xxx`
 - Test files: `tests/test_db.py` (cascade/FTS/cache/metadata/schema), `tests/test_server.py` (MCP tools), `tests/test_seed_data.py` (data loading), `tests/test_embeddings.py` (dependency versions), `tests/test_load_embeddings.py` (embedding persistence)
 
+## Path Resolution
+
+All paths are resolved from `CWD` (the project where king-context is installed):
+
+- `.king-context/docs/` — Indexed documentation store (`STORE_DIR`)
+- `.king-context/data/` — Raw JSON doc files (scraper exports here)
+- `.king-context/_temp/` — Scraper work directories (`TEMP_DOCS_DIR`)
+- `.king-context/_learned/` — Agent self-learning shortcuts
+- `.king-context/core/venv/` — Python virtual environment (managed by installer)
+- `.king-context/bin/` — CLI wrapper scripts (kctx, king-scrape)
+
+## Installer (`installer/`)
+
+npm package `@king-context/cli` that sets up king-context in any project:
+
+```bash
+npx @king-context/cli init      # Install everything
+npx @king-context/cli doctor    # Check installation health
+npx @king-context/cli update    # Update tools + skills (preserves data)
+```
+
+- Zero npm dependencies — pure Node.js built-ins
+- Creates venv, installs Python package, copies skills, configures Claude Code
+- Templates in `installer/templates/` (skills, wrappers, env, claude-md snippet)
+
 ## Key Directories
 
-- `src/king_context/` — Core Python package (server, db, seed_data)
+- `src/king_context/` — Core Python package (server, db, seed_data, scraper)
+- `src/context_cli/` — CLI package (kctx command)
+- `installer/` — npm installer package (@king-context/cli)
 - `tests/` — All test files and conftest.py
 - `scripts/` — Shell scripts (run-seed-data.sh)
-- `data/` — Indexed documentation JSONs and embedding files
-- `input/` — Raw documentation sources before processing into JSON schema
-- `.claude/skills/` — Claude Code skills for crawling (`crawl4ai`, `search-docs-crawl4ai`, `search-docs-firecrawl`) and processing docs (`process-docs`)
+- `data/` — Indexed documentation JSONs and embedding files (legacy, repo-local)
+- `.claude/skills/` — Claude Code skills (king-context, scraper-workflow)

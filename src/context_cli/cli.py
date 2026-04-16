@@ -24,7 +24,7 @@ def _cmd_list(args: argparse.Namespace) -> None:
     store_dir = STORE_DIR
     docs = list_docs(store_dir)
     if not docs and not args.json:
-        print("No docs indexed. Run: kctx index data/<file>.json")
+        print("No docs indexed. Run: kctx index .king-context/data/<file>.json")
         return
     print(format_list(docs, as_json=args.json))
 
@@ -121,15 +121,15 @@ def _cmd_index(args: argparse.Namespace) -> None:
     store_dir.mkdir(parents=True, exist_ok=True)
 
     if args.all:
-        data_dir = PROJECT_ROOT / "data"
+        data_dir = PROJECT_ROOT / ".king-context" / "data"
         if not data_dir.exists():
-            print("data/ directory not found.", file=sys.stderr)
+            print(".king-context/data/ directory not found.", file=sys.stderr)
             sys.exit(1)
         results = index_all(data_dir, store_dir)
         for r in results:
             print(f"Indexed {r.doc_name}: {r.section_count} sections")
         if not results:
-            print("No JSON files found in data/.")
+            print("No JSON files found in .king-context/data/.")
     else:
         json_path = Path(args.path)
         if not json_path.exists():
@@ -188,7 +188,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # index
     p_index = subparsers.add_parser("index", help="Index documentation from JSON files")
     p_index.add_argument("path", nargs="?", default=None, help="Path to a JSON file")
-    p_index.add_argument("--all", action="store_true", help="Index all data/*.json files")
+    p_index.add_argument("--all", action="store_true", help="Index all .king-context/data/*.json files")
     p_index.set_defaults(func=_cmd_index)
 
     return parser

@@ -10,7 +10,7 @@ def test_discover_urls(tmp_path, monkeypatch):
     monkeypatch.setattr("king_context.scraper.discover.TEMP_DOCS_DIR", tmp_path)
 
     mock_app = MagicMock()
-    mock_app.map_url.return_value = [
+    mock_app.map.return_value = [
         "https://docs.example.com/api",
         "https://docs.example.com/guide",
     ]
@@ -36,7 +36,7 @@ def test_discover_creates_work_dir(tmp_path, monkeypatch):
     monkeypatch.setattr("king_context.scraper.discover.TEMP_DOCS_DIR", tmp_path)
 
     mock_app = MagicMock()
-    mock_app.map_url.return_value = []
+    mock_app.map.return_value = []
 
     with patch("king_context.scraper.discover.FirecrawlApp", return_value=mock_app):
         asyncio.run(

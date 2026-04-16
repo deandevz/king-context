@@ -10,9 +10,9 @@ from context_cli.indexer import index_doc
 
 @pytest.fixture
 def store_with_doc(tmp_path, monkeypatch):
-    """Create a .king-context/ store with one indexed doc and patch STORE_DIR."""
-    store_dir = tmp_path / ".king-context"
-    store_dir.mkdir()
+    """Create a .king-context/docs/ store with one indexed doc and patch STORE_DIR."""
+    store_dir = tmp_path / ".king-context" / "docs"
+    store_dir.mkdir(parents=True)
 
     # Create source JSON
     source = {
@@ -77,8 +77,8 @@ def test_list_json(store_with_doc, monkeypatch, capsys):
 
 
 def test_list_empty_store(tmp_path, monkeypatch, capsys):
-    empty_store = tmp_path / ".king-context"
-    empty_store.mkdir()
+    empty_store = tmp_path / ".king-context" / "docs"
+    empty_store.mkdir(parents=True)
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", empty_store)
 
@@ -142,7 +142,7 @@ def test_read_json(store_with_doc, monkeypatch, capsys):
 
 
 def test_index_single_file(tmp_path, monkeypatch, capsys):
-    store_dir = tmp_path / ".king-context"
+    store_dir = tmp_path / ".king-context" / "docs"
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
 
@@ -174,9 +174,9 @@ def test_index_single_file(tmp_path, monkeypatch, capsys):
 
 
 def test_index_all(tmp_path, monkeypatch, capsys):
-    store_dir = tmp_path / ".king-context"
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
+    store_dir = tmp_path / ".king-context" / "docs"
+    data_dir = tmp_path / ".king-context" / "data"
+    data_dir.mkdir(parents=True)
 
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
@@ -199,7 +199,7 @@ def test_index_all(tmp_path, monkeypatch, capsys):
 
 
 def test_index_file_not_found(tmp_path, monkeypatch):
-    store_dir = tmp_path / ".king-context"
+    store_dir = tmp_path / ".king-context" / "docs"
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
 

@@ -275,14 +275,14 @@ class TestFullPipelineResumeIntegration:
         ), patch(
             "king_context.scraper.export.seed_data",
         ):
-            # Create data/ dir for export output
-            (tmp_path / "data").mkdir()
+            # Create .king-context/data/ dir for export output
+            (tmp_path / ".king-context" / "data").mkdir(parents=True, exist_ok=True)
 
             args = _make_args(yes=True, no_auto_seed=True)
             await run_pipeline(args, _make_config())
 
         # Export should have created the JSON file
-        output_path = tmp_path / "data" / "example.json"
+        output_path = tmp_path / ".king-context" / "data" / "example.json"
         assert output_path.exists()
 
         doc_data = json.loads(output_path.read_text())
