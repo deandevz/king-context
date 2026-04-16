@@ -296,18 +296,19 @@ print(f"WORK_DIR={WORK_DIR}")
 PREP_EOF
 ```
 
-##### Phase 2: Launch ALL Haiku sub-agents in ONE message
+##### Phase 2: Launch ALL enricher sub-agents in ONE message
 
 **CRITICAL RULES:**
 1. Send ALL `Agent` tool calls in a SINGLE message for true parallelism. Use `run_in_background=true`.
-2. The orchestrator sends ONLY the batch number and work dir path. The sub-agent reads chunks from disk, generates metadata, validates, and writes the result — all by itself.
-3. **The orchestrator NEVER copies, pastes, or rewrites chunk content or metadata JSON.** All data flows through disk.
+2. Use `subagent_type` or `agent` = `"enricher"` — this is a custom agent defined in `.claude/agents/enricher.md` with Bash/Read/Write permissions and Haiku model.
+3. The orchestrator sends ONLY the batch number and work dir path. The sub-agent reads chunks from disk, generates metadata, validates, and writes the result — all by itself.
+4. **The orchestrator NEVER copies, pastes, or rewrites chunk content or metadata JSON.** All data flows through disk.
 
 For each batch from Phase 1, spawn one agent:
 
 ```
 Agent(
-  model="haiku",
+  subagent_type="enricher",
   run_in_background=true,
   description="Enrich batch N",
   prompt="Enrich documentation chunks with metadata. Read your batch, generate metadata, validate, and write results to disk.
@@ -439,7 +440,7 @@ If `Missing > 0`, retry the missing chunks individually (see below).
 If any chunks failed validation or are missing, retry them ONE AT A TIME with a focused Haiku call. The sub-agent must also write to disk:
 
 ```
-Agent(model="haiku", prompt="Generate metadata for this documentation chunk and save it to disk.
+Agent(subagent_type="enricher", prompt="Generate metadata for this documentation chunk and save it to disk.
 
 Metadata format: {\"keywords\":[5-12 items],\"use_cases\":[2-7 items],\"tags\":[1-5 items],\"priority\":1-10}
 

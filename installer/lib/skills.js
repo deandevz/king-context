@@ -10,8 +10,14 @@ const path = require('path');
 function installSkills(projectDir) {
   const srcDir = path.join(__dirname, '..', 'templates', 'skills');
   const destDir = path.join(projectDir, '.claude', 'skills');
-
   copyDirRecursive(srcDir, destDir);
+
+  // Also copy agent definitions
+  const agentsSrc = path.join(__dirname, '..', 'templates', 'agents');
+  const agentsDest = path.join(projectDir, '.claude', 'agents');
+  if (fs.existsSync(agentsSrc)) {
+    copyDirRecursive(agentsSrc, agentsDest);
+  }
 }
 
 /**
