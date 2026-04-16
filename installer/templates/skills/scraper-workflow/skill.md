@@ -243,9 +243,9 @@ If maybe > 10, use a Sonnet sub-agent to reclassify (batch of 50 URLs per call).
 
 **This is the critical step. Follow the 3 phases exactly.**
 
-##### Phase 1: Prepare and print batches
+##### Phase 1: Prepare batch files on disk
 
-Use `Bash` to run a Python script that reads chunks, checks for resume, and **prints each batch as a formatted text block to stdout**. Do NOT write files to `/tmp` — sub-agents cannot access them.
+Use `Bash` to run a Python script that reads chunks, checks for resume, and **writes batch files to `.king-context/_temp/<DOMAIN>/batches/`**. Sub-agents will read directly from these files.
 
 ```python
 python3 << 'PREP_EOF'
@@ -255,7 +255,9 @@ from pathlib import Path
 WORK_DIR = Path(".king-context/_temp/<DOMAIN>")
 CHUNKS_DIR = WORK_DIR / "chunks"
 ENRICHED_DIR = WORK_DIR / "enriched"
+BATCHES_DIR = WORK_DIR / "batches"
 ENRICHED_DIR.mkdir(exist_ok=True)
+BATCHES_DIR.mkdir(exist_ok=True)
 BATCH_SIZE = 7
 
 # Load all chunks
@@ -275,18 +277,22 @@ if not remaining:
     print("All chunks already enriched. Skip to export.")
     exit(0)
 
-# Print each batch as a formatted block — orchestrator will paste these into agent prompts
-print(f"TOTAL_BATCHES={len(range(0, len(remaining), BATCH_SIZE))}")
-print(f"TOTAL_CHUNKS={len(remaining)}")
+# Write batch files to disk for sub-agents to read
+total_batches = 0
 for i in range(0, len(remaining), BATCH_SIZE):
     batch = remaining[i:i+BATCH_SIZE]
     batch_idx = len(batch_files) + (i // BATCH_SIZE)
-    print(f"\n===BATCH {batch_idx} ({len(batch)} chunks)===")
-    for j, c in enumerate(batch):
-        print(f"\n---CHUNK {already_enriched + i + j}---")
-        print(f"Title: {c['title']}")
-        print(c["content"][:1500])
-    print(f"===END BATCH {batch_idx}===")
+    info = {
+        "batch_idx": batch_idx,
+        "global_offset": already_enriched + i,
+        "count": len(batch),
+        "chunks": [{"idx": already_enriched + i + j, "title": c["title"], "content": c["content"][:1500]} for j, c in enumerate(batch)],
+    }
+    (BATCHES_DIR / f"batch_{batch_idx:04d}.json").write_text(json.dumps(info, indent=2))
+    total_batches += 1
+
+print(f"Prepared {total_batches} batches ({len(remaining)} chunks)")
+print(f"WORK_DIR={WORK_DIR}")
 PREP_EOF
 ```
 
@@ -294,47 +300,64 @@ PREP_EOF
 
 **CRITICAL RULES:**
 1. Send ALL `Agent` tool calls in a SINGLE message for true parallelism. Use `run_in_background=true`.
-2. **PASTE the chunk content directly into each agent prompt.** Copy the text between `===BATCH N===` and `===END BATCH N===` from Phase 1 output and paste it into the prompt below. Do NOT rewrite, reformulate, or summarize — paste as-is.
-3. Each sub-agent generates metadata, validates it, AND writes the result to disk via Bash. The orchestrator NEVER touches the JSON content.
+2. The orchestrator sends ONLY the batch number and work dir path. The sub-agent reads chunks from disk, generates metadata, validates, and writes the result — all by itself.
+3. **The orchestrator NEVER copies, pastes, or rewrites chunk content or metadata JSON.** All data flows through disk.
 
-For each batch block from Phase 1 output, spawn one agent:
+For each batch from Phase 1, spawn one agent:
 
 ```
 Agent(
   model="haiku",
   run_in_background=true,
-  description="Enrich batch N (M chunks)",
-  prompt="You are enriching M documentation chunks with metadata. You must:
-1. Generate a JSON array with one object per chunk
-2. Validate the metadata format
-3. Write the result to disk using the Python script below
+  description="Enrich batch N",
+  prompt="Enrich documentation chunks with metadata. Read your batch, generate metadata, validate, and write results to disk.
 
-Each metadata object must have:
+Run this script via Bash — fill in your generated metadata where indicated:
+
+python3 << 'ENRICH_EOF'
+import json
+from pathlib import Path
+
+WORK_DIR = Path(\".king-context/_temp/<DOMAIN>\")
+BATCH_FILE = WORK_DIR / \"batches\" / \"batch_<N padded to 4 digits>.json\"
+ENRICHED_DIR = WORK_DIR / \"enriched\"
+ENRICHED_DIR.mkdir(exist_ok=True)
+
+# 1. Read your batch
+batch = json.loads(BATCH_FILE.read_text())
+BATCH_IDX = batch[\"batch_idx\"]
+OFFSET = batch[\"global_offset\"]
+chunks = batch[\"chunks\"]
+
+# Print chunks so you can see them
+for c in chunks:
+    print(f\"--- Chunk {c['idx']}: {c['title']} ---\")
+    print(c['content'][:500])
+    print()
+ENRICH_EOF
+
+After reading the chunks, generate a JSON array with one metadata object per chunk. Each object must have:
 - \"keywords\": 5-12 strings (technical terms, API names, methods)
-- \"use_cases\": 2-7 strings (start with verbs: \"Use when...\", \"Configure when...\")
+- \"use_cases\": 2-7 strings starting with verbs (\"Use when...\", \"Configure when...\")
 - \"tags\": 1-5 strings (broad categories)
 - \"priority\": int 1-10 (10=core, 1=edge case)
 
-Here are the chunks:
+Then save by running this script (replace YOUR_JSON_ARRAY with your generated array):
 
-<PASTE BATCH N CONTENT HERE — the ---CHUNK X--- blocks, as-is>
-
-After generating the metadata, save it by running this Bash command (replace the JSON array inside the script):
-
-python3 << 'ENRICH_EOF'
-import json, re
+python3 << 'SAVE_EOF'
+import json
 from pathlib import Path
 
 WORK_DIR = Path(\".king-context/_temp/<DOMAIN>\")
 ENRICHED_DIR = WORK_DIR / \"enriched\"
-ENRICHED_DIR.mkdir(exist_ok=True)
-BATCH_IDX = <N>
-GLOBAL_OFFSET = <OFFSET>
+BATCH_FILE = WORK_DIR / \"batches\" / \"batch_<N padded to 4 digits>.json\"
+batch = json.loads(BATCH_FILE.read_text())
+BATCH_IDX = batch[\"batch_idx\"]
+OFFSET = batch[\"global_offset\"]
 
-# Your generated metadata — paste your JSON array here
-raw_metadata = <YOUR JSON ARRAY HERE>
+raw_metadata = YOUR_JSON_ARRAY
 
-# Load chunk data
+# Load full chunk data for merging
 all_chunks = []
 for f in sorted((WORK_DIR / \"chunks\").glob(\"*.json\")):
     all_chunks.extend(json.loads(f.read_text()))
@@ -343,17 +366,15 @@ for f in sorted((WORK_DIR / \"chunks\").glob(\"*.json\")):
 RANGES = {\"keywords\": (5, 12), \"use_cases\": (2, 7), \"tags\": (1, 5)}
 merged, failed = [], []
 for i, m in enumerate(raw_metadata):
-    idx = GLOBAL_OFFSET + i
-    if idx >= len(all_chunks):
-        break
-    errs = [f\"{k}: need {lo}-{hi}, got {len(m.get(k,[]))}\" for k,(lo,hi) in RANGES.items()
+    idx = OFFSET + i
+    if idx >= len(all_chunks): break
+    errs = [f\"{k}: {len(m.get(k,[]))}\" for k,(lo,hi) in RANGES.items()
             if not isinstance(m.get(k), list) or not (lo <= len(m[k]) <= hi)]
     if not isinstance(m.get(\"priority\"), int) or not (1 <= m.get(\"priority\",0) <= 10):
-        errs.append(\"priority: need int 1-10\")
+        errs.append(\"priority\")
     if errs:
-        print(f\"  WARN chunk {idx}: {errs}\")
-        failed.append(idx)
-        continue
+        print(f\"WARN chunk {idx}: {errs}\")
+        failed.append(idx); continue
     chunk = all_chunks[idx]
     merged.append({
         \"title\": chunk[\"title\"], \"path\": chunk[\"path\"],
@@ -365,14 +386,10 @@ for i, m in enumerate(raw_metadata):
 out = ENRICHED_DIR / f\"batch_{BATCH_IDX:04d}.json\"
 out.write_text(json.dumps(merged, indent=2))
 print(f\"Batch {BATCH_IDX}: {len(merged)} ok, {len(failed)} failed -> {out.name}\")
-if failed:
-    print(f\"  Failed chunks: {failed}\")
-ENRICH_EOF
+SAVE_EOF
 "
 )
 ```
-
-The sub-agent handles everything: generate → validate → write to disk. The orchestrator's context is never polluted with metadata JSON.
 
 ##### Phase 3: Verify results (after ALL agents complete)
 

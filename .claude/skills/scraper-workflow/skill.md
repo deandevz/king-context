@@ -11,10 +11,10 @@ Orchestrate the full documentation scraping pipeline: discover, filter, fetch, c
 **READ THESE BEFORE DOING ANYTHING:**
 
 1. **You (the orchestrator) NEVER generate enrichment metadata.** Only sub-agents generate keywords/use_cases/tags/priority. If a sub-agent fails, retry or skip — NEVER fill in the data yourself. Generating it yourself is hallucination.
-2. **After each sub-agent returns, save a checkpoint file** to `.king-context/_temp/<domain>/enriched/batch_NNNN.json` using a Python script. This is mandatory — `king-scrape --step export` reads these files.
+2. **After each sub-agent returns, save a checkpoint file** to `.king-context/_temp/<domain>/enriched/batch_NNNN.json` using a Python script. This is mandatory — `.king-context/bin/king-scrape --step export` reads these files.
 3. **ALWAYS pass `--name <name>`** to every `king-scrape` command. Without it, the export generates a generic name.
-4. **Index with `kctx index`** (CLI, stores in `.king-context/`). NEVER use `seed_data` or `python -m king_context.seed_data` — that seeds the old MCP database.
-5. **ALWAYS use `--stop-after`** in Workflow B to prevent king-scrape from running steps you want to handle via sub-agents.
+4. **Index with `.king-context/bin/kctx index`** (CLI, stores in `.king-context/`). NEVER use `seed_data` or `python -m king_context.seed_data` — that seeds the old MCP database.
+5. **ALWAYS use `--stop-after`** in Workflow B to prevent .king-context/bin/king-scrape from running steps you want to handle via sub-agents.
 
 ---
 
@@ -156,7 +156,7 @@ print(f'Prepared work dir with {len(<TOPIC_URLS>)} URLs')
 
 This lets you skip `king-scrape`'s discover+filter steps and go straight to fetch.
 
-**When there is NO topic filter**: skip Step 2 entirely and let `king-scrape <base_url>` handle discover+filter normally.
+**When there is NO topic filter**: skip Step 2 entirely and let `.king-context/bin/king-scrape <base_url>` handle discover+filter normally.
 
 ---
 
@@ -186,7 +186,7 @@ Before starting any pipeline, check for existing progress:
 **If topic filter was applied (Step 2)**: the work dir already has `filtered_urls.json` with only the relevant URLs and manifest with discover+filter done. Start from fetch:
 
 ```bash
-king-scrape <base_url> --name <name> --yes --step fetch
+.king-context/bin/king-scrape <base_url> --name <name> --yes --step fetch
 ```
 
 This resumes from fetch (discover+filter already done via Step 2), then continues through chunk → enrich → export.
@@ -194,7 +194,7 @@ This resumes from fetch (discover+filter already done via Step 2), then continue
 **If NO topic filter (scraping everything)**: one command does everything:
 
 ```bash
-king-scrape <base_url> --name <name> --yes
+.king-context/bin/king-scrape <base_url> --name <name> --yes
 ```
 
 This runs: discover → filter (with LLM) → fetch → chunk → enrich → export.
@@ -204,7 +204,7 @@ The `--yes` flag skips the enrichment cost confirmation prompt.
 After it completes, index into the CLI (NOT seed_data):
 
 ```bash
-kctx index .king-context/data/<name>.json
+.king-context/bin/kctx index .king-context/data/<name>.json
 ```
 
 Done. Report: "Indexed `<name>` — N sections."
@@ -218,16 +218,16 @@ This workflow runs fetch+chunk via `king-scrape`, then enriches via sub-agents, 
 **If topic filter was applied (Step 2)**: work dir has filtered URLs. Fetch + chunk, then stop:
 
 ```bash
-king-scrape <base_url> --name <name> --stop-after chunk --step fetch
+.king-context/bin/king-scrape <base_url> --name <name> --stop-after chunk --step fetch
 ```
 
 **If NO topic filter**: discover + heuristic filter + fetch + chunk, then stop:
 
 ```bash
-king-scrape <base_url> --name <name> --no-llm-filter --stop-after chunk
+.king-context/bin/king-scrape <base_url> --name <name> --no-llm-filter --stop-after chunk
 ```
 
-**IMPORTANT**: Always use `--stop-after chunk` to prevent king-scrape from running enrichment (we'll do that with sub-agents).
+**IMPORTANT**: Always use `--stop-after chunk` to prevent .king-context/bin/king-scrape from running enrichment (we'll do that with sub-agents).
 
 #### Step 4b: Smart filter (optional, sub-agent Sonnet)
 
@@ -243,9 +243,9 @@ If maybe > 10, use a Sonnet sub-agent to reclassify (batch of 50 URLs per call).
 
 **This is the critical step. Follow the 3 phases exactly.**
 
-##### Phase 1: Prepare and print batches
+##### Phase 1: Prepare batch files on disk
 
-Use `Bash` to run a Python script that reads chunks, checks for resume, and **prints each batch as a formatted text block to stdout**. Do NOT write files to `/tmp` — sub-agents cannot access them.
+Use `Bash` to run a Python script that reads chunks, checks for resume, and **writes batch files to `.king-context/_temp/<DOMAIN>/batches/`**. Sub-agents will read directly from these files.
 
 ```python
 python3 << 'PREP_EOF'
@@ -255,7 +255,9 @@ from pathlib import Path
 WORK_DIR = Path(".king-context/_temp/<DOMAIN>")
 CHUNKS_DIR = WORK_DIR / "chunks"
 ENRICHED_DIR = WORK_DIR / "enriched"
+BATCHES_DIR = WORK_DIR / "batches"
 ENRICHED_DIR.mkdir(exist_ok=True)
+BATCHES_DIR.mkdir(exist_ok=True)
 BATCH_SIZE = 7
 
 # Load all chunks
@@ -275,18 +277,22 @@ if not remaining:
     print("All chunks already enriched. Skip to export.")
     exit(0)
 
-# Print each batch as a formatted block — orchestrator will paste these into agent prompts
-print(f"TOTAL_BATCHES={len(range(0, len(remaining), BATCH_SIZE))}")
-print(f"TOTAL_CHUNKS={len(remaining)}")
+# Write batch files to disk for sub-agents to read
+total_batches = 0
 for i in range(0, len(remaining), BATCH_SIZE):
     batch = remaining[i:i+BATCH_SIZE]
     batch_idx = len(batch_files) + (i // BATCH_SIZE)
-    print(f"\n===BATCH {batch_idx} ({len(batch)} chunks)===")
-    for j, c in enumerate(batch):
-        print(f"\n---CHUNK {already_enriched + i + j}---")
-        print(f"Title: {c['title']}")
-        print(c["content"][:1500])
-    print(f"===END BATCH {batch_idx}===")
+    info = {
+        "batch_idx": batch_idx,
+        "global_offset": already_enriched + i,
+        "count": len(batch),
+        "chunks": [{"idx": already_enriched + i + j, "title": c["title"], "content": c["content"][:1500]} for j, c in enumerate(batch)],
+    }
+    (BATCHES_DIR / f"batch_{batch_idx:04d}.json").write_text(json.dumps(info, indent=2))
+    total_batches += 1
+
+print(f"Prepared {total_batches} batches ({len(remaining)} chunks)")
+print(f"WORK_DIR={WORK_DIR}")
 PREP_EOF
 ```
 
@@ -294,47 +300,64 @@ PREP_EOF
 
 **CRITICAL RULES:**
 1. Send ALL `Agent` tool calls in a SINGLE message for true parallelism. Use `run_in_background=true`.
-2. **PASTE the chunk content directly into each agent prompt.** Copy the text between `===BATCH N===` and `===END BATCH N===` from Phase 1 output and paste it into the prompt below. Do NOT rewrite, reformulate, or summarize — paste as-is.
-3. Each sub-agent generates metadata, validates it, AND writes the result to disk via Bash. The orchestrator NEVER touches the JSON content.
+2. The orchestrator sends ONLY the batch number and work dir path. The sub-agent reads chunks from disk, generates metadata, validates, and writes the result — all by itself.
+3. **The orchestrator NEVER copies, pastes, or rewrites chunk content or metadata JSON.** All data flows through disk.
 
-For each batch block from Phase 1 output, spawn one agent:
+For each batch from Phase 1, spawn one agent:
 
 ```
 Agent(
   model="haiku",
   run_in_background=true,
-  description="Enrich batch N (M chunks)",
-  prompt="You are enriching M documentation chunks with metadata. You must:
-1. Generate a JSON array with one object per chunk
-2. Validate the metadata format
-3. Write the result to disk using the Python script below
+  description="Enrich batch N",
+  prompt="Enrich documentation chunks with metadata. Read your batch, generate metadata, validate, and write results to disk.
 
-Each metadata object must have:
+Run this script via Bash — fill in your generated metadata where indicated:
+
+python3 << 'ENRICH_EOF'
+import json
+from pathlib import Path
+
+WORK_DIR = Path(\".king-context/_temp/<DOMAIN>\")
+BATCH_FILE = WORK_DIR / \"batches\" / \"batch_<N padded to 4 digits>.json\"
+ENRICHED_DIR = WORK_DIR / \"enriched\"
+ENRICHED_DIR.mkdir(exist_ok=True)
+
+# 1. Read your batch
+batch = json.loads(BATCH_FILE.read_text())
+BATCH_IDX = batch[\"batch_idx\"]
+OFFSET = batch[\"global_offset\"]
+chunks = batch[\"chunks\"]
+
+# Print chunks so you can see them
+for c in chunks:
+    print(f\"--- Chunk {c['idx']}: {c['title']} ---\")
+    print(c['content'][:500])
+    print()
+ENRICH_EOF
+
+After reading the chunks, generate a JSON array with one metadata object per chunk. Each object must have:
 - \"keywords\": 5-12 strings (technical terms, API names, methods)
-- \"use_cases\": 2-7 strings (start with verbs: \"Use when...\", \"Configure when...\")
+- \"use_cases\": 2-7 strings starting with verbs (\"Use when...\", \"Configure when...\")
 - \"tags\": 1-5 strings (broad categories)
 - \"priority\": int 1-10 (10=core, 1=edge case)
 
-Here are the chunks:
+Then save by running this script (replace YOUR_JSON_ARRAY with your generated array):
 
-<PASTE BATCH N CONTENT HERE — the ---CHUNK X--- blocks, as-is>
-
-After generating the metadata, save it by running this Bash command (replace the JSON array inside the script):
-
-python3 << 'ENRICH_EOF'
-import json, re
+python3 << 'SAVE_EOF'
+import json
 from pathlib import Path
 
 WORK_DIR = Path(\".king-context/_temp/<DOMAIN>\")
 ENRICHED_DIR = WORK_DIR / \"enriched\"
-ENRICHED_DIR.mkdir(exist_ok=True)
-BATCH_IDX = <N>
-GLOBAL_OFFSET = <OFFSET>
+BATCH_FILE = WORK_DIR / \"batches\" / \"batch_<N padded to 4 digits>.json\"
+batch = json.loads(BATCH_FILE.read_text())
+BATCH_IDX = batch[\"batch_idx\"]
+OFFSET = batch[\"global_offset\"]
 
-# Your generated metadata — paste your JSON array here
-raw_metadata = <YOUR JSON ARRAY HERE>
+raw_metadata = YOUR_JSON_ARRAY
 
-# Load chunk data
+# Load full chunk data for merging
 all_chunks = []
 for f in sorted((WORK_DIR / \"chunks\").glob(\"*.json\")):
     all_chunks.extend(json.loads(f.read_text()))
@@ -343,17 +366,15 @@ for f in sorted((WORK_DIR / \"chunks\").glob(\"*.json\")):
 RANGES = {\"keywords\": (5, 12), \"use_cases\": (2, 7), \"tags\": (1, 5)}
 merged, failed = [], []
 for i, m in enumerate(raw_metadata):
-    idx = GLOBAL_OFFSET + i
-    if idx >= len(all_chunks):
-        break
-    errs = [f\"{k}: need {lo}-{hi}, got {len(m.get(k,[]))}\" for k,(lo,hi) in RANGES.items()
+    idx = OFFSET + i
+    if idx >= len(all_chunks): break
+    errs = [f\"{k}: {len(m.get(k,[]))}\" for k,(lo,hi) in RANGES.items()
             if not isinstance(m.get(k), list) or not (lo <= len(m[k]) <= hi)]
     if not isinstance(m.get(\"priority\"), int) or not (1 <= m.get(\"priority\",0) <= 10):
-        errs.append(\"priority: need int 1-10\")
+        errs.append(\"priority\")
     if errs:
-        print(f\"  WARN chunk {idx}: {errs}\")
-        failed.append(idx)
-        continue
+        print(f\"WARN chunk {idx}: {errs}\")
+        failed.append(idx); continue
     chunk = all_chunks[idx]
     merged.append({
         \"title\": chunk[\"title\"], \"path\": chunk[\"path\"],
@@ -365,14 +386,10 @@ for i, m in enumerate(raw_metadata):
 out = ENRICHED_DIR / f\"batch_{BATCH_IDX:04d}.json\"
 out.write_text(json.dumps(merged, indent=2))
 print(f\"Batch {BATCH_IDX}: {len(merged)} ok, {len(failed)} failed -> {out.name}\")
-if failed:
-    print(f\"  Failed chunks: {failed}\")
-ENRICH_EOF
+SAVE_EOF
 "
 )
 ```
-
-The sub-agent handles everything: generate → validate → write to disk. The orchestrator's context is never polluted with metadata JSON.
 
 ##### Phase 3: Verify results (after ALL agents complete)
 
@@ -442,7 +459,7 @@ If retry also fails → skip and warn: "Chunk N skipped — sub-agent couldn't g
 After all batches are saved to `enriched/`:
 
 ```bash
-king-scrape <base_url> --name <name> --step export --no-auto-seed
+.king-context/bin/king-scrape <base_url> --name <name> --step export --no-auto-seed
 ```
 
 `--no-auto-seed` prevents auto-indexing into the old MCP database.
@@ -452,12 +469,12 @@ king-scrape <base_url> --name <name> --step export --no-auto-seed
 Index into the CLI (`.king-context/`):
 
 ```bash
-kctx index .king-context/data/<name>.json
+.king-context/bin/kctx index .king-context/data/<name>.json
 ```
 
 **NEVER use `seed_data` or `python -m king_context.seed_data`.** Those seed the old MCP server, not the CLI.
 
-Report: "Indexed `<name>` — N sections. Use: `kctx search 'query' --doc <name>`"
+Report: "Indexed `<name>` — N sections. Use: `.king-context/bin/kctx search 'query' --doc <name>`"
 
 ---
 
@@ -472,7 +489,7 @@ Report: "Indexed `<name>` — N sections. Use: `kctx search 'query' --doc <name>
 | Fetch fails for a page | Already handled by scraper (logs and continues) |
 | `king-scrape` command fails | Read stderr, report to user with suggestion |
 | No chunks generated | "No content extracted. Check if the URL is valid." |
-| `kctx index` path too long | Paths with `/` in section names create subdirs — sanitize with Python before indexing |
+| `.king-context/bin/kctx index` path too long | Paths with `/` in section names create subdirs — sanitize with Python before indexing |
 
 ---
 
@@ -491,8 +508,8 @@ Report: "Indexed `<name>` — N sections. Use: `kctx search 'query' --doc <name>
 ```
 User: "scrape the Stripe docs from https://docs.stripe.com"
 → No topic filter — scrape everything
-→ king-scrape https://docs.stripe.com --name stripe --yes
-→ kctx index .king-context/data/stripe.json
+→ .king-context/bin/king-scrape https://docs.stripe.com --name stripe --yes
+→ .king-context/bin/kctx index .king-context/data/stripe.json
 → "Indexed stripe — 145 sections."
 ```
 
@@ -505,22 +522,22 @@ User: "I want only the TTS/audio docs from https://platform.minimax.io/docs/guid
 → Step 2b: Keyword filter → 23 TTS URLs
 → Step 2c: Write work dir with 23 filtered URLs
 → "Found 141 total, filtered to 23 TTS/audio pages. Proceed?"
-→ Step 4a: king-scrape ... --name minimax-tts --stop-after chunk --step fetch
+→ Step 4a: .king-context/bin/king-scrape ... --name minimax-tts --stop-after chunk --step fetch
 → Step 4c: For each batch of 5-8 chunks:
     → Haiku sub-agent returns JSON array of metadata
     → Python script validates, merges with chunk data, saves to enriched/batch_NNNN.json
-→ Step 4d: king-scrape ... --name minimax-tts --step export --no-auto-seed
-→ Step 4e: kctx index .king-context/data/minimax-tts.json
+→ Step 4d: .king-context/bin/king-scrape ... --name minimax-tts --step export --no-auto-seed
+→ Step 4e: .king-context/bin/kctx index .king-context/data/minimax-tts.json
 → "Indexed minimax-tts — 66 sections."
 ```
 
 ### With sub-agents (full site)
 ```
 User: "scrape Stripe docs using claude code"
-→ king-scrape https://docs.stripe.com --name stripe --no-llm-filter --stop-after chunk
+→ .king-context/bin/king-scrape https://docs.stripe.com --name stripe --no-llm-filter --stop-after chunk
 → [Haiku sub-agents enrich batches → Python script saves checkpoints]
-→ king-scrape https://docs.stripe.com --name stripe --step export --no-auto-seed
-→ kctx index .king-context/data/stripe.json
+→ .king-context/bin/king-scrape https://docs.stripe.com --name stripe --step export --no-auto-seed
+→ .king-context/bin/kctx index .king-context/data/stripe.json
 → "Indexed stripe — 145 sections."
 ```
 
