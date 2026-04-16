@@ -52,6 +52,9 @@ function mergeSettings(projectDir) {
         'Bash(.king-context/bin/kctx *)',
         'Bash(.king-context/bin/king-scrape *)',
         'Bash(python3 *)',
+        'Bash(python3*)',
+        'Write(.king-context/**)',
+        'Read(.king-context/**)',
       ],
     },
   };
