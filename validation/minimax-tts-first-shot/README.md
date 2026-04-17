@@ -5,7 +5,7 @@
 
 ## What is this
 
-A real test case to validate the workflow of an LLM consuming documentation via King Context MCP server and producing working code on the first attempt.
+A real test case to validate the workflow of an LLM consuming documentation via King Context CLI skill and producing working code on the first attempt.
 
 **Result**: MP3 audio generated successfully on the first run. Zero adjustments.
 
