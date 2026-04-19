@@ -1,97 +1,75 @@
 # King Context
 
-Local-first, token-efficient documentation for LLM agents. Scrape any docs site, enrich with structured metadata, and give AI agents exactly the documentation they need — nothing more.
+Portuguese Version: [README.md](README-pt-br.md).
 
-**Status:** Active Development | **License:** MIT
+Documentation infrastructure for AI code agents.
 
----
+Scrapes any documentation site, enriches each section with structured metadata, and hands your agent exactly the docs it needs to write correct code. Nothing more.
 
-## The Problem
+Local first. Token efficient. Open source.
 
-LLMs need documentation to write correct code, but current approaches waste tokens:
-
-- **Raw docs in context** — 15,000+ tokens for a single API page, most of it irrelevant
-- **Cloud tools (Context7, etc.)** — the server decides what's relevant, returns large blocks, and the LLM pays the token cost whether it needed all that content or not
-- **No transparency** — you can't see what's indexed, can't control freshness, can't work offline
+**Status:** actively developed. **License:** MIT.
 
 ---
 
-## The Approach: MCP Server → CLI Pivot
+## Why this exists
 
-### Phase 1: MCP Server (proved the concept)
+LLMs write better code when they have the right documentation in context. The hard part is figuring out what "right" means.
 
-We started with an MCP server using SQLite + FTS5 + embeddings, implementing a 4-layer cascade search (cache → metadata → FTS5 → hybrid). Benchmarks against Context7 showed the enriched metadata approach worked:
+Dumping raw docs into context burns 15k tokens on a single API page, and most of it is noise. Cloud tools like Context7 ship chunks based on semantic similarity, which means a remote server decides what your agent sees, and the agent pays the token bill whether it needed all that or not. You can't see what's indexed, you don't control updates, and it doesn't work offline.
 
-| Metric | King Context (MCP) | Context7 | Improvement |
-|--------|-------------------|----------|-------------|
-| Avg tokens/query | 968 | 3,125 | **3.2x fewer** |
-| Latency (metadata hit) | 1.15ms | 200-500ms | **170x faster** |
-| Latency (FTS) | 97.83ms | 200-500ms | **2-5x faster** |
-| Duplicate results | 0 | 11 | **Zero waste** |
-| Relevance score | 3.2/5 | 2.8/5 | +14% |
-| Implementability | 4.4/5 | 4.0/5 | +10% |
+King Context takes a different route. Every section of every scraped doc gets structured metadata (keywords, use cases, tags, priority). The agent searches metadata first, previews before reading, and only pulls full content when it actually needs to. Progressive disclosure, not dump.
 
-**59-69% token reduction** across all tested queries (ElevenLabs, Gladia, OpenRouter). Full data in [BENCHMARK.md](BENCHMARK.md).
-
-### Phase 2: CLI (where we are now)
-
-The MCP server worked, but we realized something: **the server was making decisions that the agent should make**. It returned full content immediately — the agent had no way to preview, filter, or control the token budget.
-
-We pivoted to a CLI (`kctx`) that gives agents **progressive disclosure**:
-
-```
-search (metadata only, ~50 tokens) → preview (~400 tokens) → full read (~1,000 tokens)
-```
-
-Each step costs tokens only if the agent decides to go deeper. The agent controls the budget, not the server.
-
-| | CLI (`kctx`) | MCP Server |
-|---|---|---|
-| **Agent control** | Agent decides what to read | Server decides what to return |
-| **Token cost** | Metadata-only search results | Full content in responses |
-| **Preview** | `--preview` before full read | No preview mode |
-| **Storage** | Plain files (`.king-context/`) | SQLite + FTS5 + embeddings |
-| **Dependencies** | Zero for reads | SQLite, numpy, sentence-transformers |
-
-The MCP server is still available for backward compatibility, but the CLI is the recommended interface.
-
-### Phase 3: Real-World Validation
-
-An LLM with zero prior knowledge of the MiniMax TTS API used King Context CLI to:
-
-1. `kctx search "text to speech"` → found the right section in 1 query
-2. `kctx read --preview` → confirmed it was relevant (~400 tokens)
-3. `kctx read` → read the full API reference (~1,100 tokens)
-4. Wrote a **working Python script on the first execution** — zero corrections
-
-**Total: ~2,800 tokens consumed. First-shot accuracy. Zero adjustments.**
-
-For comparison, reading the same API page in a browser would cost 15,000+ tokens — and the LLM would still need to find the relevant parts.
-
-Full details in [`validation/minimax-tts-first-shot/`](validation/minimax-tts-first-shot/).
+In practice, an agent with no prior knowledge of an API can use King Context to read the docs and produce working code on the first try, usually around 2,800 tokens total. The same workflow browsing a webpage runs 15k+ tokens and still leaves the agent to figure out what matters.
 
 ---
 
-## How It Works
+## Quick start
 
-```
-┌─────────────┐     ┌─────────────┐     ┌──────────────┐     ┌───────────┐
-│  king-scrape │ ──→ │  data/*.json │ ──→ │  kctx index  │ ──→ │ .king-    │
-│  (scraper)   │     │  (enriched)  │     │              │     │  context/ │
-└─────────────┘     └─────────────┘     └──────────────┘     └─────┬─────┘
-                                                                    │
-                                                              ┌─────▼─────┐
-                                                              │ kctx CLI  │
-                                                              │ search/   │
-                                                              │ read/grep │
-                                                              └───────────┘
+One command to install into any project:
+
+```bash
+npx @king-context/cli init
 ```
 
-1. **Scrape** — `king-scrape` discovers pages on a docs site, fetches them, chunks the content, and enriches each chunk with structured metadata (keywords, use_cases, tags, priority) via LLM
-2. **Index** — `kctx index` builds a file-based data store with reverse indexes for fast lookups
-3. **Search** — `kctx search` scores sections by matching query terms against keyword and use_case indexes. No full-text scanning, no embeddings needed for 90% of queries
+This creates `.king-context/` with a Python virtual env, the CLI tools, Claude Code skills, and config templates. Zero manual setup.
 
-The metadata enrichment is the core innovation. Each section is annotated with:
+Add your keys:
+
+```bash
+cp .king-context/.env.example .env
+# FIRECRAWL_API_KEY=...     required for scraping
+# OPENROUTER_API_KEY=...    optional, for automated enrichment
+```
+
+Scrape a docs site:
+
+```bash
+.king-context/bin/king-scrape https://docs.stripe.com --name stripe --yes
+.king-context/bin/kctx index .king-context/data/stripe.json
+```
+
+Or just ask Claude Code in plain English: *"scrape the Stripe docs and index them."* The installed skill handles the whole pipeline.
+
+Then search, preview, and read:
+
+```bash
+kctx list                                        # show available docs
+kctx search "authentication" --doc stripe       # metadata search
+kctx read stripe authentication --preview       # about 400 tokens
+kctx read stripe authentication                 # full section
+kctx grep "Bearer" --doc stripe --context 3     # regex fallback
+```
+
+Every command accepts `--json` for machine-readable output.
+
+---
+
+## How it works
+
+Three pieces.
+
+**king-scrape** discovers pages on a docs site, downloads them, chunks the content, and enriches each chunk through an LLM. Each section ends up annotated like this:
 
 ```json
 {
@@ -102,205 +80,162 @@ The metadata enrichment is the core innovation. Each section is annotated with:
 }
 ```
 
-Agents find the right section through structured metadata instead of scanning raw content. This is what enables the 70% token reduction.
+**kctx index** turns the enriched JSON into a flat file structure with reverse indexes. No database. No embeddings for most queries.
+
+**kctx** is the search interface. It scores sections by matching query terms against the keyword and use case indexes. No full text scan, no vector similarity on roughly 90% of lookups.
+
+The enrichment step is the core of the idea. Agents find the right section through structured metadata instead of scanning raw content. That's what makes progressive disclosure work without losing recall.
 
 ---
 
-## Quick Start
+## Benchmarks
 
-Install King Context in any project with a single command:
+We ran two rounds against Context7, the most widely used documentation tool for code agents today.
 
-```bash
-npx @king-context/cli@0.1.0 init
-```
+### Round 1: MCP server vs MCP server
 
-This creates a `.king-context/` directory with everything you need — Python venv, CLI tools, Claude Code skills, and configuration templates. No manual setup required.
+Original architecture. Both tools exposed as MCP servers, same corpus, same agent.
 
-Then configure your API keys:
+| Metric | King Context | Context7 | Improvement |
+|---|---|---|---|
+| Average tokens per query | 968 | 3,125 | 3.2x less |
+| Latency (metadata hit) | 1.15ms | 200 to 500ms | 170x faster |
+| Latency (full text search) | 97.83ms | 200 to 500ms | 2 to 5x faster |
+| Duplicate results | 0 | 11 | zero waste |
+| Relevance score | 3.2 / 5 | 2.8 / 5 | +14% |
+| Implementability | 4.4 / 5 | 4.0 / 5 | +10% |
 
-```bash
-cp .king-context/.env.example .env
-# Edit .env and add:
-#   FIRECRAWL_API_KEY=...    (required for scraping)
-#   OPENROUTER_API_KEY=...   (optional, for automated enrichment)
-```
+Full data in [BENCHMARK.md](BENCHMARK.md).
 
-Verify the installation:
+### Round 2: skill vs skill
 
-```bash
-npx @king-context/cli doctor
-```
+Both tools now running as CLI + Claude Code skill, driven by the same agent. The comparison ran on the Google Gemini API docs using Claude Opus 4.7.
 
-### Scrape documentation
+| Metric | Context7 (skill) | King Context (skill) | Winner |
+|---|---|---|---|
+| Average tokens per query | ~1,896 | ~1,064 | King Context |
+| Median tokens per query | 1,750 | 901 | King Context |
+| Correct facts | 32 / 38 (84%) | 38 / 38 (100%) | King Context |
+| Hallucinations per query | 0.33 | 0.0 | King Context |
+| Composite quality (0 to 5) | 3.46 | 4.79 | King Context |
+| First-shot code (Q4) | compiles | compiles | tie |
 
-```bash
-# Scrape and index an entire docs site
-.king-context/bin/king-scrape https://docs.stripe.com --name stripe --yes
-.king-context/bin/kctx index .king-context/data/stripe.json
+### What round 2 actually showed
 
-# Resume interrupted scrapes (re-run the same command)
-.king-context/bin/king-scrape https://docs.stripe.com --name stripe --yes
+The token gap shrank compared to round 1, but the story shifted from quantity to quality. With both sides now agent-driven, the difference is in how each tool shapes what the agent can ask for.
 
-# Run individual pipeline steps
-.king-context/bin/king-scrape <url> --name <name> --stop-after fetch   # stop after fetching
-.king-context/bin/king-scrape <url> --name <name> --step chunk          # resume from chunking
-.king-context/bin/king-scrape <url> --name <name> --step export         # resume from export
-```
+Three things King Context did that Context7 didn't:
 
-Or just ask Claude Code: `"scrape the docs from https://docs.stripe.com, name it stripe"` — the installed skill handles the full pipeline.
+**Self-correct.** The initial Q1 search missed the model spec page. The agent ran `grep`, found the line, read the section in preview mode, and stopped there. Total cost still lower than Context7's single bloated call. Progressive disclosure (`search, grep, preview, read`) gives the agent checkpoints to backtrack and try another angle without burning budget.
 
-Requires `FIRECRAWL_API_KEY` in `.env`. `OPENROUTER_API_KEY` is optional (only for automated enrichment; Claude Code sub-agents can do it without). The scraper has **intra-step resume**: fetch skips already-downloaded pages, enrich skips already-processed batches.
+**Refuse to hallucinate.** Q5 asked about `Retry-After` headers. King Context explicitly answered "not present in the indexed docs". Context7 returned about 600 tokens of unrelated curl upload examples, purely because "rate limit" matched by proximity. When retrieval hands back large chunks picked by semantic similarity, false positives slip into context quietly. When retrieval is staged and filtered by metadata, the agent can tell when something is missing.
 
-### Search documentation
+**Handle ambiguity.** Q3 touched `media_resolution`. The Gemini API has two generations of that parameter. King Context returned both. Context7 returned only the legacy version, which is outdated for Gemini 3. Structured metadata (keywords + use cases + tags) catches both generations; semantic similarity locks onto whichever has more mass in the corpus.
 
-```bash
-.king-context/bin/kctx list                                        # list available docs
-.king-context/bin/kctx search "streaming audio"                    # search across all docs
-.king-context/bin/kctx search "auth" --doc stripe --top 3          # search within a specific doc
-.king-context/bin/kctx read stripe authentication --preview        # preview before reading
-.king-context/bin/kctx read stripe authentication                  # full read
-.king-context/bin/kctx topics stripe                               # browse by topic
-.king-context/bin/kctx grep "Bearer" --doc stripe --context 3      # grep for exact patterns
-```
+The round 2 win isn't "the agent drives retrieval". Both sides drive retrieval now. The win is the shape of what the agent can reach: small units indexed by metadata, previewable, versus bigger chunks ranked by semantics.
 
-All commands support `--json` for machine-parseable output.
+### Limitations we own
 
-### Update
-
-```bash
-npx @king-context/cli update
-```
-
-Updates CLI tools and skills without touching your indexed documentation.
-
-### Real example: MiniMax TTS (first-shot)
-
-This is a real session — Claude had zero knowledge of the MiniMax API:
-
-```bash
-$ kctx list
-  minimax-tts  66 sections
-
-$ kctx search "text to speech HTTP" --doc minimax-tts
-  1. T2A HTTP API Reference (speech-t2a-http-content) score=14.50
-
-$ kctx read minimax-tts speech-t2a-http-content --preview    # ~400 tokens
-  # Confirmed: endpoint URL, auth, request/response format
-
-$ kctx read minimax-tts speech-t2a-http-content              # ~1,100 tokens
-  # Full spec: models, voice_setting, audio_setting, curl example
-
-$ kctx grep "English_" --doc minimax-tts                     # confirm voice ID
-  voice_id: "English_expressive_narrator"
-```
-
-**5 commands. ~2,800 tokens. Working Python script on first execution.** See [`validation/minimax-tts-first-shot/`](validation/minimax-tts-first-shot/) for the full code and detailed token breakdown.
+* One run per query in round 2, not two. Variance unknown.
+* Context7 token counts are per-character estimates, not tiktoken. About 20% margin of error.
 
 ---
 
-## Claude Code Skills (Beta)
+## Where this is going
 
-Skills teach Claude Code how to use King Context effectively.
+King Context started as a search tool. The direction from here is bigger.
 
-### `king-context` skill — Documentation Search
+The goal is to become the documentation layer that code agents use every day. Three pieces are already taking shape.
 
-Teaches the agent the optimal lookup strategy: check learned shortcuts → list → search → preview → read. Finds the right section in ≤3 CLI calls and saves shortcuts for future sessions.
+### Community documentation registry
 
-### `scraper-workflow` skill — Documentation Scraping
+Anyone who scrapes the docs for a lib can publish the enriched corpus. Others install with a single command:
 
-Orchestrates the full scraping pipeline with two modes:
-- **Workflow A (OpenRouter)** — fully automated via `king-scrape --yes`
-- **Workflow B (Claude Code sub-agents)** — uses Haiku for enrichment, Sonnet for filtering, no external LLM API key needed
+```bash
+kctx install stripe@v1
+kctx install fastapi@latest
+```
 
-Supports smart URL resolution (deep page → docs root), topic filtering ("scrape only the TTS docs from this site"), and resume detection.
+Community maintained, versioned, always current. Pre-enriched, so you skip the scraping step. Official vendor docs are a starting point, not a ceiling. Communities around specific libs can publish better versions: more examples, deeper use cases, faster update cycles than the official pages.
 
-> Skills are in active development and may change. See the skill files in `.claude/skills/` for details.
+### Agents that write specialized skills from docs
+
+The docs themselves already contain everything needed to teach an agent to use a lib well. An agent reading your corpus can generate a Claude Code skill that knows the lib's conventions, its gotchas, and its idiomatic patterns. Docs in, skills out.
+
+This is where King Context stops being just a retrieval tool and becomes a skill factory. Every public doc package becomes a candidate for an automatically generated specialized agent.
+
+### Integration into the dev workflow
+
+Retrieval is the baseline. The next layer is making King Context live inside the development loop: pin doc versions to the project so your agent never drifts, monitor upstream doc changes that might affect code you already wrote, surface the relevant sections when the agent notices you working on something.
+
+The idea isn't "agent asks, doc answers". The idea is that your agent always has the right documentation context, quietly, without you having to ask.
 
 ---
 
-## Architecture
+## CLI and MCP
 
-### CLI — `kctx` (Recommended)
+King Context ships two interfaces. They serve different environments.
 
-File-based search on `.king-context/` directory. No database, no dependencies for reads.
+The **CLI and the Claude Code skill** are the focus. That's where code agents work best, and that's where the quality numbers from the benchmark come from. If you use King Context inside Claude Code, Cursor, or any agentic coding workflow, that's the path.
+
+The **MCP server** is still supported. Some tools and workflows need native MCP: non-coding agents, IDE integrations, anything that expects an MCP endpoint. It runs on the same corpus and keeps getting improvements, just at a less aggressive pace than the CLI.
+
+Pick based on your environment. The corpus is the same either way.
+
+---
+
+## Project layout
 
 ```
-.king-context/
-├── stripe/
-│   ├── _meta.json              # doc metadata + reverse indexes
-│   ├── authentication.md       # section content
-│   ├── webhooks.md
-│   └── ...
-└── elevenlabs-api/
-    └── ...
+king-context/
+├── src/context_cli/        # CLI package (kctx)
+│   ├── searcher.py         # metadata search
+│   ├── reader.py           # section reader with preview
+│   ├── indexer.py          # JSON-to-file indexer
+│   └── grep.py             # regex fallback
+├── src/king_context/       # MCP server and scraper
+│   ├── server.py           # MCP server
+│   ├── db.py               # SQLite cascade search
+│   └── scraper/            # king-scrape pipeline
+├── .king-context/          # data store (generated)
+├── validation/             # real-world test cases
+└── .claude/skills/         # Claude Code skills
 ```
-
-### MCP Server (Legacy)
-
-Still available for tools that integrate via the Model Context Protocol:
-
-```bash
-claude mcp add king-context -- king-context
-python -m king_context.seed_data   # seed SQLite database
-```
-
-Uses the 4-layer cascade search (cache → metadata → FTS5 → hybrid embeddings) on SQLite. See [BENCHMARK.md](BENCHMARK.md) for details.
-
-### Scraper — `king-scrape`
-
-Pipeline: discover → filter → fetch → chunk → enrich → export. Each step saves checkpoints to `.king-context/_temp/<domain>/`. Interrupted scrapes resume automatically.
 
 ---
 
 ## Roadmap
 
-- **Community Documentation Registry** — shared, versioned documentation packages (`kctx install stripe@v1`). A community-maintained library of pre-enriched docs for popular APIs and frameworks
-- **Package distribution** — publish as `pip install king-context`
-- **Skill improvements** — the scraper workflow skill is in beta. Improving sub-agent reliability, parallel execution, and error handling
-- **More validation cases** — testing across different documentation sites, API styles, and complexity levels
-- **Methodology documentation** — King Context is one component of a broader methodology for LLM-assisted development. Separate repository planned
+Short term:
 
----
+* Community registry with versioned doc packages
+* Distribution via `pip install king-context`
+* Agent-generated skills built from scraped docs
+* Better sub-agent reliability during enrichment
 
-## Project Structure
+Further out:
 
-```
-king-context/
-├── src/context_cli/        # CLI package (kctx)
-│   ├── cli.py              # Entry point with subcommands
-│   ├── searcher.py         # Metadata-based search engine
-│   ├── reader.py           # Section reader with preview
-│   ├── indexer.py          # JSON → file structure indexer
-│   ├── formatter.py        # Output formatting (plain/JSON)
-│   └── grep.py             # Content-level regex search
-├── src/king_context/       # MCP server + scraper
-│   ├── server.py           # MCP server (FastMCP)
-│   ├── db.py               # Cascade search engine + SQLite
-│   └── scraper/            # Scraping pipeline (king-scrape)
-├── .king-context/          # File-based data store (generated)
-├── data/                   # Documentation JSONs (generated)
-├── validation/             # Real-world test cases
-├── docs/                   # Documentation
-├── tests/                  # Test suite
-└── .claude/skills/         # Claude Code skills (beta)
-```
+* Per-project version pinning, with notifications when upstream docs change
+* Workflow hooks that surface relevant docs during active coding
+* Smarter scraping: URL discovery, chunk limits, JavaScript-rendered content
+* More validation cases covering varied API styles and agent tasks
 
 ---
 
 ## Contributing
 
-Contributions needed:
+Three areas where the project needs the most help.
 
-- **Documentation packages** for popular APIs and frameworks
-- **Scraper improvements** — better URL discovery, chunking strategies
-- **Skill refinements** — making the Claude Code workflows more reliable
-- **Testing** across different documentation sites and use cases
-- **Validation cases** — more real-world examples of LLMs using King Context to build working code
+**Documentation packages.** If there's an API or framework you use a lot, scrape it and open a PR. A community library of pre-enriched docs is this project's biggest lever.
 
-This project is open source because documentation tooling for LLMs should be transparent, community-driven, and independent of any single provider.
+**Scraper reliability.** Edge cases in URL discovery, chunking strategies for unusual doc formats, better handling of JavaScript-rendered pages.
+
+**Skill improvements.** The Claude Code workflows are in beta. Making sub-agents more reliable, handling errors properly, running enrichment steps in parallel.
+
+This project is open source because documentation infrastructure for LLMs should be transparent, community driven, and independent of any single provider.
 
 ---
 
 ## License
 
-MIT License. Use it, fork it, improve it.
+MIT. Use it, fork it, improve it.

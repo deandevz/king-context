@@ -1,6 +1,6 @@
 {
   "name": "@king-context/cli",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "description": "Installer for King Context — local-first documentation search for AI agents",
   "bin": {
     "king-context": "./bin/king-context.js"
@@ -10,7 +10,14 @@
     "lib/",
     "templates/"
   ],
-  "keywords": ["claude-code", "documentation", "mcp", "ai-agents", "context", "llm"],
+  "keywords": [
+    "claude-code",
+    "documentation",
+    "mcp",
+    "ai-agents",
+    "context",
+    "llm"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/deandevz/king-context.git",
