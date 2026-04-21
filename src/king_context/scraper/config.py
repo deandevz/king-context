@@ -1,8 +1,22 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+from king_context import PROJECT_ROOT
+
+
+def _load_env_files(project_root: Path | None = None) -> None:
+    root = project_root if project_root is not None else PROJECT_ROOT
+    installer_env = root / ".king-context" / ".env"
+    if installer_env.exists():
+        load_dotenv(installer_env)
+    developer_env = root / ".env"
+    if developer_env.exists():
+        load_dotenv(developer_env, override=True)
+
+
+_load_env_files()
 
 
 class ConfigError(Exception):
