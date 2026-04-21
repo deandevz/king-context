@@ -8,6 +8,7 @@ const DIRS = [
   'core',
   'data',
   'docs',
+  'research',
   '_learned',
   '_temp',
 ];
@@ -36,6 +37,7 @@ function writeWrappers(projectDir) {
   const wrappers = [
     { template: 'wrapper-kctx.sh', target: 'kctx' },
     { template: 'wrapper-scrape.sh', target: 'king-scrape' },
+    { template: 'wrapper-research.sh', target: 'king-research' },
   ];
 
   for (const { template, target } of wrappers) {
