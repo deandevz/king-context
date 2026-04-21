@@ -15,6 +15,7 @@ class SearchResult:
     use_cases: list[str]
     tags: list[str]
     priority: int
+    source: str = "docs"
 
 
 def _normalize_query(query: str) -> list[str]:
@@ -73,6 +74,7 @@ def search(
     store_dir: Path,
     doc_name: str | None = None,
     top: int = 5,
+    source: str = "docs",
 ) -> list[SearchResult]:
     """Search documentation sections by query using reverse-index scoring.
 
@@ -130,6 +132,7 @@ def search(
                 use_cases=section_data.get("use_cases", []),
                 tags=section_data.get("tags", []),
                 priority=priority,
+                source=source,
             ))
 
     # Sort by score descending, then limit

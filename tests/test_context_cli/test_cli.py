@@ -13,6 +13,8 @@ def store_with_doc(tmp_path, monkeypatch):
     """Create a .king-context/docs/ store with one indexed doc and patch STORE_DIR."""
     store_dir = tmp_path / ".king-context" / "docs"
     store_dir.mkdir(parents=True)
+    research_store_dir = tmp_path / ".king-context" / "research"
+    research_store_dir.mkdir(parents=True)
 
     # Create source JSON
     source = {
@@ -49,6 +51,7 @@ def store_with_doc(tmp_path, monkeypatch):
 
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store_dir)
     monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
 
     return store_dir, tmp_path, src_file
@@ -72,15 +75,35 @@ def test_list_json(store_with_doc, monkeypatch, capsys):
     _run_cli(["list", "--json"], monkeypatch)
     out = capsys.readouterr().out
     data = json.loads(out)
+    assert "docs" in data and "research" in data
+    assert len(data["docs"]) == 1
+    assert data["docs"][0]["name"] == "test-api"
+    assert data["research"] == []
+
+
+def test_list_docs_only_json(store_with_doc, monkeypatch, capsys):
+    _run_cli(["list", "docs", "--json"], monkeypatch)
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["name"] == "test-api"
+
+
+def test_list_research_only_empty(store_with_doc, monkeypatch, capsys):
+    _run_cli(["list", "research"], monkeypatch)
+    out = capsys.readouterr().out
+    assert "No docs indexed" in out
 
 
 def test_list_empty_store(tmp_path, monkeypatch, capsys):
     empty_store = tmp_path / ".king-context" / "docs"
     empty_store.mkdir(parents=True)
+    empty_research = tmp_path / ".king-context" / "research"
+    empty_research.mkdir(parents=True)
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", empty_store)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", empty_research)
 
     _run_cli(["list"], monkeypatch)
     out = capsys.readouterr().out
@@ -143,8 +166,10 @@ def test_read_json(store_with_doc, monkeypatch, capsys):
 
 def test_index_single_file(tmp_path, monkeypatch, capsys):
     store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
 
     source = {
         "name": "new-api",
@@ -173,13 +198,49 @@ def test_index_single_file(tmp_path, monkeypatch, capsys):
     assert (store_dir / "new-api" / "index.json").exists()
 
 
+def test_index_auto_detects_research(tmp_path, monkeypatch, capsys):
+    store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+
+    source = {
+        "name": "my-topic",
+        "display_name": "My Topic",
+        "version": "v1",
+        "base_url": "",
+        "sections": [
+            {
+                "title": "A",
+                "path": "a",
+                "url": "https://ex.com/a",
+                "keywords": ["k"], "use_cases": ["u"], "tags": ["t"],
+                "priority": 5,
+                "content": "hello",
+                "source_type": "research",
+            }
+        ],
+    }
+    src_file = tmp_path / "my-topic.json"
+    src_file.write_text(json.dumps(source))
+
+    _run_cli(["index", str(src_file)], monkeypatch)
+    out = capsys.readouterr().out
+    assert "(research)" in out
+    assert (research_store / "my-topic" / "index.json").exists()
+    assert not (store_dir / "my-topic").exists()
+
+
 def test_index_all(tmp_path, monkeypatch, capsys):
     store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
     data_dir = tmp_path / ".king-context" / "data"
     data_dir.mkdir(parents=True)
 
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
     monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
 
     for name in ["api-a", "api-b"]:
@@ -200,8 +261,10 @@ def test_index_all(tmp_path, monkeypatch, capsys):
 
 def test_index_file_not_found(tmp_path, monkeypatch):
     store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
     import context_cli.cli as cli_mod
     monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
 
     with pytest.raises(SystemExit):
         _run_cli(["index", "/nonexistent/file.json"], monkeypatch)

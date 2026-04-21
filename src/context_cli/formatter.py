@@ -59,7 +59,8 @@ def format_search(results, as_json=False) -> str:
     lines = []
     for i, r in enumerate(results, 1):
         use_case = r.use_cases[0] if r.use_cases else ""
-        line = f"{i}. {r.title} ({r.doc_name}/{r.section_path}) score={r.score:.2f}"
+        source = getattr(r, "source", "docs")
+        line = f"{i}. [{source}] {r.title} ({r.doc_name}/{r.section_path}) score={r.score:.2f}"
         if use_case:
             line += f"\n   {use_case}"
         lines.append(line)
@@ -119,10 +120,11 @@ def format_grep(matches, as_json=False) -> str:
     if not matches:
         return "No matches found."
 
-    # Group by doc_name + section_title
+    # Group by source + doc_name + section_title
     groups: dict[str, list] = {}
     for m in matches:
-        key = f"{m.doc_name}/{m.section_title}"
+        source = getattr(m, "source", "docs")
+        key = f"[{source}] {m.doc_name}/{m.section_title}"
         groups.setdefault(key, []).append(m)
 
     lines = []

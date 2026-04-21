@@ -90,12 +90,12 @@ def export_research_to_json(
 
 def auto_index(json_path: Path, store_dir: Path | None = None) -> None:
     """Index the exported research JSON into the kctx file-based store.
-    Logs and swallows failures — never raises. Uses context_cli.STORE_DIR by default."""
+    Logs and swallows failures — never raises. Uses context_cli.RESEARCH_STORE_DIR by default."""
     try:
-        from context_cli import STORE_DIR
+        from context_cli import RESEARCH_STORE_DIR
         from context_cli.indexer import index_doc
 
-        target = store_dir if store_dir is not None else STORE_DIR
+        target = store_dir if store_dir is not None else RESEARCH_STORE_DIR
         result = index_doc(json_path, target)
         log.info("Indexed research doc '%s' at %s", result.doc_name, result.store_path)
     except Exception as exc:
