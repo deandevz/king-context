@@ -2,9 +2,11 @@
 
 Versão em inglês: [README.md](README.md).
 
-Infraestrutura de documentação pra agentes de código AI.
+> *O que começou como uma solução open-source pro Context7 acaba de iniciar algo bem maior do que a gente imaginava.*
 
-Faz scraping de qualquer site de documentação, enriquece cada seção com metadados estruturados, e entrega pro seu agente exatamente os docs que ele precisa pra escrever código correto. Nada além disso.
+Uma camada de retrieval de conhecimento pra agentes de AI.
+
+Alimenta com qualquer corpus — documentação de vendor, pesquisa da web aberta, notas internas — e ele devolve pro agente exatamente a fatia que ele precisa, no momento em que precisa. Metadados estruturados, progressive disclosure, zero round-trip pra nuvem.
 
 Local first. Eficiente em tokens. Open source.
 
@@ -14,13 +16,15 @@ Local first. Eficiente em tokens. Open source.
 
 ## Por que isso existe
 
-LLM escreve código melhor quando tem a documentação certa no contexto. O problema é descobrir o que "certa" significa.
+Agente escreve código melhor, análise melhor, qualquer coisa melhor quando tem o contexto certo. O problema é descobrir o que "certa" significa sem despejar a pia da cozinha inteira no contexto.
 
-Jogar doc cru no contexto queima 15 mil tokens numa única página de API, e a maior parte é irrelevante. Ferramentas na nuvem tipo Context7 mandam chunks baseados em similaridade semântica, ou seja, um servidor remoto decide o que seu agente vê, e o agente paga a conta dos tokens independente de ter precisado de tudo aquilo. Você não consegue ver o que tá indexado, não controla a atualização, e não funciona offline.
+Uma única página de API custa 15 mil tokens de markdown cru, e a maior parte é ruído. Ferramentas de retrieval na nuvem tipo Context7 mandam chunks baseados em similaridade semântica — um servidor remoto decide o que seu agente vê, e o agente paga a conta dos tokens independente de ter precisado de tudo aquilo. Você não consegue ver o que tá indexado, não controla a atualização, e não funciona offline.
 
-King Context vai por outro caminho. Cada seção de cada doc coletado recebe metadados estruturados (keywords, casos de uso, tags, prioridade). O agente busca nos metadados primeiro, faz preview antes de ler, e só puxa o conteúdo completo quando realmente precisa. Progressive disclosure, não dump.
+Forçar um agente a ler dez arquivos `.md` de 400 linhas é o mesmo problema com outra roupagem: a maioria desses tokens nunca importou pro passo atual.
 
-Na prática, um agente sem conhecimento prévio de uma API consegue usar o King Context pra ler os docs e produzir código funcional de primeira, geralmente com uns 2.800 tokens no total. O mesmo workflow navegando numa webpage custa 15 mil+ tokens e ainda obriga o agente a achar o que importa.
+King Context vai por outro caminho. Cada seção de cada página coletada ou fonte pesquisada recebe metadados estruturados (keywords, casos de uso, tags, prioridade). O agente busca nos metadados primeiro, faz preview antes de ler, e só puxa o conteúdo completo quando realmente precisa. O cache de queries aprende os caminhos mais comuns no seu corpus, então lookups repetidos caem pra menos de um milissegundo. Progressive disclosure, não dump.
+
+Na prática: um agente sem conhecimento prévio de uma API consegue ler os docs e produzir código funcional de primeira, geralmente com uns 2.800 tokens no total. Uma varredura `--high` de pesquisa sobre prompt engineering indexou 172 fontes, e o agente ainda conseguiu conversar longamente sobre design em cima desse corpus gastando uns ~4% da janela de contexto. Os mesmos workflows navegando webpages crus custam 15 mil+ tokens por página e ainda obrigam o agente a achar o que importa.
 
 ---
 
@@ -39,6 +43,7 @@ Adiciona suas chaves:
 ```bash
 cp .king-context/.env.example .env
 # FIRECRAWL_API_KEY=...     obrigatória pra scraping
+# EXA_API_KEY=...           obrigatória pro king-research
 # OPENROUTER_API_KEY=...    opcional, pra enrichment automatizado
 ```
 
@@ -49,16 +54,27 @@ Faz scraping de um site de docs:
 .king-context/bin/kctx index .king-context/data/stripe.json
 ```
 
-Ou simplesmente pede pro Claude Code em linguagem natural: *"faz scraping da documentação do Stripe e indexa."* A skill instalada cuida do pipeline todo.
-
-Depois busca, faz preview e lê:
+Ou pesquisa um tópico da web aberta — mesmo índice, sem precisar de URL inicial:
 
 ```bash
-kctx list                                        # mostra os docs disponíveis
-kctx search "authentication" --doc stripe       # busca por metadados
-kctx read stripe authentication --preview       # uns 400 tokens
-kctx read stripe authentication                 # seção completa
-kctx grep "Bearer" --doc stripe --context 3     # regex como fallback
+.king-context/bin/king-research "prompt engineering techniques" --high --yes
+.king-context/bin/king-research "retry backoff" --basic --yes
+```
+
+O `king-research` descobre fontes pela web via Exa, faz chunking e enrichment do mesmo jeito que o scraper, e joga o resultado em `.king-context/research/<slug>/`. O tamanho do corpus escala com o esforço: `--basic` tipicamente cobre ~30 fontes em menos de um minuto, `--high` alcança bem mais de 150 em alguns minutos, `--extrahigh` é a varredura estado da arte.
+
+Ou simplesmente pede pro Claude Code em linguagem natural: *"faz scraping da documentação do Stripe"* ou *"pesquisa prompt engineering, detalhado"*. As skills instaladas roteiam pro pipeline certo.
+
+Depois busca, faz preview e lê — mesmos comandos pra docs e pra pesquisa:
+
+```bash
+kctx list                                           # docs
+kctx list research                                  # corpus de pesquisa
+kctx search "authentication" --doc stripe          # busca por metadados
+kctx read stripe authentication --preview          # uns 400 tokens
+kctx read stripe authentication                    # seção completa
+kctx topics prompt-engineering-techniques          # navega a árvore de um research
+kctx grep "Bearer" --doc stripe --context 3       # regex como fallback
 ```
 
 Todo comando aceita `--json` pra saída legível por máquina.
@@ -67,9 +83,13 @@ Todo comando aceita `--json` pra saída legível por máquina.
 
 ## Como funciona
 
-Três peças.
+Quatro peças.
 
-**king-scrape** descobre as páginas num site de docs, baixa elas, faz chunking do conteúdo e enriquece cada chunk via LLM. Cada seção acaba anotada assim:
+**king-scrape** — aponta pra um site de docs. Ele descobre as páginas, baixa, faz chunking do conteúdo e enriquece cada chunk via LLM.
+
+**king-research** — passa um tópico. Ele gera queries de busca, puxa fontes da web aberta via Exa, busca e faz chunking do conteúdo, e entrega os chunks pra mesma etapa de enrichment que o scraper usa. `--basic` até `--extrahigh` controla quantas queries e quantas iterações de aprofundamento rodam.
+
+Os dois produzem o mesmo formato de saída. Cada seção acaba anotada assim:
 
 ```json
 {
@@ -80,11 +100,11 @@ Três peças.
 }
 ```
 
-**kctx index** transforma o JSON enriquecido numa estrutura de arquivos plana com índices reversos. Sem banco. Sem embeddings pra maioria das queries.
+**kctx index** transforma o JSON enriquecido numa estrutura de arquivos plana com índices reversos. Docs vão pra `.king-context/docs/`; pesquisas vão pra `.king-context/research/`. Stores separados, mesma superfície de retrieval.
 
-**kctx** é a interface de busca. Ela pontua as seções comparando os termos da query com os índices de keyword e use case. Sem full text scan, sem similaridade vetorial em uns 90% das lookups.
+**kctx** é a interface de busca. Ela pontua as seções comparando os termos da query com os índices de keyword e use case. Sem full text scan, sem similaridade vetorial em uns 90% das lookups. Um cache local de queries colapsa lookups repetidos pra leituras em sub-milissegundo. Em cima disso, o próprio agente pode escrever shortcuts em `.king-context/_learned/<corpus>.md` conforme trabalha — mapeando perguntas comuns pros paths exatos das seções — e a próxima sessão pula a fase de busca inteira. A camada de retrieval fica mais rápida por corpus com o tempo, sem ninguém ter que configurar nada.
 
-A etapa de enrichment é o coração da ideia. Os agentes acham a seção certa via metadados estruturados, em vez de escanear conteúdo cru. É isso que faz o progressive disclosure funcionar sem perder recall.
+A etapa de enrichment é o coração da ideia. Os agentes acham a seção certa via metadados estruturados, em vez de escanear conteúdo cru. É isso que faz o progressive disclosure funcionar sem perder recall — e é o que permite a mesma máquina servir tanto um site de doc de vendor quanto uma varredura de pesquisa cruzando a web.
 
 ---
 
@@ -138,36 +158,58 @@ A vitória do round 2 não é "o agente dirige o retrieval". Os dois lados dirig
 
 * Só uma run por query no round 2, não duas. Variância desconhecida.
 * Contagem de tokens do Context7 é estimativa por caractere, não tiktoken. Margem de erro de uns 20%.
+
+---
+
+## Case studies
+
+Sessões reais, não benchmarks sintéticos. Cada uma registra a sequência de comandos que o agente rodou, o corpus que ele consultou, e o artefato que ele produziu.
+
+- **[MiniMax TTS — first-shot code](validation/minimax-tts-first-shot/)** — Agente lê a API reference de um vendor via `kctx` e escreve código que funciona de primeira. 5 lookups, ~2.800 tokens de doc consumidos, zero ajustes.
+- **[Triage-1 — síntese a partir de pesquisa](validation/examples/prompt-engineering-triage1/)** — Agente consulta um corpus de 172 fontes do `king-research --high` sobre prompt engineering e compõe um prompt de suporte nível produção cruzando 5–6 seções indexadas. Conversa de design inteira cabe em ~4% da janela de contexto. Um arquivo `.king-context/_learned/` é escrito pelo próprio agente no meio da sessão — o cache de retrieval se aquecendo como efeito colateral do trabalho.
+
+Mais casos em [`validation/examples/`](validation/examples/). PRs bem-vindos.
+
 ---
 
 ## Pra onde isso vai
 
-King Context começou como ferramenta de busca. A direção daqui pra frente é maior.
+King Context começou como ferramenta de busca contra docs coletados. A direção daqui pra frente é maior: uma camada de retrieval que qualquer agente, em qualquer tópico, pode encostar sem queimar a janela de contexto.
 
-O objetivo é virar a camada de documentação que code agents usam todo dia. Três peças já estão tomando forma.
+### O problema do `.md`, resolvido de lado
 
-### Registry comunitário de documentação
+O padrão dominante hoje pra dar conhecimento pra agente é uma pasta de arquivos markdown. Ele desmorona no momento em que a pasta fica séria. Dez docs de 400 linhas é um imposto de cinco dígitos de token em cada turno, e os agentes ainda perdem o parágrafo específico que importava.
 
-Qualquer pessoa que fizer scraping dos docs de uma lib pode publicar o corpus enriquecido. Outras pessoas instalam com um comando:
+King Context substitui esse padrão. O corpus pode ser arbitrariamente grande porque o agente nunca carrega ele inteiro. A busca por metadados filtra pra seção certa, o preview devolve ~400 tokens, o read completo só devolve o resto se precisar. O cache de queries aprende seus caminhos mais comuns. Quanto maior o corpus, mais a disciplina de retrieval compensa.
+
+### Skills e agentes rodando em vários corpus
+
+Uma skill ou sub-agente não devia precisar carregar o material de referência dentro do contexto. Ele devia consultar o corpus do mesmo jeito que um dev faz grep num codebase — com precisão, progressivamente, só quando precisa.
+
+Com o King Context, um único agente pode ter na manga o índice da API do Stripe, a varredura de pesquisa em "webhook security", o runbook interno do time, e um corpus de pesquisa específico de domínio (culinária LATAM, estado da arte em prompt engineering), e alcançar qualquer um deles no meio de uma tarefa. O formato de retrieval é o mesmo em todos. Constrói uma vez, pluga várias bases de conhecimento.
+
+### Registry comunitário de conhecimento
+
+Qualquer pessoa que fizer scraping de uma lib ou pesquisar um tópico pode publicar o corpus enriquecido. Outras pessoas instalam com um comando:
 
 ```bash
 kctx install stripe@v1
-kctx install fastapi@latest
+kctx install prompt-engineering-2026
 ```
 
-Mantido pela comunidade, versionado, sempre atualizado. Pré-enriquecido, então você pula a etapa de scraping. Os docs oficiais dos vendors são ponto de partida, não o teto. Comunidades em torno de libs específicas podem publicar versões melhores, com mais exemplos, casos de uso mais profundos, e ciclos de update mais rápidos que as páginas oficiais.
+Mantido pela comunidade, versionado, sempre atualizado. Pré-enriquecido, então você pula a etapa de scraping ou de pesquisa. Docs de vendor são ponto de partida, não o teto — o registry pode guardar corpus de pesquisa, coleções internas curadas, e alternativas mantidas pela comunidade com exemplos melhores e ciclos de update mais rápidos.
 
-### Agentes que escrevem skills especializadas a partir de docs
+### Agentes que escrevem skills especializadas a partir de um corpus
 
-Os docs em si já contêm tudo que é preciso pra ensinar um agente a usar bem uma lib. Um agente que lê seu corpus pode gerar uma skill do Claude Code que conhece as convenções da lib, as pegadinhas, e os padrões idiomáticos. Docs entram, skills saem.
+Um agente que lê seu corpus pode gerar uma skill do Claude Code que conhece as convenções da lib, as pegadinhas, e os padrões idiomáticos. Ou, a partir de um corpus de pesquisa, uma skill que codifica o consenso e as divergências entre 30+ fontes. Corpus entra, skill sai.
 
-É aqui que o King Context deixa de ser só uma ferramenta de retrieval e vira uma fábrica de skills. Todo pacote de docs público vira candidato a agente especializado gerado automaticamente.
+É aqui que o King Context deixa de ser só uma ferramenta de retrieval e vira uma fábrica de skills.
 
 ### Integração no workflow de dev
 
-Retrieval é a base. A camada seguinte é fazer o King Context morar dentro do loop de desenvolvimento: pinar versões de doc pro projeto pra seu agente nunca dar drift, monitorar mudanças upstream nos docs que possam afetar código que você já escreveu, trazer à tona as seções relevantes quando o agente te vê trabalhando em algo.
+Retrieval é a base. A camada seguinte é morar dentro do loop de desenvolvimento: pinar versões de doc pro projeto pra seu agente nunca dar drift, monitorar mudanças upstream nos docs que possam afetar código que você já escreveu, trazer à tona as seções relevantes quando o agente te vê trabalhando em algo.
 
-A ideia não é "agente pergunta, doc responde". A ideia é que seu agente sempre tenha o contexto certo de documentação, silenciosamente, sem você precisar pedir.
+A ideia não é "agente pergunta, corpus responde". A ideia é que seu agente sempre tenha o contexto certo na mão, silenciosamente, sem você precisar pedir.
 
 ---
 
@@ -192,13 +234,19 @@ king-context/
 │   ├── reader.py           # leitor de seção com preview
 │   ├── indexer.py          # indexador de JSON pra arquivo
 │   └── grep.py             # fallback de regex
-├── src/king_context/       # MCP server e scraper
+├── src/king_context/       # MCP server, scraper, researcher
 │   ├── server.py           # MCP server
 │   ├── db.py               # cascade search em SQLite
-│   └── scraper/            # pipeline do king-scrape
+│   ├── scraper/            # pipeline do king-scrape (URL → corpus)
+│   └── research/           # pipeline do king-research (tópico → corpus)
 ├── .king-context/          # data store (gerado)
-├── validation/             # casos de teste do mundo real
-└── .claude/skills/         # skills do Claude Code
+│   ├── docs/               # documentação coletada
+│   ├── research/           # tópicos pesquisados
+│   └── _learned/           # cache de shortcuts escrito pelo agente (cresce com o uso)
+├── validation/
+│   ├── minimax-tts-first-shot/   # case doc-driven (código first-shot)
+│   └── examples/                 # cases de síntese / multi-fonte
+└── .claude/skills/         # skills do Claude Code (king-context, scraper-workflow, king-research)
 ```
 
 ---
@@ -207,16 +255,18 @@ king-context/
 
 Curto prazo:
 
-* Registry comunitário com pacotes de doc versionados
+* Registry comunitário com pacotes de doc e pesquisa versionados
 * Distribuição via `pip install king-context`
-* Skills geradas por agente a partir dos docs coletados
+* Skills geradas por agente a partir dos docs coletados e dos corpus de pesquisa
 * Melhor confiabilidade dos sub-agentes durante o enrichment
+* Pipeline de pesquisa mais rico: filtros por domínio, deduplicação de fontes entre tópicos
 
 Mais pra frente:
 
 * Pin de versão por projeto, com notificação quando docs upstream mudam
-* Hooks de workflow que trazem docs relevantes durante coding ativo
+* Hooks de workflow que trazem seções relevantes durante coding ativo
 * Scraping mais esperto: descoberta de URL, limites de chunk, conteúdo renderizado por JavaScript
+* Busca cross-corpus (query em vários índices numa chamada só)
 * Mais casos de validação cobrindo estilos de API e tasks de agente variadas
 
 ---
@@ -225,13 +275,13 @@ Mais pra frente:
 
 Três áreas em que o projeto mais precisa de ajuda.
 
-**Pacotes de documentação.** Se tem alguma API ou framework que você usa bastante, faz scraping e abre um PR. Uma biblioteca comunitária de docs pré-enriquecidos é a maior alavanca desse projeto.
+**Pacotes de corpus.** Se tem alguma API, framework ou tópico que você usa bastante, faz scraping ou pesquisa e abre um PR. Uma biblioteca comunitária de bases de conhecimento pré-enriquecidas é a maior alavanca desse projeto.
 
-**Confiabilidade do scraper.** Casos extremos na descoberta de URL, estratégias de chunking pra formatos de doc incomuns, tratamento melhor de páginas renderizadas por JavaScript.
+**Confiabilidade dos pipelines.** Casos extremos na descoberta de URL, estratégias de chunking pra formatos de doc incomuns, páginas renderizadas por JavaScript, filtragem melhor de fontes no `king-research`.
 
 **Melhorias nas skills.** Os workflows do Claude Code tão em beta. Deixar os sub-agentes mais confiáveis, lidar com erros direito, rodar as etapas de enrichment em paralelo.
 
-Esse projeto é open source porque infraestrutura de documentação pra LLM tem que ser transparente, movida pela comunidade, e independente de qualquer provider único.
+Esse projeto é open source porque infraestrutura de retrieval pra LLM tem que ser transparente, movida pela comunidade, e independente de qualquer provider único.
 
 ---
 
