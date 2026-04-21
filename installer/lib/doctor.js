@@ -77,6 +77,7 @@ function checkSkills(projectDir) {
   const skills = [
     { path: '.claude/skills/king-context/skill.md', name: 'king-context' },
     { path: '.claude/skills/scraper-workflow/skill.md', name: 'scraper-workflow' },
+    { path: '.claude/skills/king-research/skill.md', name: 'king-research' },
   ];
 
   for (const skill of skills) {

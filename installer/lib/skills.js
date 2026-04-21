@@ -51,6 +51,7 @@ function mergeSettings(projectDir) {
       allow: [
         'Bash(.king-context/bin/kctx *)',
         'Bash(.king-context/bin/king-scrape *)',
+        'Bash(.king-context/bin/king-research *)',
         'Bash(python3 *)',
         'Bash(python3*)',
         'Write(.king-context/**)',
@@ -116,6 +117,7 @@ function updateGitignore(projectDir) {
     marker,
     '.king-context/core/',
     '.king-context/docs/',
+    '.king-context/research/',
     '.king-context/data/',
     '.king-context/_temp/',
     '.king-context/_learned/',

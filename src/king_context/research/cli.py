@@ -111,3 +111,7 @@ def main() -> None:
         asyncio.run(run_pipeline(args, config))
     except ConfigError as exc:
         parser.error(str(exc))
+
+
+if __name__ == "__main__":
+    main()
