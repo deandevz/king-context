@@ -326,3 +326,59 @@ async def test_no_auto_index_flag_skips_indexing(tmp_path, monkeypatch):
         )
 
     auto_index_mock.assert_not_called()
+
+
+async def test_zero_chunks_raises_and_skips_enrichment_export(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "king_context.research.pipeline.TEMP_DOCS_DIR", tmp_path
+    )
+
+    with patch(
+        "king_context.research.pipeline.run_deepening_loop",
+        new_callable=AsyncMock,
+        return_value=[mk_source("https://ex.com/a")],
+    ) as deepen_mock, patch(
+        "king_context.research.pipeline.chunk_page",
+        return_value=[],
+    ) as chunk_mock, patch(
+        "king_context.research.pipeline.enrich_chunks",
+        new_callable=AsyncMock,
+    ) as enrich_mock, patch(
+        "king_context.research.pipeline.export_research_to_json"
+    ) as export_mock:
+        with pytest.raises(RuntimeError, match="Chunking produced no sections"):
+            await run_pipeline(make_args(), make_config())
+
+    deepen_mock.assert_awaited_once()
+    chunk_mock.assert_called_once()
+    enrich_mock.assert_not_called()
+    export_mock.assert_not_called()
+
+
+async def test_empty_enrichment_raises_and_skips_export(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "king_context.research.pipeline.TEMP_DOCS_DIR", tmp_path
+    )
+
+    with patch(
+        "king_context.research.pipeline.run_deepening_loop",
+        new_callable=AsyncMock,
+        return_value=[mk_source("https://ex.com/a")],
+    ), patch(
+        "king_context.research.pipeline.chunk_page",
+        return_value=[mk_chunk("https://ex.com/a")],
+    ), patch(
+        "king_context.research.pipeline.estimate_cost",
+        return_value=_cost_stub(),
+    ), patch(
+        "king_context.research.pipeline.enrich_chunks",
+        new_callable=AsyncMock,
+        return_value=[],
+    ) as enrich_mock, patch(
+        "king_context.research.pipeline.export_research_to_json"
+    ) as export_mock:
+        with pytest.raises(RuntimeError, match="Enrichment produced no sections"):
+            await run_pipeline(make_args(), make_config())
+
+    enrich_mock.assert_awaited_once()
+    export_mock.assert_not_called()

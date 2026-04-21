@@ -164,6 +164,44 @@ def test_read_json(store_with_doc, monkeypatch, capsys):
     assert "content" in data
 
 
+def test_read_requires_explicit_source_when_slug_exists_in_both_stores(
+    store_with_doc, monkeypatch, capsys
+):
+    _, tmp_path, _ = store_with_doc
+    research_source = {
+        "name": "test-api",
+        "display_name": "Test API Research",
+        "version": "v1",
+        "base_url": "",
+        "sections": [
+            {
+                "title": "Research Finding",
+                "path": "finding",
+                "url": "https://example.com/research/finding",
+                "keywords": ["finding"],
+                "use_cases": ["Read a research-only finding"],
+                "tags": ["research"],
+                "priority": 7,
+                "content": "Research-only section content.",
+                "source_type": "research",
+            }
+        ],
+    }
+    research_file = tmp_path / "test-api-research.json"
+    research_file.write_text(json.dumps(research_source))
+
+    import context_cli.cli as cli_mod
+    index_doc(research_file, cli_mod.RESEARCH_STORE_DIR)
+
+    with pytest.raises(SystemExit):
+        _run_cli(["read", "test-api", "finding"], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "exists in multiple stores" in err
+    assert "--source docs" in err
+    assert "--source research" in err
+
+
 def test_index_single_file(tmp_path, monkeypatch, capsys):
     store_dir = tmp_path / ".king-context" / "docs"
     research_store = tmp_path / ".king-context" / "research"

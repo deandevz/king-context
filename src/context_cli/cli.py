@@ -24,6 +24,10 @@ from context_cli.store import list_docs
 SOURCE_CHOICES = ("all", "docs", "research")
 
 
+class AmbiguousDocError(RuntimeError):
+    """Raised when a doc slug exists in multiple stores."""
+
+
 def _active_stores(source: str) -> list[tuple[str, Path]]:
     """Return [(label, store_dir), ...] the given source selector targets."""
     if source == "docs":
@@ -35,10 +39,20 @@ def _active_stores(source: str) -> list[tuple[str, Path]]:
 
 def _find_doc_store(doc_name: str, source: str) -> Path | None:
     """Find which store contains a given doc_name. Returns None if not found."""
-    for _, store_dir in _active_stores(source):
-        if (store_dir / doc_name / "index.json").exists():
-            return store_dir
-    return None
+    matches = [
+        (label, store_dir)
+        for label, store_dir in _active_stores(source)
+        if (store_dir / doc_name / "index.json").exists()
+    ]
+    if not matches:
+        return None
+    if source == "all" and len(matches) > 1:
+        labels = ", ".join(label for label, _ in matches)
+        raise AmbiguousDocError(
+            f"Doc '{doc_name}' exists in multiple stores ({labels}). "
+            "Re-run with --source docs or --source research."
+        )
+    return matches[0][1]
 
 
 def _detect_source(json_path: Path) -> str:
@@ -101,7 +115,11 @@ def _cmd_search(args: argparse.Namespace) -> None:
 
 def _cmd_read(args: argparse.Namespace) -> None:
     source = args.source or "all"
-    target_store = _find_doc_store(args.doc, source)
+    try:
+        target_store = _find_doc_store(args.doc, source)
+    except AmbiguousDocError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
     if target_store is None:
         stores = ", ".join(label for label, _ in _active_stores(source))
         print(
@@ -140,7 +158,11 @@ def _cmd_grep(args: argparse.Namespace) -> None:
 
 def _cmd_topics(args: argparse.Namespace) -> None:
     source = args.source or "all"
-    target_store = _find_doc_store(args.doc, source)
+    try:
+        target_store = _find_doc_store(args.doc, source)
+    except AmbiguousDocError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
     if target_store is None:
         available: list[str] = []
         for _, store_dir in _active_stores(source):

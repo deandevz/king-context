@@ -1,3 +1,4 @@
+import json
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -163,3 +164,34 @@ async def test_jina_transient_after_retries_drops_url():
             docs = await fetch_for_query("q", 0, make_config(), client)
 
     assert docs == []
+
+
+async def test_unexpected_jina_failure_isolated_per_url():
+    direct = make_exa_result("https://ex.com/direct", text_len=700)
+    short_bad = make_exa_result("https://ex.com/bad", text_len=50)
+    short_good = make_exa_result("https://ex.com/good", text_len=100)
+    results = [direct, short_bad, short_good]
+
+    async def fetch_side_effect(url, *args, **kwargs):
+        if url == "https://ex.com/bad":
+            raise json.JSONDecodeError("bad json", "{}", 0)
+        return make_jina_result(url, title="Recovered")
+
+    async with httpx.AsyncClient() as client:
+        with patch(
+            "king_context.research.fetch.exa_search",
+            new_callable=AsyncMock,
+            return_value=results,
+        ), patch(
+            "king_context.research.fetch.jina_fetch",
+            side_effect=fetch_side_effect,
+        ):
+            docs = await fetch_for_query("q", 0, make_config(), client)
+
+    urls = {doc.url for doc in docs}
+    assert urls == {"https://ex.com/direct", "https://ex.com/good"}
+    assert any(doc.fetch_path == "exa" for doc in docs)
+    assert any(
+        doc.fetch_path == "jina" and doc.url == "https://ex.com/good"
+        for doc in docs
+    )

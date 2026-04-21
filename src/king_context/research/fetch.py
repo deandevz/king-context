@@ -69,6 +69,13 @@ async def _jina_fallback(
                 "Jina fallback failed for %s: %s", exa_result.url, exc
             )
             return None
+        except Exception as exc:
+            log.warning(
+                "Unexpected Jina fallback failure for %s: %s",
+                exa_result.url,
+                exc,
+            )
+            return None
         return SourceDoc(
             url=exa_result.url,
             title=result.title or exa_result.title,
@@ -109,7 +116,17 @@ async def fetch_for_query(
         _jina_fallback(result, query, iteration, semaphore, jina_client, config)
         for result in short_results
     ]
-    jina_docs = await asyncio.gather(*tasks)
-    fallback_docs = [doc for doc in jina_docs if doc is not None]
+    jina_docs = await asyncio.gather(*tasks, return_exceptions=True)
+    fallback_docs: list[SourceDoc] = []
+    for result, doc in zip(short_results, jina_docs):
+        if isinstance(doc, Exception):
+            log.warning(
+                "Unhandled Jina fallback failure for %s: %s",
+                result.url,
+                doc,
+            )
+            continue
+        if doc is not None:
+            fallback_docs.append(doc)
 
     return direct_docs + fallback_docs

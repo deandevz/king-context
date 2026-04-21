@@ -170,6 +170,11 @@ async def run_pipeline(args: argparse.Namespace, config: ResearchConfig) -> Path
                 )
                 _write_chunk_checkpoint(source, page_chunks, chunks_dir)
                 chunks.extend(page_chunks)
+            if not chunks:
+                raise RuntimeError(
+                    f"Chunking produced no sections for topic '{args.topic}' — "
+                    "nothing can be enriched or exported."
+                )
 
             _update_step(
                 work_dir,
@@ -179,6 +184,11 @@ async def run_pipeline(args: argparse.Namespace, config: ResearchConfig) -> Path
             print(f"  created {len(chunks)} chunks")
 
         elif step == "enrich":
+            if not chunks:
+                raise RuntimeError(
+                    f"No chunks available to enrich for topic '{args.topic}' — "
+                    "chunking produced no sections or resume state is missing."
+                )
             cost = estimate_cost(chunks, config.scraper)
             print(
                 f"Enrichment cost estimate: ${cost['estimated_cost']:.4f} "
@@ -193,6 +203,11 @@ async def run_pipeline(args: argparse.Namespace, config: ResearchConfig) -> Path
             enriched = await enrich_chunks(
                 chunks, config.scraper, output_dir=work_dir
             )
+            if not enriched:
+                raise RuntimeError(
+                    f"Enrichment produced no sections for topic '{args.topic}' — "
+                    "aborting before export to avoid overwriting an existing corpus."
+                )
             _update_step(
                 work_dir,
                 MANIFEST_KEYS["enrich"],
@@ -201,6 +216,10 @@ async def run_pipeline(args: argparse.Namespace, config: ResearchConfig) -> Path
             print(f"  enriched {len(enriched)} chunks")
 
         elif step == "export":
+            if not enriched:
+                raise RuntimeError(
+                    f"No enriched sections available to export for topic '{args.topic}'."
+                )
             sources_by_url: dict[str, SourceDoc] = {s.url: s for s in sources}
             output_path = export_research_to_json(
                 enriched,
