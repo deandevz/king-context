@@ -15,6 +15,7 @@ class GrepMatch:
     line_content: str
     context_before: list[str] = field(default_factory=list)
     context_after: list[str] = field(default_factory=list)
+    source: str = "docs"
 
 
 def grep_docs(
@@ -22,6 +23,7 @@ def grep_docs(
     store_dir: Path,
     doc_name: str | None = None,
     context_lines: int = 0,
+    source: str = "docs",
 ) -> list[GrepMatch]:
     """Search section content for lines matching a regex pattern.
 
@@ -80,6 +82,7 @@ def grep_docs(
                         line_content=line,
                         context_before=before,
                         context_after=after,
+                        source=source,
                     ))
 
             matches.extend(section_matches)

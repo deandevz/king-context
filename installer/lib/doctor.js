@@ -56,6 +56,19 @@ function checkCliTools(projectDir) {
     results.push({ status: 'warn', label: 'CLI: king-scrape found but returned an error' });
   }
 
+  // Check king-research
+  const researchPath = path.join(binDir, 'king-research');
+  try {
+    if (fs.existsSync(researchPath)) {
+      execSync(`"${researchPath}" --help`, { stdio: 'pipe', timeout: 10000 });
+      results.push({ status: 'ok', label: 'CLI: king-research is working' });
+    } else {
+      results.push({ status: 'fail', label: 'CLI: king-research not found' });
+    }
+  } catch {
+    results.push({ status: 'warn', label: 'CLI: king-research found but returned an error' });
+  }
+
   return results;
 }
 
@@ -64,6 +77,7 @@ function checkSkills(projectDir) {
   const skills = [
     { path: '.claude/skills/king-context/skill.md', name: 'king-context' },
     { path: '.claude/skills/scraper-workflow/skill.md', name: 'scraper-workflow' },
+    { path: '.claude/skills/king-research/skill.md', name: 'king-research' },
   ];
 
   for (const skill of skills) {
@@ -125,6 +139,7 @@ function checkDirStructure(projectDir) {
     '.king-context/core',
     '.king-context/data',
     '.king-context/docs',
+    '.king-context/research',
     '.king-context/_learned',
     '.king-context/_temp',
   ];

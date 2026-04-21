@@ -314,3 +314,7 @@ def main() -> None:
         filter_llm_fallback=not args.no_llm_filter,
     )
     asyncio.run(run_pipeline(args, config))
+
+
+if __name__ == "__main__":
+    main()

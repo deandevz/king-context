@@ -109,10 +109,10 @@ def test_format_search_plain():
     ]
     output = format_search(results)
 
-    assert "1. useState" in output
+    assert "1. [docs] useState" in output
     assert "score=0.95" in output
     assert "manage component state" in output
-    assert "2. useEffect" in output
+    assert "2. [docs] useEffect" in output
     assert "score=0.80" in output
     assert "run side effects" in output
 
@@ -124,7 +124,7 @@ def test_format_search_plain_empty():
 def test_format_search_plain_no_use_case():
     results = [_result(use_cases=[])]
     output = format_search(results)
-    assert "1. useState" in output
+    assert "1. [docs] useState" in output
     # No indented use_case line
     assert output.count("\n") == 0
 
@@ -225,7 +225,7 @@ def test_format_grep_plain():
     ]
     output = format_grep(matches)
 
-    assert "## react/useState" in output
+    assert "## [docs] react/useState" in output
     assert "  15: const [count, setCount] = useState(0);" in output
     assert "  20: setCount(prev => prev + 1);" in output
 
@@ -238,8 +238,8 @@ def test_format_grep_plain_multiple_sections():
     ]
     output = format_grep(matches)
 
-    assert "## react/useState" in output
-    assert "## vue/ref" in output
+    assert "## [docs] react/useState" in output
+    assert "## [docs] vue/ref" in output
 
 
 def test_format_grep_plain_empty():

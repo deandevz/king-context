@@ -174,3 +174,26 @@ def test_topics_doc_not_found(tmp_path, monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "nonexistent-api" in err or "not found" in err.lower()
     assert "other-api" in err
+
+
+def test_topics_requires_explicit_source_when_slug_exists_in_both_stores(
+    tmp_path, monkeypatch, capsys
+):
+    docs_store = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    docs_store.mkdir(parents=True)
+    research_store.mkdir(parents=True)
+    _build_doc(docs_store, doc_name="shared-api")
+    _build_doc(research_store, doc_name="shared-api")
+
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", docs_store)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+
+    with pytest.raises(SystemExit):
+        _run_cli(["topics", "shared-api"], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "exists in multiple stores" in err
+    assert "--source docs" in err
+    assert "--source research" in err
