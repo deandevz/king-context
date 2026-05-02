@@ -811,10 +811,17 @@ def _create_adr_from_file(args: argparse.Namespace) -> Decision:
 
 
 def _add_related(from_id: str, to_id: str) -> None:
+    from_id = _normalize_id(from_id)
+    to_id = _normalize_id(to_id)
+    if from_id == to_id:
+        raise AdrError(f"ADR cannot link to itself: {from_id}")
+    linked_paths = []
     for adr_id, related_id in ((from_id, to_id), (to_id, from_id)):
         path = _source_path_by_id(adr_id)
         if path is None:
             raise AdrError(f"ADR not found: {adr_id}")
+        linked_paths.append((path, related_id))
+    for path, related_id in linked_paths:
         meta, body = _load_source_meta(path)
         meta["related"] = _dedupe_ids(_ensure_list(meta, "related") + [related_id])
         _write_source_meta(path, meta, body)
@@ -825,6 +832,8 @@ def _supersede(old_id: str, new_id: str, reason: str) -> None:
         raise AdrError("--reason is required.")
     old_id = _normalize_id(old_id)
     new_id = _normalize_id(new_id)
+    if old_id == new_id:
+        raise AdrError(f"ADR cannot supersede itself: {old_id}")
     old_path = _source_path_by_id(old_id)
     new_path = _source_path_by_id(new_id)
     if old_path is None:
@@ -902,6 +911,12 @@ def validation_errors() -> list[str]:
             if linked_id not in by_id:
                 errors.append(f"{decision.id}: linked ADR does not exist: {linked_id}")
 
+        if decision.id in decision.supersedes:
+            errors.append(f"{decision.id}: ADR cannot supersede itself")
+        if decision.id in decision.superseded_by:
+            errors.append(f"{decision.id}: ADR cannot be superseded by itself")
+        if decision.id in decision.related:
+            errors.append(f"{decision.id}: ADR cannot be related to itself")
         if decision.supersedes and not decision.supersession_reason:
             errors.append(f"{decision.id}: supersession_reason is required when supersedes is set")
         if decision.active and decision.superseded_by:

@@ -299,6 +299,33 @@ def test_supersede_updates_both_adrs(tmp_path, monkeypatch, capsys):
     assert new.supersession_reason
 
 
+def test_supersede_rejects_self_supersession_before_writing(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(adr_dir, adr_id="ADR-0001", title="Use Redis locks", keywords=["redis", "locks"])
+    adr.rebuild_index()
+
+    with pytest.raises(SystemExit):
+        _run_cli(
+            [
+                "adr",
+                "supersede",
+                "ADR-0001",
+                "ADR-0001",
+                "--reason",
+                "Redis locks created unsafe ownership behavior during deploys.",
+            ],
+            monkeypatch,
+        )
+
+    err = capsys.readouterr().err
+    assert "ADR cannot supersede itself: ADR-0001" in err
+    decision = adr.parse_adr(adr_dir / "0001-use-redis-locks.md")
+    assert decision.status == "accepted"
+    assert decision.superseded_by == []
+    assert decision.supersedes == []
+    assert decision.supersession_reason == ""
+
+
 def test_link_adds_reciprocal_related_links(tmp_path, monkeypatch):
     adr_dir, _ = _patch_project(tmp_path, monkeypatch)
     _write_adr(adr_dir, adr_id="ADR-0001", title="Use Postgres advisory locks")
@@ -311,6 +338,34 @@ def test_link_adds_reciprocal_related_links(tmp_path, monkeypatch):
     second = adr.parse_adr(adr_dir / "0002-use-job-queue.md")
     assert first.related == ["ADR-0002"]
     assert second.related == ["ADR-0001"]
+
+
+def test_link_rejects_missing_adr_before_writing(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(adr_dir, adr_id="ADR-0001", title="Use Postgres advisory locks")
+    adr.rebuild_index()
+
+    with pytest.raises(SystemExit):
+        _run_cli(["adr", "link", "ADR-0001", "ADR-9999"], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "ADR not found: ADR-9999" in err
+    decision = adr.parse_adr(adr_dir / "0001-use-postgres-advisory-locks.md")
+    assert decision.related == []
+
+
+def test_link_rejects_self_link_before_writing(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(adr_dir, adr_id="ADR-0001", title="Use Postgres advisory locks")
+    adr.rebuild_index()
+
+    with pytest.raises(SystemExit):
+        _run_cli(["adr", "link", "ADR-0001", "ADR-0001"], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "ADR cannot link to itself: ADR-0001" in err
+    decision = adr.parse_adr(adr_dir / "0001-use-postgres-advisory-locks.md")
+    assert decision.related == []
 
 
 def test_new_with_related_adds_reciprocal_link(tmp_path, monkeypatch):
@@ -534,6 +589,20 @@ def test_validate_reports_stale_superseded_status(tmp_path, monkeypatch):
     errors = adr.validation_errors()
 
     assert any("ADR with superseded_by must have status superseded" in error for error in errors)
+
+
+def test_validate_reports_self_related_link(tmp_path, monkeypatch):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(
+        adr_dir,
+        adr_id="ADR-0001",
+        title="Use Postgres advisory locks",
+        related=["ADR-0001"],
+    )
+
+    errors = adr.validation_errors()
+
+    assert any("ADR cannot be related to itself" in error for error in errors)
 
 
 def test_installer_scaffolding_includes_adr_dirs_and_skill_templates():
