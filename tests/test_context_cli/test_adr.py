@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from context_cli import adr
 
 
@@ -201,6 +203,33 @@ def test_timeline_shows_supersession_reason(tmp_path, monkeypatch, capsys):
     assert "Replaced because: Redis locks created unsafe ownership behavior during deploys." in out
 
 
+def test_timeline_includes_superseded_history_when_only_new_adr_matches(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(
+        adr_dir,
+        adr_id="ADR-0001",
+        title="Use Redis locks",
+        status="superseded",
+        superseded_by=["ADR-0002"],
+        keywords=["redis", "locks"],
+    )
+    _write_adr(
+        adr_dir,
+        adr_id="ADR-0002",
+        title="Use Postgres advisory locks",
+        supersedes=["ADR-0001"],
+        supersession_reason="Redis locks created unsafe ownership behavior during deploys.",
+        keywords=["postgres", "advisory-locks"],
+    )
+    adr.rebuild_index()
+
+    _run_cli(["adr", "timeline", "postgres"], monkeypatch)
+    out = capsys.readouterr().out
+    assert "- ADR-0002 accepted" in out
+    assert "- ADR-0001 superseded" in out
+    assert "superseded by ADR-0002" in out
+
+
 def test_supersede_updates_both_adrs(tmp_path, monkeypatch, capsys):
     adr_dir, _ = _patch_project(tmp_path, monkeypatch)
     _write_adr(adr_dir, adr_id="ADR-0001", title="Use Redis locks", keywords=["redis", "locks"])
@@ -240,6 +269,114 @@ def test_link_adds_reciprocal_related_links(tmp_path, monkeypatch):
     second = adr.parse_adr(adr_dir / "0002-use-job-queue.md")
     assert first.related == ["ADR-0002"]
     assert second.related == ["ADR-0001"]
+
+
+def test_new_with_related_adds_reciprocal_link(tmp_path, monkeypatch):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(adr_dir, adr_id="ADR-0001", title="Use Postgres advisory locks")
+
+    _run_cli(
+        [
+            "adr",
+            "new",
+            "--title",
+            "Use job queue",
+            "--status",
+            "accepted",
+            "--date",
+            "2026-05-02",
+            "--areas",
+            "jobs",
+            "--keywords",
+            "jobs,queue",
+            "--tags",
+            "architecture",
+            "--related",
+            "ADR-0001",
+            "--context",
+            "Workers need durable handoff.",
+            "--decision",
+            "Use a job queue.",
+            "--alternatives",
+            "Direct execution.",
+            "--consequences",
+            "Jobs can be retried.",
+        ],
+        monkeypatch,
+    )
+
+    first = adr.parse_adr(adr_dir / "0001-use-postgres-advisory-locks.md")
+    second = adr.parse_adr(adr_dir / "0002-use-job-queue.md")
+    assert first.related == ["ADR-0002"]
+    assert second.related == ["ADR-0001"]
+    assert adr.validation_errors() == []
+
+
+def test_new_from_file_rejects_duplicate_id_before_writing(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(adr_dir, adr_id="ADR-0001", title="Use Postgres advisory locks")
+    draft = tmp_path / "draft.md"
+    draft.write_text(
+        adr.render_adr_markdown(
+            adr_id="ADR-0001",
+            title="Use Redis locks",
+            status="accepted",
+            adr_date="2026-05-02",
+            areas=["jobs"],
+            supersedes=[],
+            superseded_by=[],
+            related=[],
+            supersession_reason="",
+            keywords=["redis"],
+            tags=["architecture"],
+            context="Workers need coordination.",
+            decision="Use Redis locks.",
+            alternatives="Postgres advisory locks.",
+            consequences="Requires Redis availability.",
+        )
+    )
+
+    with pytest.raises(SystemExit):
+        _run_cli(["adr", "new", "--from-file", str(draft)], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "ADR ID already exists: ADR-0001" in err
+    assert (adr_dir / "0001-use-postgres-advisory-locks.md").exists()
+    assert not (adr_dir / "0001-use-redis-locks.md").exists()
+    assert len(list(adr_dir.glob("*.md"))) == 1
+
+
+def test_new_from_file_with_related_adds_reciprocal_link(tmp_path, monkeypatch):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(adr_dir, adr_id="ADR-0001", title="Use Postgres advisory locks")
+    draft = tmp_path / "draft.md"
+    draft.write_text(
+        adr.render_adr_markdown(
+            adr_id="ADR-0002",
+            title="Use job queue",
+            status="accepted",
+            adr_date="2026-05-02",
+            areas=["jobs"],
+            supersedes=[],
+            superseded_by=[],
+            related=["ADR-0001"],
+            supersession_reason="",
+            keywords=["jobs", "queue"],
+            tags=["architecture"],
+            context="Workers need durable handoff.",
+            decision="Use a job queue.",
+            alternatives="Direct execution.",
+            consequences="Jobs can be retried.",
+        )
+    )
+
+    _run_cli(["adr", "new", "--from-file", str(draft)], monkeypatch)
+
+    first = adr.parse_adr(adr_dir / "0001-use-postgres-advisory-locks.md")
+    second = adr.parse_adr(adr_dir / "0002-use-job-queue.md")
+    assert first.related == ["ADR-0002"]
+    assert second.related == ["ADR-0001"]
+    assert adr.validation_errors() == []
 
 
 def test_status_detects_stale_index(tmp_path, monkeypatch):

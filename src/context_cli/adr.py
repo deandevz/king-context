@@ -554,8 +554,12 @@ def _group_timeline(query: str) -> dict[str, list[dict[str, Any]]]:
     all_decisions = {d["id"]: d for d in _load_indexed_decisions()}
     matched = search_decisions(query, active_only=False, top=50)
     selected_ids = {item.id for item in matched}
+    supersession_ids: set[str] = set()
     for item in matched:
+        supersession_ids.update(item.supersedes)
+        supersession_ids.update(item.superseded_by)
         selected_ids.update(item.related)
+    selected_ids.update(supersession_ids)
 
     selected = [all_decisions[adr_id] for adr_id in selected_ids if adr_id in all_decisions]
     selected.sort(key=lambda item: (item.get("date", ""), item.get("id", "")))
@@ -563,7 +567,8 @@ def _group_timeline(query: str) -> dict[str, list[dict[str, Any]]]:
     groups = {"Active": [], "Superseded": [], "Deprecated/Rejected": [], "Related": []}
     matched_ids = {item.id for item in matched}
     for decision in selected:
-        if decision.get("id") not in matched_ids:
+        decision_id = decision.get("id")
+        if decision_id not in matched_ids and decision_id not in supersession_ids:
             groups["Related"].append(decision)
         elif decision.get("active"):
             groups["Active"].append(decision)
@@ -753,6 +758,8 @@ def _create_adr_from_flags(args: argparse.Namespace) -> Decision:
         meta["status"] = "superseded"
         meta["superseded_by"] = _dedupe_ids(_ensure_list(meta, "superseded_by") + [adr_id])
         _write_source_meta(old_path, meta, body)
+    for related_id in related:
+        _add_related(adr_id, related_id)
 
     return parse_adr(path)
 
@@ -767,11 +774,17 @@ def _create_adr_from_file(args: argparse.Namespace) -> Decision:
         meta["id"] = _next_adr_id()
         content = _render_frontmatter(meta) + _parse_frontmatter(content)[1]
     adr_id = _normalize_id(str(meta["id"]))
+    existing = _existing_ids()
+    if adr_id in existing:
+        raise AdrError(f"ADR ID already exists: {adr_id} in {existing[adr_id]}")
+    linked_ids = _dedupe_ids(_ensure_list(meta, "supersedes") + _ensure_list(meta, "related"))
+    missing_ids = [linked_id for linked_id in linked_ids if linked_id not in existing]
+    if missing_ids:
+        raise AdrError(f"Linked ADR(s) do not exist: {', '.join(missing_ids)}")
     path = _adr_dir() / _filename_for(adr_id, str(meta.get("title", adr_id)))
     _adr_dir().mkdir(parents=True, exist_ok=True)
     path.write_text(content)
     decision = parse_adr(path)
-    existing = _existing_ids()
     for old_id in decision.supersedes:
         if old_id not in existing:
             raise AdrError(f"Linked ADR does not exist: {old_id}")
@@ -782,6 +795,10 @@ def _create_adr_from_file(args: argparse.Namespace) -> Decision:
         old_meta["status"] = "superseded"
         old_meta["superseded_by"] = _dedupe_ids(_ensure_list(old_meta, "superseded_by") + [adr_id])
         _write_source_meta(old_path, old_meta, old_body)
+    for related_id in decision.related:
+        if related_id not in existing:
+            raise AdrError(f"Linked ADR does not exist: {related_id}")
+        _add_related(adr_id, related_id)
     return parse_adr(path)
 
 
