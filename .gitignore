@@ -76,3 +76,4 @@ data/
 # Codex: ignore everything except skills/
 .agents/*
 !.agents/skills/
+.agents/skills/docs-writer/
