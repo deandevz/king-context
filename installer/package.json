@@ -1,6 +1,6 @@
 {
   "name": "@king-context/cli",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Installer for King Context — local-first documentation search for AI agents",
   "bin": {
     "king-context": "./bin/king-context.js"
