@@ -107,14 +107,12 @@ function updateClaudeMd(projectDir) {
 }
 
 /**
- * Append gitignore entries for .king-context internals if not already present.
+ * Append missing gitignore entries for .king-context internals.
  */
 function updateGitignore(projectDir) {
   const gitignorePath = path.join(projectDir, '.gitignore');
   const marker = '# King Context';
-  const entries = [
-    '',
-    marker,
+  const requiredEntries = [
     '.king-context/core/',
     '.king-context/docs/',
     '.king-context/decisions/',
@@ -122,15 +120,28 @@ function updateGitignore(projectDir) {
     '.king-context/data/',
     '.king-context/_temp/',
     '.king-context/_learned/',
-    '',
-  ].join('\n');
+  ];
+  const entries = ['', marker, ...requiredEntries, ''].join('\n');
 
   if (fs.existsSync(gitignorePath)) {
     const content = fs.readFileSync(gitignorePath, 'utf8');
-    if (content.includes(marker)) {
-      return; // already present
+    const lines = content.split(/\r?\n/);
+    const markerIndex = lines.findIndex((line) => line.trim() === marker);
+
+    if (markerIndex === -1) {
+      fs.appendFileSync(gitignorePath, entries);
+      return;
     }
-    fs.appendFileSync(gitignorePath, entries);
+
+    const existingEntries = new Set(lines.map((line) => line.trim()));
+    const missingEntries = requiredEntries.filter((entry) => !existingEntries.has(entry));
+    if (missingEntries.length === 0) {
+      return;
+    }
+
+    const newline = content.includes('\r\n') ? '\r\n' : '\n';
+    lines.splice(markerIndex + 1, 0, ...missingEntries);
+    fs.writeFileSync(gitignorePath, lines.join(newline));
   } else {
     fs.writeFileSync(gitignorePath, entries.trimStart());
   }
