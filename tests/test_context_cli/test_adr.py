@@ -419,6 +419,41 @@ def test_new_from_file_rejects_invalid_draft_before_writing(tmp_path, monkeypatc
     assert not list(adr_dir.glob("*.md"))
 
 
+def test_new_from_file_rejects_supersedes_without_reason_before_writing(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    old_path = _write_adr(adr_dir, adr_id="ADR-0001", title="Use Postgres advisory locks")
+    draft = tmp_path / "draft.md"
+    draft.write_text(
+        adr.render_adr_markdown(
+            adr_id="ADR-0002",
+            title="Use Redis locks",
+            status="accepted",
+            adr_date="2026-05-02",
+            areas=["jobs"],
+            supersedes=["ADR-0001"],
+            superseded_by=[],
+            related=[],
+            supersession_reason="",
+            keywords=["redis"],
+            tags=["architecture"],
+            context="Workers need coordination.",
+            decision="Use Redis locks.",
+            alternatives="Postgres advisory locks.",
+            consequences="Requires Redis availability.",
+        )
+    )
+
+    with pytest.raises(SystemExit):
+        _run_cli(["adr", "new", "--from-file", str(draft)], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "supersession_reason is required when supersedes is set" in err
+    assert not (adr_dir / "0002-use-redis-locks.md").exists()
+    old_decision = adr.parse_adr(old_path)
+    assert old_decision.status == "accepted"
+    assert old_decision.superseded_by == []
+
+
 def test_new_from_file_with_related_adds_reciprocal_link(tmp_path, monkeypatch):
     adr_dir, _ = _patch_project(tmp_path, monkeypatch)
     _write_adr(adr_dir, adr_id="ADR-0001", title="Use Postgres advisory locks")

@@ -788,6 +788,8 @@ def _create_adr_from_file(args: argparse.Namespace) -> Decision:
         raise AdrError(f"Linked ADR(s) do not exist: {', '.join(missing_ids)}")
     path = _adr_dir() / _filename_for(adr_id, str(meta.get("title", adr_id)))
     decision = _parse_adr_content(content, path, 0.0)
+    if decision.supersedes and not decision.supersession_reason:
+        raise AdrError("supersession_reason is required when supersedes is set")
 
     _adr_dir().mkdir(parents=True, exist_ok=True)
     path.write_text(content)
