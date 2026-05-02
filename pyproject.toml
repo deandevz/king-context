@@ -21,7 +21,7 @@ dev = [
 ]
 
 [project.scripts]
-king-context = "king_context.server:main"
+king-context-server = "king_context.server:main"
 king-scrape = "king_context.scraper.cli:main"
 king-research = "king_context.research.cli:main"
 kctx = "context_cli.cli:main"

@@ -20,7 +20,7 @@ King Context is a local-first, token-efficient documentation server for LLM cont
 pip install -e .
 
 # Run MCP server
-king-context                         # via console script
+king-context-server                  # via console script
 python -m king_context.server        # via module
 
 # Run tests
