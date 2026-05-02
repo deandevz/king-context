@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-02
+
+### Fixed
+
+- Installer now passes `--no-cache-dir` (and `--force-reinstall --no-deps`
+  on upgrade) when installing the `king-context` Python package from git.
+  Previously, pip cached the built wheel under the unchanged version
+  `0.1.0`, so `init`/`update` silently reused the stale wheel and missed
+  new commits on `main` (e.g. the ADR commands shipped in 0.2.0). Bumped
+  the Python package version to `0.2.0` so cached wheels from earlier
+  installs are no longer matched.
+
 ## [0.2.0] - 2026-05-02
 
 ### Added
