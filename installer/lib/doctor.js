@@ -4,6 +4,8 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const ui = require('./ui');
+const { expectedDirPaths } = require('./scaffold');
+const { expectedSkillPaths } = require('./skills');
 
 /**
  * Run a single diagnostic check.
@@ -74,13 +76,8 @@ function checkCliTools(projectDir) {
 
 function checkSkills(projectDir) {
   const results = [];
-  const skills = [
-    { path: '.claude/skills/king-context/skill.md', name: 'king-context' },
-    { path: '.claude/skills/scraper-workflow/skill.md', name: 'scraper-workflow' },
-    { path: '.claude/skills/king-research/skill.md', name: 'king-research' },
-  ];
 
-  for (const skill of skills) {
+  for (const skill of expectedSkillPaths()) {
     const fullPath = path.join(projectDir, skill.path);
     if (fs.existsSync(fullPath)) {
       results.push({ status: 'ok', label: `Skill: ${skill.name} installed` });
@@ -134,18 +131,8 @@ function checkApiKeys(projectDir) {
 }
 
 function checkDirStructure(projectDir) {
-  const expectedDirs = [
-    '.king-context/bin',
-    '.king-context/core',
-    '.king-context/data',
-    '.king-context/docs',
-    '.king-context/research',
-    '.king-context/_learned',
-    '.king-context/_temp',
-  ];
-
   const missing = [];
-  for (const dir of expectedDirs) {
+  for (const dir of expectedDirPaths()) {
     if (!fs.existsSync(path.join(projectDir, dir))) {
       missing.push(dir);
     }
