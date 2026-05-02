@@ -68,6 +68,36 @@ def _run_cli(args, monkeypatch):
     main()
 
 
+def _new_adr_args(*, title="Use Postgres advisory locks", adr_date="2026-05-02", extra=None):
+    args = [
+        "adr",
+        "new",
+        "--title",
+        title,
+        "--status",
+        "accepted",
+        "--date",
+        adr_date,
+        "--areas",
+        "jobs,database,concurrency",
+        "--keywords",
+        "postgres,advisory-locks,jobs",
+        "--tags",
+        "architecture,database",
+        "--context",
+        "Workers need one owner.",
+        "--decision",
+        "Use Postgres advisory locks.",
+        "--alternatives",
+        "Redis locks.",
+        "--consequences",
+        "Locks are scoped to database sessions.",
+    ]
+    if extra:
+        args.extend(extra)
+    return args
+
+
 def test_parse_adr_markdown_frontmatter(tmp_path, monkeypatch):
     adr_dir, _ = _patch_project(tmp_path, monkeypatch)
     path = _write_adr(adr_dir)
@@ -100,38 +130,50 @@ def test_rebuild_index_writes_decision_json(tmp_path, monkeypatch):
 def test_cli_new_creates_adr_and_index(tmp_path, monkeypatch, capsys):
     adr_dir, decisions_dir = _patch_project(tmp_path, monkeypatch)
 
-    _run_cli(
-        [
-            "adr",
-            "new",
-            "--title",
-            "Use Postgres advisory locks",
-            "--status",
-            "accepted",
-            "--date",
-            "2026-05-02",
-            "--areas",
-            "jobs,database,concurrency",
-            "--keywords",
-            "postgres,advisory-locks,jobs",
-            "--tags",
-            "architecture,database",
-            "--context",
-            "Workers need one owner.",
-            "--decision",
-            "Use Postgres advisory locks.",
-            "--alternatives",
-            "Redis locks.",
-            "--consequences",
-            "Locks are scoped to database sessions.",
-        ],
-        monkeypatch,
-    )
+    _run_cli(_new_adr_args(), monkeypatch)
 
     out = capsys.readouterr().out
     assert "Created ADR-0001" in out
     assert (adr_dir / "0001-use-postgres-advisory-locks.md").exists()
     assert (decisions_dir / "sections" / "0001-use-postgres-advisory-locks.json").exists()
+
+
+def test_cli_new_rejects_invalid_date_before_writing(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+
+    with pytest.raises(SystemExit):
+        _run_cli(_new_adr_args(adr_date="2026-99-99"), monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "invalid date '2026-99-99'" in err
+    assert not list(adr_dir.glob("*.md"))
+
+
+def test_cli_new_rejects_invalid_superseding_adr_before_updating_old_adr(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    _write_adr(adr_dir, adr_id="ADR-0001", title="Use Redis locks")
+
+    with pytest.raises(SystemExit):
+        _run_cli(
+            _new_adr_args(
+                title="Use Postgres advisory locks",
+                adr_date="2026-99-99",
+                extra=[
+                    "--supersedes",
+                    "ADR-0001",
+                    "--supersession-reason",
+                    "Redis locks were unreliable during deploys.",
+                ],
+            ),
+            monkeypatch,
+        )
+
+    err = capsys.readouterr().err
+    old = adr.parse_adr(adr_dir / "0001-use-redis-locks.md")
+    assert "invalid date '2026-99-99'" in err
+    assert old.status == "accepted"
+    assert old.superseded_by == []
+    assert not (adr_dir / "0002-use-postgres-advisory-locks.md").exists()
 
 
 def test_search_excludes_superseded_by_default(tmp_path, monkeypatch, capsys):
@@ -344,6 +386,37 @@ def test_new_from_file_rejects_duplicate_id_before_writing(tmp_path, monkeypatch
     assert (adr_dir / "0001-use-postgres-advisory-locks.md").exists()
     assert not (adr_dir / "0001-use-redis-locks.md").exists()
     assert len(list(adr_dir.glob("*.md"))) == 1
+
+
+def test_new_from_file_rejects_invalid_draft_before_writing(tmp_path, monkeypatch, capsys):
+    adr_dir, _ = _patch_project(tmp_path, monkeypatch)
+    draft = tmp_path / "draft.md"
+    draft.write_text(
+        adr.render_adr_markdown(
+            adr_id="ADR-0001",
+            title="Use Redis locks",
+            status="accepted",
+            adr_date="2026-99-99",
+            areas=["jobs"],
+            supersedes=[],
+            superseded_by=[],
+            related=[],
+            supersession_reason="",
+            keywords=["redis"],
+            tags=["architecture"],
+            context="Workers need coordination.",
+            decision="Use Redis locks.",
+            alternatives="Postgres advisory locks.",
+            consequences="Requires Redis availability.",
+        )
+    )
+
+    with pytest.raises(SystemExit):
+        _run_cli(["adr", "new", "--from-file", str(draft)], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "invalid date '2026-99-99'" in err
+    assert not list(adr_dir.glob("*.md"))
 
 
 def test_new_from_file_with_related_adds_reciprocal_link(tmp_path, monkeypatch):

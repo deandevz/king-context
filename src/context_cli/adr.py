@@ -252,8 +252,7 @@ def _active(status: str, superseded_by: list[str]) -> bool:
     return status in {"accepted", "proposed"} and not superseded_by
 
 
-def parse_adr(path: Path) -> Decision:
-    content = path.read_text()
+def _parse_adr_content(content: str, path: Path, source_mtime: float) -> Decision:
     meta, body = _parse_frontmatter(content)
 
     for key in REQUIRED_FRONTMATTER:
@@ -288,7 +287,6 @@ def parse_adr(path: Path) -> Decision:
         f"Check superseded decision: {meta['title']}",
     ]
 
-    stat = path.stat()
     return Decision(
         id=adr_id,
         title=str(meta["title"]).strip(),
@@ -303,7 +301,7 @@ def parse_adr(path: Path) -> Decision:
         supersession_reason=reason,
         path=path.stem,
         source_path=str(path),
-        source_mtime=stat.st_mtime,
+        source_mtime=source_mtime,
         source_hash=_source_hash(content),
         active=_active(status, superseded_by),
         priority=10,
@@ -311,6 +309,11 @@ def parse_adr(path: Path) -> Decision:
         token_estimate=_estimate_tokens(content),
         use_cases=use_cases,
     )
+
+
+def parse_adr(path: Path) -> Decision:
+    content = path.read_text()
+    return _parse_adr_content(content, path, path.stat().st_mtime)
 
 
 def _section_json(decision: Decision) -> dict[str, Any]:
@@ -748,8 +751,10 @@ def _create_adr_from_flags(args: argparse.Namespace) -> Decision:
         consequences=args.consequences,
         links=args.links or "",
     )
-    _adr_dir().mkdir(parents=True, exist_ok=True)
     path = _adr_dir() / _filename_for(adr_id, args.title)
+    _parse_adr_content(content, path, 0.0)
+
+    _adr_dir().mkdir(parents=True, exist_ok=True)
     path.write_text(content)
 
     for old_id in supersedes:
@@ -782,9 +787,10 @@ def _create_adr_from_file(args: argparse.Namespace) -> Decision:
     if missing_ids:
         raise AdrError(f"Linked ADR(s) do not exist: {', '.join(missing_ids)}")
     path = _adr_dir() / _filename_for(adr_id, str(meta.get("title", adr_id)))
+    decision = _parse_adr_content(content, path, 0.0)
+
     _adr_dir().mkdir(parents=True, exist_ok=True)
     path.write_text(content)
-    decision = parse_adr(path)
     for old_id in decision.supersedes:
         if old_id not in existing:
             raise AdrError(f"Linked ADR does not exist: {old_id}")
