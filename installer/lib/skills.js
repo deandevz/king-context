@@ -117,6 +117,7 @@ function updateGitignore(projectDir) {
     marker,
     '.king-context/core/',
     '.king-context/docs/',
+    '.king-context/decisions/',
     '.king-context/research/',
     '.king-context/data/',
     '.king-context/_temp/',

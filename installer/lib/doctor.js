@@ -139,6 +139,8 @@ function checkDirStructure(projectDir) {
     '.king-context/core',
     '.king-context/data',
     '.king-context/docs',
+    '.king-context/adr',
+    '.king-context/decisions',
     '.king-context/research',
     '.king-context/_learned',
     '.king-context/_temp',

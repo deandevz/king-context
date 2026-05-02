@@ -8,6 +8,8 @@ const DIRS = [
   'core',
   'data',
   'docs',
+  'adr',
+  'decisions',
   'research',
   '_learned',
   '_temp',
