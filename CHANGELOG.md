@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- ADR (Architecture Decision Record) memory for the CLI. New `kctx adr`
+  subcommands let agents record, list, and recall architectural decisions
+  across sessions. Two new skills (`king-decisions` and `king-record-decision`)
+  plug into Claude Code so agents use the decision log without manual
+  prompting. Installer now scaffolds an `.king-context/adr/` directory and
+  seeds it with two example ADRs that document the project's own
+  architectural choices.
+
 ### Changed
 
 - Renamed the Python MCP server console script from `king-context` to
