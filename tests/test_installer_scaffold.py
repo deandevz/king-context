@@ -1,5 +1,6 @@
 """Tests for installer scaffolding shared by install, update, and doctor."""
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -12,6 +13,38 @@ def test_doctor_uses_scaffold_directory_contract():
 
     assert "expectedDirPaths" in doctor
     assert "const expectedDirs = [" not in doctor
+
+
+def test_doctor_uses_skill_template_contract():
+    doctor = Path("installer/lib/doctor.js").read_text(encoding="utf-8")
+
+    assert "expectedSkillPaths" in doctor
+    assert ".claude/skills/king-context/skill.md" not in doctor
+
+
+def test_expected_skill_paths_follow_template_directories():
+    script = """
+const { expectedSkillPaths } = require('./installer/lib/skills');
+console.log(JSON.stringify(expectedSkillPaths()));
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    skills = json.loads(result.stdout)
+    names = {skill["name"] for skill in skills}
+    template_names = {
+        path.parent.name
+        for path in (REPO_ROOT / "installer" / "templates" / "skills").glob("*/skill.md")
+    }
+    assert names == template_names
+    assert "king-decisions" in names
+    assert "king-record-decision" in names
 
 
 def test_update_creates_missing_directories_for_existing_install(tmp_path):

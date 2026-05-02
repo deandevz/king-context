@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const ui = require('./ui');
 const { expectedDirPaths } = require('./scaffold');
+const { expectedSkillPaths } = require('./skills');
 
 /**
  * Run a single diagnostic check.
@@ -75,13 +76,8 @@ function checkCliTools(projectDir) {
 
 function checkSkills(projectDir) {
   const results = [];
-  const skills = [
-    { path: '.claude/skills/king-context/skill.md', name: 'king-context' },
-    { path: '.claude/skills/scraper-workflow/skill.md', name: 'scraper-workflow' },
-    { path: '.claude/skills/king-research/skill.md', name: 'king-research' },
-  ];
 
-  for (const skill of skills) {
+  for (const skill of expectedSkillPaths()) {
     const fullPath = path.join(projectDir, skill.path);
     if (fs.existsSync(fullPath)) {
       results.push({ status: 'ok', label: `Skill: ${skill.name} installed` });

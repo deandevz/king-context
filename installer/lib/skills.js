@@ -20,6 +20,22 @@ function installSkills(projectDir) {
   }
 }
 
+function expectedSkillPaths() {
+  const srcDir = path.join(__dirname, '..', 'templates', 'skills');
+  if (!fs.existsSync(srcDir)) {
+    return [];
+  }
+
+  return fs.readdirSync(srcDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .filter((entry) => fs.existsSync(path.join(srcDir, entry.name, 'skill.md')))
+    .map((entry) => ({
+      path: path.join('.claude', 'skills', entry.name, 'skill.md'),
+      name: entry.name,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
 /**
  * Recursively copy a directory, creating targets as needed.
  */
@@ -147,4 +163,4 @@ function updateGitignore(projectDir) {
   }
 }
 
-module.exports = { installSkills, mergeSettings, updateClaudeMd, updateGitignore };
+module.exports = { expectedSkillPaths, installSkills, mergeSettings, updateClaudeMd, updateGitignore };
