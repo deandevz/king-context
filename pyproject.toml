@@ -2,7 +2,34 @@
 name = "king-context"
 version = "0.1.0"
 description = "Local-first, token-efficient documentation server for LLM context injection"
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
+authors = [
+    { name = "deandevz", email = "bruucetscontact@gmail.com" },
+]
+keywords = [
+    "mcp",
+    "llm",
+    "documentation",
+    "search",
+    "context",
+    "claude",
+    "ai-agents",
+    "rag",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "fastmcp>=0.4.0",
     "sentence-transformers>=2.2.0",
@@ -25,6 +52,11 @@ king-context = "king_context.server:main"
 king-scrape = "king_context.scraper.cli:main"
 king-research = "king_context.research.cli:main"
 kctx = "context_cli.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/deandevz/king-context"
+Repository = "https://github.com/deandevz/king-context"
+Issues = "https://github.com/deandevz/king-context/issues"
 
 [build-system]
 requires = ["hatchling"]
