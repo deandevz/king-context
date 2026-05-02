@@ -15,14 +15,16 @@ const DIRS = [
   '_temp',
 ];
 
+function expectedDirPaths() {
+  return DIRS.map((dir) => path.join('.king-context', dir));
+}
+
 /**
  * Create the .king-context/ directory structure.
  */
 function createDirs(projectDir) {
-  const base = path.join(projectDir, '.king-context');
-
-  for (const dir of DIRS) {
-    fs.mkdirSync(path.join(base, dir), { recursive: true });
+  for (const dir of expectedDirPaths()) {
+    fs.mkdirSync(path.join(projectDir, dir), { recursive: true });
   }
 }
 
@@ -63,4 +65,4 @@ function writeEnvExample(projectDir) {
   fs.writeFileSync(dest, content);
 }
 
-module.exports = { createDirs, writeWrappers, writeEnvExample };
+module.exports = { createDirs, expectedDirPaths, writeWrappers, writeEnvExample };

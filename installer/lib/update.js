@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const ui = require('./ui');
 const { upgradePackage } = require('./python');
-const { writeWrappers } = require('./scaffold');
+const { createDirs, writeWrappers } = require('./scaffold');
 const { installSkills, mergeSettings } = require('./skills');
 
 async function run() {
@@ -22,7 +22,18 @@ async function run() {
     process.exit(1);
   }
 
-  // 1. Upgrade pip package
+  // 1. Ensure the current install layout exists.
+  try {
+    ui.step('Ensuring directory structure...');
+    createDirs(projectDir);
+    ui.stepDone('Directory structure ready');
+  } catch (err) {
+    ui.stepFail('Failed to create directories');
+    console.error(`    ${err.message}`);
+    process.exit(1);
+  }
+
+  // 2. Upgrade pip package
   try {
     ui.step('Upgrading king-context package...');
     upgradePackage(projectDir);
@@ -32,7 +43,7 @@ async function run() {
     console.error(`    ${err.message}`);
   }
 
-  // 2. Overwrite wrapper scripts
+  // 3. Overwrite wrapper scripts
   try {
     ui.step('Updating CLI wrappers...');
     writeWrappers(projectDir);
@@ -42,7 +53,7 @@ async function run() {
     console.error(`    ${err.message}`);
   }
 
-  // 3. Overwrite skills
+  // 4. Overwrite skills
   try {
     ui.step('Updating Claude skills...');
     installSkills(projectDir);
@@ -52,7 +63,7 @@ async function run() {
     console.error(`    ${err.message}`);
   }
 
-  // 4. Merge settings (add any new entries)
+  // 5. Merge settings (add any new entries)
   try {
     ui.step('Merging Claude settings...');
     mergeSettings(projectDir);

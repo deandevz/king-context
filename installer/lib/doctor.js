@@ -4,6 +4,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const ui = require('./ui');
+const { expectedDirPaths } = require('./scaffold');
 
 /**
  * Run a single diagnostic check.
@@ -134,20 +135,8 @@ function checkApiKeys(projectDir) {
 }
 
 function checkDirStructure(projectDir) {
-  const expectedDirs = [
-    '.king-context/bin',
-    '.king-context/core',
-    '.king-context/data',
-    '.king-context/docs',
-    '.king-context/adr',
-    '.king-context/decisions',
-    '.king-context/research',
-    '.king-context/_learned',
-    '.king-context/_temp',
-  ];
-
   const missing = [];
-  for (const dir of expectedDirs) {
+  for (const dir of expectedDirPaths()) {
     if (!fs.existsSync(path.join(projectDir, dir))) {
       missing.push(dir);
     }

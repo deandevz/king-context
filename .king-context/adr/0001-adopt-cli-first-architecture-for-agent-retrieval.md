@@ -11,7 +11,8 @@ areas:
   - product-strategy
 supersedes: []
 superseded_by: []
-related: []
+related:
+  - ADR-0002
 keywords:
   - cli-first
   - agent-retrieval
@@ -26,6 +27,7 @@ tags:
   - retrieval
   - agents
 ---
+
 
 # ADR-0001: Adopt CLI-first architecture for agent retrieval
 
@@ -46,5 +48,3 @@ A MCP-first architecture would preserve the original server-centric shape, but i
 New features should expose reliable CLI primitives first and may add MCP support later when there is a clear integration need. Skills should prefer CLI commands for retrieval and maintenance workflows. Tests should cover CLI behavior as the primary contract. Product language should describe King Context as an optimized retrieval layer for AI agents across documentation, research, code, and project knowledge, with context-budget efficiency as a core design constraint.
 
 ## Links
-
-

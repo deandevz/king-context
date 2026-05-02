@@ -542,7 +542,6 @@ def test_installer_scaffolding_includes_adr_dirs_and_skill_templates():
 
     assert "'adr'" in scaffold
     assert "'decisions'" in scaffold
-    assert ".king-context/adr" in doctor
-    assert ".king-context/decisions" in doctor
+    assert "expectedDirPaths" in doctor
     assert Path("installer/templates/skills/king-decisions/skill.md").exists()
     assert Path("installer/templates/skills/king-record-decision/skill.md").exists()
