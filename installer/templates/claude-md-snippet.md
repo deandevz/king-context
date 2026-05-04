@@ -18,7 +18,7 @@ Documentation search and scraping tools are available in this project.
 # Index documentation
 .king-context/bin/kctx index .king-context/data/<file>.json   # index one doc
 .king-context/bin/kctx index --all                            # index all docs
-.king-context/bin/kctx ingest ./notes --name my-bank          # ingest local notes/transcripts
+.king-context/bin/kctx ingest ./notes --name my-bank          # ingest local notes, transcripts, or PDFs
 
 # Scrape new documentation
 .king-context/bin/king-scrape <url>                      # full pipeline

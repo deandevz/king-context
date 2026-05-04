@@ -195,12 +195,13 @@ This is the recommended workflow for:
 - plain text archives
 - transcript files such as `.srt` and `.vtt`
 
-The MVP supports:
+The current implementation supports:
 
 - `.md`
 - `.txt`
 - `.srt`
 - `.vtt`
+- `.pdf` when `pypdf` is installed in the active Python environment
 
 Examples:
 
@@ -232,6 +233,30 @@ Flags:
 By default it also indexes the generated corpus immediately, so it becomes
 searchable through `kctx search`, `kctx read`, `kctx grep`, and `kctx topics`
 right away.
+
+Each generated section keeps source metadata such as:
+
+- `source_type`
+- `source_file`
+- `source_format`
+- `source_collection`
+- `source_kind`
+
+This makes user-provided corpora easier to inspect, debug, and extend later in
+the UI or other retrieval flows.
+
+When you ingest a directory, the command also applies a few safe defaults:
+
+- ignores hidden files such as `.draft.txt`
+- ignores common heavy directories such as `.git`, `node_modules`, and `.venv`
+- ignores clearly unsupported binary files such as `.png`, `.zip`, and `.mp4`
+
+The CLI prints a short ingestion summary so you can see:
+
+- how many files were scanned
+- how many supported files were ingested
+- how many files were ignored
+- which unsupported extensions were skipped
 
 ## Manage architectural decisions
 

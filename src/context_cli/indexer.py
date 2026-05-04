@@ -65,6 +65,15 @@ def index_doc(json_path: Path, store_dir: Path) -> IndexResult:
             "content": content,
             "token_estimate": _estimate_tokens(content),
         }
+        for key in (
+            "source_type",
+            "source_file",
+            "source_format",
+            "source_collection",
+            "source_kind",
+        ):
+            if key in section:
+                section_data[key] = section[key]
         (sections_dir / f"{path}.json").write_text(
             json.dumps(section_data, indent=2)
         )

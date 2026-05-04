@@ -320,10 +320,14 @@ def test_ingest_directory_into_docs_store(tmp_path, monkeypatch, capsys):
     notes_dir.mkdir()
     (notes_dir / "guide.md").write_text("## Intro\n\nWelcome to the notes.", encoding="utf-8")
     (notes_dir / "summary.txt").write_text("Short transcript summary.", encoding="utf-8")
+    (notes_dir / ".draft.txt").write_text("ignore me", encoding="utf-8")
+    (notes_dir / "diagram.png").write_bytes(b"png")
 
     _run_cli(["ingest", str(notes_dir), "--name", "my-bank"], monkeypatch)
     out = capsys.readouterr().out
     assert "Ingested my-bank (docs)" in out
+    assert "Scanned 4 file(s); ignored 2" in out
+    assert ".png" in out
     assert (store_dir / "my-bank" / "index.json").exists()
 
 
@@ -341,7 +345,27 @@ def test_ingest_can_target_research_store(tmp_path, monkeypatch, capsys):
     _run_cli(["ingest", str(transcript), "--source", "research", "--name", "agent-memory-bank"], monkeypatch)
     out = capsys.readouterr().out
     assert "Ingested agent-memory-bank (research)" in out
+    assert "Scanned 1 file(s); ignored 0" in out
     assert (research_store / "agent-memory-bank" / "index.json").exists()
+
+
+def test_ingest_reports_runtime_errors_cleanly(tmp_path, monkeypatch, capsys):
+    store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+    monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(cli_mod.ingest_mod, "ingest_path", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("PDF ingestion requires the 'pypdf' package.")))
+
+    pdf_file = tmp_path / "notes.pdf"
+    pdf_file.write_bytes(b"%PDF-1.4")
+
+    with pytest.raises(SystemExit):
+        _run_cli(["ingest", str(pdf_file), "--name", "pdf-bank"], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "pypdf" in err
 
 
 def test_help_shows_subcommands(monkeypatch, capsys):

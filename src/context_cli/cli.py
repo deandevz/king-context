@@ -262,19 +262,32 @@ def _cmd_ingest(args: argparse.Namespace) -> None:
     ingest_mod.STORE_DIR = STORE_DIR
     ingest_mod.RESEARCH_STORE_DIR = RESEARCH_STORE_DIR
 
-    result = ingest_mod.ingest_path(
-        input_path,
-        name=args.name,
-        display_name=args.display_name,
-        source=args.source,
-        chunk_max_tokens=args.chunk_max_tokens,
-        chunk_min_tokens=args.chunk_min_tokens,
-        auto_index=not args.no_auto_index,
-    )
+    try:
+        result = ingest_mod.ingest_path(
+            input_path,
+            name=args.name,
+            display_name=args.display_name,
+            source=args.source,
+            chunk_max_tokens=args.chunk_max_tokens,
+            chunk_min_tokens=args.chunk_min_tokens,
+            auto_index=not args.no_auto_index,
+        )
+    except (FileNotFoundError, RuntimeError) as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
     status = "and indexed" if result.indexed else "without indexing"
     print(
         f"Ingested {result.doc_name} ({result.store_label}): "
         f"{result.section_count} sections from {result.source_file_count} file(s) {status}"
+    )
+    print(
+        f"Scanned {result.discovered_file_count} file(s); "
+        f"ignored {result.ignored_file_count}"
+        + (
+            f" ({', '.join(result.ignored_extensions)})"
+            if result.ignored_extensions
+            else ""
+        )
     )
     print(f"Saved JSON: {result.json_path}")
 
@@ -361,7 +374,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # ingest
     p_ingest = subparsers.add_parser(
         "ingest",
-        help="Ingest local user-provided text content into a searchable corpus",
+        help="Ingest local user-provided files into a searchable corpus",
     )
     p_ingest.add_argument("path", help="Path to a file or directory")
     p_ingest.add_argument("--name", default=None, help="Corpus slug override")

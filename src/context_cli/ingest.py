@@ -1,8 +1,9 @@
-"""Ingest local user-provided text content into King Context JSON corpora."""
+"""Ingest local user-provided content into King Context JSON corpora."""
 
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,8 +12,54 @@ from context_cli import PROJECT_ROOT, RESEARCH_STORE_DIR, STORE_DIR
 from context_cli.indexer import index_doc
 
 
-SUPPORTED_EXTENSIONS = {".md", ".txt", ".srt", ".vtt"}
+SUPPORTED_EXTENSIONS = {".md", ".txt", ".srt", ".vtt", ".pdf"}
 TRANSCRIPT_EXTENSIONS = {".srt", ".vtt"}
+IGNORED_DIR_NAMES = {
+    ".git",
+    ".hg",
+    ".svn",
+    ".venv",
+    "venv",
+    "node_modules",
+    "__pycache__",
+    "dist",
+    "build",
+    ".mypy_cache",
+    ".pytest_cache",
+}
+IGNORED_FILE_PREFIXES = (".", "~$")
+BINARY_EXTENSIONS = {
+    ".7z",
+    ".bin",
+    ".class",
+    ".dll",
+    ".dylib",
+    ".exe",
+    ".gif",
+    ".gz",
+    ".ico",
+    ".jar",
+    ".jpeg",
+    ".jpg",
+    ".mp3",
+    ".mp4",
+    ".mov",
+    ".png",
+    ".pyc",
+    ".so",
+    ".tar",
+    ".wav",
+    ".webm",
+    ".zip",
+}
+
+
+@dataclass
+class FileDiscovery:
+    files: list[Path]
+    discovered_count: int
+    ignored_count: int
+    ignored_extensions: list[str]
 
 
 @dataclass
@@ -22,6 +69,9 @@ class IngestResult:
     json_path: Path
     store_label: str
     source_file_count: int
+    discovered_file_count: int
+    ignored_file_count: int
+    ignored_extensions: list[str]
     section_count: int
     indexed: bool
 
@@ -46,19 +96,92 @@ def _read_text_file(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
 
 
-def _supported_files(path: Path) -> list[Path]:
+def _read_pdf_file(path: Path) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise RuntimeError(
+            "PDF ingestion requires the 'pypdf' package. "
+            "Install a build of king-context with PDF support, or run: pip install pypdf"
+        ) from exc
+
+    reader = PdfReader(str(path))
+    pages: list[str] = []
+    for page in reader.pages:
+        text = (page.extract_text() or "").strip()
+        if text:
+            pages.append(text)
+    return "\n\n".join(pages)
+
+
+def _read_file_content(path: Path) -> str:
+    if path.suffix.lower() == ".pdf":
+        return _read_pdf_file(path)
+    return _read_text_file(path)
+
+
+def _classify_extension(ext: str) -> str:
+    if ext == ".md":
+        return "markdown"
+    if ext in TRANSCRIPT_EXTENSIONS:
+        return "transcript"
+    if ext == ".pdf":
+        return "pdf"
+    return "text"
+
+
+def _should_ignore_file_name(file_name: str) -> bool:
+    return file_name.startswith(IGNORED_FILE_PREFIXES)
+
+
+def _supported_files(path: Path) -> FileDiscovery:
     if path.is_file():
-        return [path] if path.suffix.lower() in SUPPORTED_EXTENSIONS else []
+        ext = path.suffix.lower()
+        if ext in SUPPORTED_EXTENSIONS:
+            return FileDiscovery(files=[path], discovered_count=1, ignored_count=0, ignored_extensions=[])
+        return FileDiscovery(files=[], discovered_count=1, ignored_count=1, ignored_extensions=[ext or "<none>"])
 
     if not path.is_dir():
-        return []
+        return FileDiscovery(files=[], discovered_count=0, ignored_count=0, ignored_extensions=[])
 
-    files = [
-        candidate
-        for candidate in sorted(path.rglob("*"))
-        if candidate.is_file() and candidate.suffix.lower() in SUPPORTED_EXTENSIONS
-    ]
-    return files
+    files: list[Path] = []
+    discovered_count = 0
+    ignored_count = 0
+    ignored_extensions: set[str] = set()
+
+    for root, dir_names, file_names in os.walk(path, topdown=True):
+        dir_names[:] = [
+            name
+            for name in dir_names
+            if name not in IGNORED_DIR_NAMES and not name.startswith(".")
+        ]
+
+        root_path = Path(root)
+        for file_name in sorted(file_names):
+            discovered_count += 1
+            if _should_ignore_file_name(file_name):
+                ignored_count += 1
+                ignored_extensions.add("<hidden>")
+                continue
+
+            candidate = root_path / file_name
+            ext = candidate.suffix.lower()
+            if ext in SUPPORTED_EXTENSIONS:
+                files.append(candidate)
+                continue
+
+            ignored_count += 1
+            if ext in BINARY_EXTENSIONS:
+                ignored_extensions.add(ext)
+            else:
+                ignored_extensions.add(ext or "<none>")
+
+    return FileDiscovery(
+        files=sorted(files),
+        discovered_count=discovered_count,
+        ignored_count=ignored_count,
+        ignored_extensions=sorted(ignored_extensions),
+    )
 
 
 def _relative_label(base_path: Path, file_path: Path) -> str:
@@ -83,11 +206,10 @@ def _build_markdown(ext: str, title: str, content: str) -> str:
 
 
 def _tags_for_extension(ext: str) -> list[str]:
-    if ext == ".md":
-        return ["user-content", "markdown"]
-    if ext in TRANSCRIPT_EXTENSIONS:
+    kind = _classify_extension(ext)
+    if kind == "transcript":
         return ["user-content", "transcript"]
-    return ["user-content", "text"]
+    return ["user-content", kind]
 
 
 def _keywords_for_chunk(relative_label: str, title: str, ext: str) -> list[str]:
@@ -182,17 +304,22 @@ def _merge_small_sections(
 
 def _sections_from_file(
     file_path: Path,
+    *,
     base_path: Path,
+    collection_name: str,
+    source: str,
     chunk_max_tokens: int,
     chunk_min_tokens: int,
 ) -> list[dict]:
     relative_label = _relative_label(base_path, file_path)
     title = _file_title(file_path, relative_label)
-    content = _read_text_file(file_path).strip()
+    content = _read_file_content(file_path).strip()
     if not content:
         return []
 
-    markdown = _build_markdown(file_path.suffix.lower(), title, content)
+    ext = file_path.suffix.lower()
+    source_kind = _classify_extension(ext)
+    markdown = _build_markdown(ext, title, content)
     raw_sections = _split_markdown_sections(markdown, title)
     sized_sections: list[tuple[str, str]] = []
     for section_title, section_content in raw_sections:
@@ -203,7 +330,7 @@ def _sections_from_file(
         return []
 
     file_slug = _slugify(Path(relative_label).with_suffix("").as_posix())
-    tags = _tags_for_extension(file_path.suffix.lower())
+    tags = _tags_for_extension(ext)
     use_cases = _use_case_for_file(relative_label)
 
     sections: list[dict] = []
@@ -221,11 +348,16 @@ def _sections_from_file(
                 "title": section_title,
                 "path": path,
                 "url": relative_label,
-                "keywords": _keywords_for_chunk(relative_label, section_title, file_path.suffix.lower()),
+                "keywords": _keywords_for_chunk(relative_label, section_title, ext),
                 "use_cases": use_cases,
                 "tags": tags,
                 "priority": 5,
                 "content": section_content.strip(),
+                "source_type": "research" if source == "research" else "user-content",
+                "source_file": relative_label,
+                "source_format": ext.lstrip(".") or "text",
+                "source_collection": collection_name,
+                "source_kind": source_kind,
             }
         )
 
@@ -240,31 +372,29 @@ def build_user_corpus(
     source: str = "docs",
     chunk_max_tokens: int = 800,
     chunk_min_tokens: int = 50,
-) -> tuple[dict, int]:
-    files = _supported_files(input_path)
-    if not files:
+) -> tuple[dict, FileDiscovery]:
+    discovery = _supported_files(input_path)
+    if not discovery.files:
         raise FileNotFoundError(
             f"No supported files found under {input_path}. "
-            "Supported extensions: .md, .txt, .srt, .vtt"
+            "Supported extensions: .md, .txt, .srt, .vtt, .pdf"
         )
 
     doc_name = name or _slugify(input_path.stem if input_path.is_file() else input_path.name)
     doc_display_name = display_name or _titleize_slug(doc_name)
 
     sections: list[dict] = []
-    for file_path in files:
+    for file_path in discovery.files:
         sections.extend(
             _sections_from_file(
                 file_path,
                 base_path=input_path,
+                collection_name=doc_name,
+                source=source,
                 chunk_max_tokens=chunk_max_tokens,
                 chunk_min_tokens=chunk_min_tokens,
             )
         )
-
-    if source == "research":
-        for section in sections:
-            section["source_type"] = "research"
 
     data = {
         "name": doc_name,
@@ -273,7 +403,7 @@ def build_user_corpus(
         "base_url": "",
         "sections": sections,
     }
-    return data, len(files)
+    return data, discovery
 
 
 def ingest_path(
@@ -287,7 +417,7 @@ def ingest_path(
     auto_index: bool = True,
 ) -> IngestResult:
     source = "research" if source == "research" else "docs"
-    doc_data, file_count = build_user_corpus(
+    doc_data, discovery = build_user_corpus(
         input_path,
         name=name,
         display_name=display_name,
@@ -315,7 +445,10 @@ def ingest_path(
         display_name=doc_data["display_name"],
         json_path=json_path,
         store_label=source,
-        source_file_count=file_count,
+        source_file_count=len(discovery.files),
+        discovered_file_count=discovery.discovered_count,
+        ignored_file_count=discovery.ignored_count,
+        ignored_extensions=discovery.ignored_extensions,
         section_count=len(doc_data["sections"]),
         indexed=auto_index,
     )
