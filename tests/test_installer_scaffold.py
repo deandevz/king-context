@@ -108,7 +108,7 @@ Promise.resolve(require(path.join(repoRoot, 'installer/lib/update.js')).run()).c
 
 def test_write_wrappers_uses_python_modules_on_unix(tmp_path):
     script = """
-const path = require('path');
+Object.defineProperty(process, 'platform', { value: 'linux' });
 const { writeWrappers } = require('./installer/lib/scaffold');
 process.chdir(process.argv[1]);
 writeWrappers(process.argv[1]);
