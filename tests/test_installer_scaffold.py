@@ -215,3 +215,14 @@ def test_doctor_uses_shared_python_detection_contract():
     assert "detectPython" in doctor
     assert "getVenvPython" in doctor
     assert "python3 --version" not in doctor
+
+
+def test_scraper_export_does_not_eagerly_import_seed_data():
+    export_source = Path("src/king_context/scraper/export.py").read_text(encoding="utf-8")
+
+    first_lines = "\n".join(export_source.splitlines()[:8])
+    assert "from king_context import seed_data" not in first_lines
+
+    save_index_pos = export_source.index("def save_and_index")
+    lazy_import_pos = export_source.index("from king_context import seed_data")
+    assert lazy_import_pos > save_index_pos
