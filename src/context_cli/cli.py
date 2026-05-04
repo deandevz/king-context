@@ -7,6 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from context_cli import PROJECT_ROOT, RESEARCH_STORE_DIR, STORE_DIR
+from context_cli import adr
 from context_cli.formatter import (
     format_grep,
     format_list,
@@ -328,6 +329,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Force routing to a specific store (default: auto-detect from source_type)",
     )
     p_index.set_defaults(func=_cmd_index)
+
+    adr.add_subparser(subparsers)
 
     return parser
 

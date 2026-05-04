@@ -50,7 +50,6 @@ def _load_embeddings() -> None:
 mcp = FastMCP("king-context")
 
 
-@mcp.tool()
 def search_docs(
     query: str,
     doc_name: Optional[str] = None,
@@ -70,7 +69,6 @@ def search_docs(
     return search_cascade(query=query, doc_name=doc_name, max_results=max_results)
 
 
-@mcp.tool()
 def list_docs() -> Dict[str, Any]:
     """
     Lista todas as documentações disponíveis no banco.
@@ -85,7 +83,6 @@ def list_docs() -> Dict[str, Any]:
     }
 
 
-@mcp.tool()
 def show_context(
     query: str,
     doc_name: Optional[str] = None
@@ -129,7 +126,6 @@ def show_context(
     }
 
 
-@mcp.tool()
 def add_doc(doc_json: Dict[str, Any]) -> Dict[str, Any]:
     """
     Insere documentação diretamente via MCP.
@@ -182,6 +178,12 @@ def add_doc(doc_json: Dict[str, Any]) -> Dict[str, Any]:
             "sections_indexed": 0,
             "message": str(e)
         }
+
+
+mcp.tool()(search_docs)
+mcp.tool()(list_docs)
+mcp.tool()(show_context)
+mcp.tool()(add_doc)
 
 
 def main():

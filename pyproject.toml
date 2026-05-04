@@ -1,7 +1,9 @@
 [project]
 name = "king-context"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first, token-efficient documentation server for LLM context injection"
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 license = "MIT"
 classifiers = [
@@ -34,10 +36,15 @@ dev = [
 ]
 
 [project.scripts]
-king-context = "king_context.server:main"
+king-context-server = "king_context.server:main"
 king-scrape = "king_context.scraper.cli:main"
 king-research = "king_context.research.cli:main"
 kctx = "context_cli.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/deandevz/king-context"
+Repository = "https://github.com/deandevz/king-context"
+Issues = "https://github.com/deandevz/king-context/issues"
 
 [build-system]
 requires = ["hatchling>=1.27"]

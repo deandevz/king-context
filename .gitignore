@@ -66,11 +66,15 @@ commit-create/
 data/
 
 .claude/skills/tlc-spec-driven/
+.claude/skills/idea-issue/
 .cursor/
 .specs/
-.king-context/
+.king-context/*
+!.king-context/adr/
+!.king-context/adr/**
 .claude/projects/
 
 # Codex: ignore everything except skills/
 .agents/*
 !.agents/skills/
+.agents/skills/docs-writer/

@@ -58,7 +58,7 @@ function installPackage(projectDir) {
   const pip = path.join(projectDir, '.king-context', 'core', 'venv', 'bin', 'pip');
 
   execSync(
-    `"${pip}" install git+https://github.com/deandevz/king-context.git`,
+    `"${pip}" install --no-cache-dir git+https://github.com/deandevz/king-context.git`,
     { stdio: 'pipe', timeout: 300000 }
   );
 }
@@ -70,7 +70,7 @@ function upgradePackage(projectDir) {
   const pip = path.join(projectDir, '.king-context', 'core', 'venv', 'bin', 'pip');
 
   execSync(
-    `"${pip}" install --upgrade git+https://github.com/deandevz/king-context.git`,
+    `"${pip}" install --upgrade --force-reinstall --no-deps --no-cache-dir git+https://github.com/deandevz/king-context.git`,
     { stdio: 'pipe', timeout: 300000 }
   );
 }
