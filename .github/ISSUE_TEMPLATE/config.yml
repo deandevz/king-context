@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/deandevz/king-context/discussions
+    about: Ask a question or start a discussion. Please use Discussions, not Issues, for open-ended questions.
