@@ -6,6 +6,12 @@ const { detectPython, createVenv, installPackage } = require('./python');
 const { createDirs, writeWrappers, writeEnvExample } = require('./scaffold');
 const { installSkills, mergeSettings, updateClaudeMd, updateGitignore } = require('./skills');
 
+function shellCopyCommand() {
+  return process.platform === 'win32'
+    ? 'Copy-Item .king-context/.env.example .env'
+    : 'cp .king-context/.env.example .env';
+}
+
 async function run() {
   const projectDir = process.cwd();
 
@@ -16,7 +22,7 @@ async function run() {
   try {
     ui.step('Detecting Python...');
     pythonInfo = detectPython();
-    ui.stepDone(`Python ${pythonInfo.version} found (${pythonInfo.cmd})`);
+    ui.stepDone(`Python ${pythonInfo.version} found (${pythonInfo.display || pythonInfo.cmd})`);
   } catch (err) {
     ui.stepFail('Python not found');
     console.error();
@@ -122,7 +128,7 @@ async function run() {
   ui.header('Next Steps');
   console.log('  1. Copy .king-context/.env.example to .env and add your API keys:');
   console.log();
-  console.log('       cp .king-context/.env.example .env');
+  console.log(`       ${shellCopyCommand()}`);
   console.log();
   console.log('  2. Run the doctor to verify your installation:');
   console.log();

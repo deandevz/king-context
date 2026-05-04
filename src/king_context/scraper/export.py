@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-from king_context import seed_data
 from king_context.scraper.enrich import EnrichedChunk
 
 
@@ -48,4 +47,6 @@ def save_and_index(doc_data: dict, output_path: Path, auto_seed: bool = True) ->
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(doc_data, indent=2, ensure_ascii=False))
     if auto_seed:
+        from king_context import seed_data
+
         seed_data.seed_one(output_path)

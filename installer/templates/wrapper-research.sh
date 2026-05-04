@@ -1,3 +1,3 @@
-#!/bin/bash
-SCRIPT_DIR="$(cd "${0%/*}" && pwd)"
-exec "$SCRIPT_DIR/../core/venv/bin/king-research" "$@"
+#!/bin/sh
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+exec "$SCRIPT_DIR/../core/venv/bin/python" -m king_context.research.cli "$@"

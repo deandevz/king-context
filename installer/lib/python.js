@@ -1,34 +1,72 @@
 'use strict';
 
-const { execSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const path = require('path');
-const fs = require('fs');
+
+function getVenvPath(projectDir) {
+  return path.join(projectDir, '.king-context', 'core', 'venv');
+}
+
+function getVenvBinDir(projectDir) {
+  return path.join(getVenvPath(projectDir), process.platform === 'win32' ? 'Scripts' : 'bin');
+}
+
+function getVenvPython(projectDir) {
+  return path.join(getVenvBinDir(projectDir), process.platform === 'win32' ? 'python.exe' : 'python');
+}
+
+function getPythonCandidates() {
+  return process.platform === 'win32'
+    ? [
+        { cmd: 'py', args: ['-3'], display: 'py -3' },
+        { cmd: 'python', args: [], display: 'python' },
+        { cmd: 'python3', args: [], display: 'python3' },
+      ]
+    : [
+        { cmd: 'python3', args: [], display: 'python3' },
+        { cmd: 'python', args: [], display: 'python' },
+        { cmd: 'py', args: ['-3'], display: 'py -3' },
+      ];
+}
+
+function parsePythonVersion(raw) {
+  const match = String(raw || '').match(/Python\s+(\d+\.\d+(?:\.\d+)?)/);
+  return match ? match[1] : null;
+}
 
 /**
  * Detect a usable Python installation (>= 3.10).
- * Tries python3 first, then python.
+ * Tries platform-appropriate Python launchers in priority order.
  * Returns { cmd, version } or throws with install instructions.
  */
 function detectPython() {
-  const candidates = ['python3', 'python'];
+  for (const candidate of getPythonCandidates()) {
+    const result = spawnSync(candidate.cmd, [...candidate.args, '--version'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
 
-  for (const cmd of candidates) {
-    try {
-      const raw = execSync(`${cmd} --version`, { stdio: 'pipe' }).toString().trim();
-      const match = raw.match(/Python\s+(\d+\.\d+\.\d+)/);
-      if (!match) continue;
-
-      const version = match[1];
-      const [major, minor] = version.split('.').map(Number);
-
-      if (major < 3 || (major === 3 && minor < 10)) {
-        continue;
-      }
-
-      return { cmd, version };
-    } catch {
-      // command not found, try next
+    if (result.error || result.status !== 0) {
+      continue;
     }
+
+    const version = parsePythonVersion(`${result.stdout || ''}${result.stderr || ''}`.trim());
+    if (!version) {
+      continue;
+    }
+
+    const [major, minor] = version.split('.').map(Number);
+    if (major < 3 || (major === 3 && minor < 10)) {
+      continue;
+    }
+
+    return {
+      cmd: candidate.cmd,
+      args: candidate.args,
+      display: candidate.display,
+      version,
+    };
   }
 
   throw new Error(
@@ -37,7 +75,8 @@ function detectPython() {
     '  or via your package manager:\n' +
     '    macOS:  brew install python@3.12\n' +
     '    Ubuntu: sudo apt install python3\n' +
-    '    Fedora: sudo dnf install python3'
+    '    Fedora: sudo dnf install python3\n' +
+    '    Windows: winget install Python.Python.3.12'
   );
 }
 
@@ -45,21 +84,25 @@ function detectPython() {
  * Create a virtual environment inside .king-context/core/venv.
  */
 function createVenv(projectDir) {
-  const { cmd } = detectPython();
-  const venvPath = path.join(projectDir, '.king-context', 'core', 'venv');
+  const { cmd, args } = detectPython();
+  const venvPath = getVenvPath(projectDir);
 
-  execSync(`${cmd} -m venv "${venvPath}"`, { stdio: 'pipe' });
+  execFileSync(cmd, [...args, '-m', 'venv', venvPath], {
+    stdio: 'pipe',
+    windowsHide: true,
+  });
 }
 
 /**
  * Install king-context package into the project venv.
  */
 function installPackage(projectDir) {
-  const pip = path.join(projectDir, '.king-context', 'core', 'venv', 'bin', 'pip');
+  const python = getVenvPython(projectDir);
 
-  execSync(
-    `"${pip}" install --no-cache-dir git+https://github.com/deandevz/king-context.git`,
-    { stdio: 'pipe', timeout: 300000 }
+  execFileSync(
+    python,
+    ['-m', 'pip', 'install', '--no-cache-dir', 'git+https://github.com/deandevz/king-context.git'],
+    { stdio: 'pipe', timeout: 300000, windowsHide: true }
   );
 }
 
@@ -67,12 +110,32 @@ function installPackage(projectDir) {
  * Upgrade king-context package in the project venv.
  */
 function upgradePackage(projectDir) {
-  const pip = path.join(projectDir, '.king-context', 'core', 'venv', 'bin', 'pip');
+  const python = getVenvPython(projectDir);
 
-  execSync(
-    `"${pip}" install --upgrade --force-reinstall --no-deps --no-cache-dir git+https://github.com/deandevz/king-context.git`,
-    { stdio: 'pipe', timeout: 300000 }
+  execFileSync(
+    python,
+    [
+      '-m',
+      'pip',
+      'install',
+      '--upgrade',
+      '--force-reinstall',
+      '--no-deps',
+      '--no-cache-dir',
+      'git+https://github.com/deandevz/king-context.git',
+    ],
+    { stdio: 'pipe', timeout: 300000, windowsHide: true }
   );
 }
 
-module.exports = { detectPython, createVenv, installPackage, upgradePackage };
+module.exports = {
+  detectPython,
+  createVenv,
+  getVenvBinDir,
+  getPythonCandidates,
+  getVenvPath,
+  getVenvPython,
+  installPackage,
+  parsePythonVersion,
+  upgradePackage,
+};

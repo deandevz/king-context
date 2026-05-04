@@ -4,8 +4,16 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const ui = require('./ui');
+const { detectPython, getVenvPython } = require('./python');
 const { expectedDirPaths } = require('./scaffold');
 const { expectedSkillPaths } = require('./skills');
+
+function getWrapperPaths(projectDir, name) {
+  const binDir = path.join(projectDir, '.king-context', 'bin');
+  return process.platform === 'win32'
+    ? [path.join(binDir, `${name}.cmd`), path.join(binDir, name)]
+    : [path.join(binDir, name)];
+}
 
 /**
  * Run a single diagnostic check.
@@ -13,62 +21,43 @@ const { expectedSkillPaths } = require('./skills');
  */
 function checkPython() {
   try {
-    const raw = execSync('python3 --version', { stdio: 'pipe' }).toString().trim();
-    return { status: 'ok', label: `Python: ${raw}` };
-  } catch {
-    return { status: 'fail', label: 'Python: python3 not found' };
+    const python = detectPython();
+    return { status: 'ok', label: `Python: ${python.version} (${python.display || python.cmd})` };
+  } catch (err) {
+    return { status: 'fail', label: `Python: ${err.message.split('\n')[0]}` };
   }
 }
 
 function checkVenv(projectDir) {
-  const venvPython = path.join(projectDir, '.king-context', 'core', 'venv', 'bin', 'python');
+  const venvPython = getVenvPython(projectDir);
   if (fs.existsSync(venvPython)) {
-    return { status: 'ok', label: 'Venv: .king-context/core/venv/bin/python exists' };
+    return { status: 'ok', label: `Venv: ${path.relative(projectDir, venvPython)} exists` };
   }
   return { status: 'fail', label: 'Venv: virtual environment not found' };
 }
 
 function checkCliTools(projectDir) {
   const results = [];
-  const binDir = path.join(projectDir, '.king-context', 'bin');
 
-  // Check kctx
-  const kctxPath = path.join(binDir, 'kctx');
-  try {
-    if (fs.existsSync(kctxPath)) {
-      execSync(`"${kctxPath}" --version`, { stdio: 'pipe', timeout: 10000 });
-      results.push({ status: 'ok', label: 'CLI: kctx is working' });
-    } else {
-      results.push({ status: 'fail', label: 'CLI: kctx not found' });
-    }
-  } catch {
-    results.push({ status: 'warn', label: 'CLI: kctx found but returned an error' });
-  }
+  const tools = [
+    { name: 'kctx', args: '--help' },
+    { name: 'king-scrape', args: '--help' },
+    { name: 'king-research', args: '--help' },
+  ];
 
-  // Check king-scrape
-  const scrapePath = path.join(binDir, 'king-scrape');
-  try {
-    if (fs.existsSync(scrapePath)) {
-      execSync(`"${scrapePath}" --help`, { stdio: 'pipe', timeout: 10000 });
-      results.push({ status: 'ok', label: 'CLI: king-scrape is working' });
-    } else {
-      results.push({ status: 'fail', label: 'CLI: king-scrape not found' });
-    }
-  } catch {
-    results.push({ status: 'warn', label: 'CLI: king-scrape found but returned an error' });
-  }
+  for (const tool of tools) {
+    const wrapperPath = getWrapperPaths(projectDir, tool.name).find((candidate) => fs.existsSync(candidate));
 
-  // Check king-research
-  const researchPath = path.join(binDir, 'king-research');
-  try {
-    if (fs.existsSync(researchPath)) {
-      execSync(`"${researchPath}" --help`, { stdio: 'pipe', timeout: 10000 });
-      results.push({ status: 'ok', label: 'CLI: king-research is working' });
-    } else {
-      results.push({ status: 'fail', label: 'CLI: king-research not found' });
+    try {
+      if (wrapperPath) {
+        execSync(`"${wrapperPath}" ${tool.args}`, { stdio: 'pipe', timeout: 10000 });
+        results.push({ status: 'ok', label: `CLI: ${tool.name} is working` });
+      } else {
+        results.push({ status: 'fail', label: `CLI: ${tool.name} not found` });
+      }
+    } catch {
+      results.push({ status: 'warn', label: `CLI: ${tool.name} found but returned an error` });
     }
-  } catch {
-    results.push({ status: 'warn', label: 'CLI: king-research found but returned an error' });
   }
 
   return results;
