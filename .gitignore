@@ -67,6 +67,7 @@ data/
 
 .claude/skills/tlc-spec-driven/
 .claude/skills/idea-issue/
+.claude/skills/pr-review-flow/
 .cursor/
 .specs/
 .king-context/*
