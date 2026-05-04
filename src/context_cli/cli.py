@@ -8,6 +8,7 @@ from pathlib import Path
 
 from context_cli import PROJECT_ROOT, RESEARCH_STORE_DIR, STORE_DIR
 from context_cli import adr
+import context_cli.ingest as ingest_mod
 from context_cli.formatter import (
     format_grep,
     format_list,
@@ -251,6 +252,43 @@ def _cmd_index(args: argparse.Namespace) -> None:
         print(f"Indexed {result.doc_name} ({label}): {result.section_count} sections")
 
 
+def _cmd_ingest(args: argparse.Namespace) -> None:
+    input_path = Path(args.path)
+    if not input_path.exists():
+        print(f"Path not found: {args.path}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        result = ingest_mod.ingest_path(
+            input_path,
+            name=args.name,
+            display_name=args.display_name,
+            source=args.source,
+            auto_index=not args.no_auto_index,
+            project_root=PROJECT_ROOT,
+            store_dir=STORE_DIR,
+            research_store_dir=RESEARCH_STORE_DIR,
+        )
+    except (FileNotFoundError, RuntimeError) as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
+    status = "and indexed" if result.indexed else "without indexing"
+    print(
+        f"Ingested {result.doc_name} ({result.store_label}): "
+        f"{result.section_count} sections from {result.source_file_count} file(s) {status}"
+    )
+    print(
+        f"Scanned {result.discovered_file_count} file(s); "
+        f"ignored {result.ignored_file_count}"
+        + (
+            f" ({', '.join(result.ignored_extensions)})"
+            if result.ignored_extensions
+            else ""
+        )
+    )
+    print(f"Saved JSON: {result.json_path}")
+
+
 def _add_source_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--source",
@@ -329,6 +367,28 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Force routing to a specific store (default: auto-detect from source_type)",
     )
     p_index.set_defaults(func=_cmd_index)
+
+    # ingest
+    p_ingest = subparsers.add_parser(
+        "ingest",
+        help="Ingest local user-provided files into a searchable corpus",
+    )
+    p_ingest.add_argument("path", help="Path to a file or directory")
+    p_ingest.add_argument("--name", default=None, help="Corpus slug override")
+    p_ingest.add_argument("--display-name", default=None, help="Display name override")
+    p_ingest.add_argument(
+        "--source",
+        choices=("docs", "research"),
+        default="docs",
+        help="Target store for the ingested corpus (default: docs)",
+    )
+    p_ingest.add_argument(
+        "--no-auto-index",
+        dest="no_auto_index",
+        action="store_true",
+        help="Export JSON only, without indexing into the local store",
+    )
+    p_ingest.set_defaults(func=_cmd_ingest)
 
     adr.add_subparser(subparsers)
 

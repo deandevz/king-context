@@ -184,6 +184,72 @@ Flags:
 The indexer writes one directory per corpus and builds reverse indexes for
 keywords, use cases, and tags.
 
+## Ingest local user content
+
+Use `kctx ingest` to turn your own local Markdown files into a searchable corpus.
+
+This is the recommended workflow for:
+
+- personal notes and knowledge banks
+- Markdown guides you wrote yourself
+- curated Markdown references you want to query through `kctx`
+
+The current implementation supports:
+
+- `.md`
+
+Examples:
+
+```bash
+kctx ingest ./notes --name my-bank
+kctx ingest ./notes/agent-memory.md --name agent-memory-notes
+kctx ingest ./notes/research.md --source research --name custom-research-bank
+kctx ingest ./notes --name my-bank --no-auto-index
+```
+
+Flags:
+
+- `path`: file or directory to ingest.
+- `--name <slug>`: override the corpus slug.
+- `--display-name <name>`: override the display name.
+- `--source docs|research`: choose the target store. The default is `docs`.
+- `--no-auto-index`: export JSON only, without indexing it into the store.
+
+`kctx ingest` writes JSON to:
+
+- `.king-context/data/<name>.json` for `docs`
+- `.king-context/data/research/<name>.json` for `research`
+
+By default it also indexes the generated corpus immediately, so it becomes
+searchable through `kctx search`, `kctx read`, `kctx grep`, and `kctx topics`
+right away.
+
+`kctx ingest` reuses the same enrichment pipeline as `king-scrape`, so
+generated sections get search-friendly keywords, use cases, tags, and
+priority scores from the existing metadata model. This means
+`OPENROUTER_API_KEY` must be available before ingesting content.
+
+Each generated section keeps source metadata such as:
+
+- `source_type`
+- `source_file`
+
+This keeps user-provided corpora easy to inspect while preserving the same
+search quality expectations as scraped documentation.
+
+When you ingest a directory, the command also applies a few safe defaults:
+
+- ignores hidden files such as `.draft.md`
+- ignores common heavy directories such as `.git`, `node_modules`, and `.venv`
+- ignores unsupported files such as `.txt`, `.pdf`, and `.png`
+
+The CLI prints a short ingestion summary so you can see:
+
+- how many files were scanned
+- how many supported files were ingested
+- how many files were ignored
+- which unsupported extensions were skipped
+
 ## Manage architectural decisions
 
 Use `kctx adr` to record and retrieve architectural decision records. ADRs are

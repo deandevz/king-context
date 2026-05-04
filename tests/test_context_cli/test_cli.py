@@ -1,11 +1,25 @@
 """Integration tests for context_cli.cli module."""
 
+import asyncio
 import json
 import sys
+from dataclasses import dataclass
 
 import pytest
 
 from context_cli.indexer import index_doc
+
+
+@dataclass
+class FakeEnrichedChunk:
+    title: str
+    path: str
+    url: str
+    content: str
+    keywords: list[str]
+    use_cases: list[str]
+    tags: list[str]
+    priority: int
 
 
 @pytest.fixture
@@ -62,6 +76,26 @@ def _run_cli(args, monkeypatch):
     from context_cli.cli import main
     monkeypatch.setattr(sys, "argv", ["kctx"] + args)
     main()
+
+
+async def _fake_ingest_enrich(chunks, config, output_dir=None):
+    return [
+        FakeEnrichedChunk(
+            title=chunk.title,
+            path=chunk.path,
+            url=chunk.source_url,
+            content=chunk.content,
+            keywords=["agent", "memory", "retrieval", "context", "notes"],
+            use_cases=["Use when studying agent memory", "Reference when retrieving context"],
+            tags=["notes"],
+            priority=6,
+        )
+        for chunk in chunks
+    ]
+
+
+def _fake_ingest_pipeline(chunks):
+    return asyncio.run(_fake_ingest_enrich(chunks, None))
 
 
 def test_list_shows_docs(store_with_doc, monkeypatch, capsys):
@@ -308,6 +342,101 @@ def test_index_file_not_found(tmp_path, monkeypatch):
         _run_cli(["index", "/nonexistent/file.json"], monkeypatch)
 
 
+def test_ingest_directory_into_docs_store(tmp_path, monkeypatch, capsys):
+    store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+    monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(cli_mod.ingest_mod, "_enrich_markdown_chunks", _fake_ingest_pipeline)
+
+    notes_dir = tmp_path / "notes"
+    notes_dir.mkdir()
+    (notes_dir / "guide.md").write_text("# Agent Memory\n\nWelcome to the notes.", encoding="utf-8")
+    (notes_dir / "reference.md").write_text("# Retrieval\n\nReference memory flows.", encoding="utf-8")
+    (notes_dir / ".draft.md").write_text("# Hidden\n\nignore me", encoding="utf-8")
+    (notes_dir / "summary.txt").write_text("ignored", encoding="utf-8")
+
+    _run_cli(["ingest", str(notes_dir), "--name", "my-bank"], monkeypatch)
+    out = capsys.readouterr().out
+    assert "Ingested my-bank (docs)" in out
+    assert "Scanned 4 file(s); ignored 2" in out
+    assert ".txt" in out
+    assert (store_dir / "my-bank" / "index.json").exists()
+
+
+def test_ingest_followed_by_search_returns_enriched_results(tmp_path, monkeypatch, capsys):
+    store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+    monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(cli_mod.ingest_mod, "_enrich_markdown_chunks", _fake_ingest_pipeline)
+
+    note = tmp_path / "agent-memory.md"
+    note.write_text("# Agent Memory\n\nKeep retrieval notes here.", encoding="utf-8")
+
+    _run_cli(["ingest", str(note), "--name", "memory-bank"], monkeypatch)
+    _run_cli(["search", "memory", "--doc", "memory-bank"], monkeypatch)
+
+    out = capsys.readouterr().out
+    assert "Agent Memory" in out
+    assert "memory-bank" in out
+
+
+def test_ingest_can_target_research_store(tmp_path, monkeypatch, capsys):
+    store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+    monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(cli_mod.ingest_mod, "_enrich_markdown_chunks", _fake_ingest_pipeline)
+
+    transcript = tmp_path / "episode.md"
+    transcript.write_text("# Episode Notes\n\nThis episode covers agent memory.", encoding="utf-8")
+
+    _run_cli(["ingest", str(transcript), "--source", "research", "--name", "agent-memory-bank"], monkeypatch)
+    out = capsys.readouterr().out
+    assert "Ingested agent-memory-bank (research)" in out
+    assert "Scanned 1 file(s); ignored 0" in out
+    assert (research_store / "agent-memory-bank" / "index.json").exists()
+
+
+def test_ingest_reports_runtime_errors_cleanly(tmp_path, monkeypatch, capsys):
+    store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+    monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(
+        cli_mod.ingest_mod,
+        "ingest_path",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("OPENROUTER_API_KEY is required for kctx ingest.")),
+    )
+
+    md_file = tmp_path / "notes.md"
+    md_file.write_text("# Notes\n\nBody", encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        _run_cli(["ingest", str(md_file), "--name", "notes-bank"], monkeypatch)
+
+    err = capsys.readouterr().err
+    assert "OPENROUTER_API_KEY" in err
+
+
+def test_ingest_help_no_longer_exposes_chunk_flags(monkeypatch, capsys):
+    with pytest.raises(SystemExit):
+        _run_cli(["ingest", "--help"], monkeypatch)
+
+    out = capsys.readouterr().out
+    assert "--chunk-max-tokens" not in out
+    assert "--chunk-min-tokens" not in out
+
+
 def test_help_shows_subcommands(monkeypatch, capsys):
     _run_cli([], monkeypatch)
     out = capsys.readouterr().out
@@ -315,3 +444,4 @@ def test_help_shows_subcommands(monkeypatch, capsys):
     assert "search" in out
     assert "read" in out
     assert "index" in out
+    assert "ingest" in out
