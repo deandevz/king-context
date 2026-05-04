@@ -110,7 +110,7 @@ Both tools driven by the same agent (Opus 4.7) through CLI plus skill, on Gemini
 
 The takeaway: progressive disclosure plus structured metadata gives the agent checkpoints to backtrack, refuse to hallucinate, and surface multiple versions of the same parameter. Semantic similarity alone cannot.
 
-Methodology and raw data in [BENCHMARK.md](BENCHMARK.md).
+Methodology and raw data in [BENCHMARK.md](BENCHMARK.md). Per-round analysis and discussion in [docs/benchmarks.md](docs/benchmarks.md).
 
 ## Where this is going
 

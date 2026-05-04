@@ -110,7 +110,7 @@ As duas ferramentas conduzidas pelo mesmo agente (Opus 4.7) através de CLI mais
 
 O recado: progressive disclosure mais metadados estruturados dão ao agente checkpoints pra voltar atrás, recusar alucinação e mostrar várias versões do mesmo parâmetro. Similaridade semântica sozinha não consegue.
 
-Metodologia e dados brutos em [BENCHMARK.md](BENCHMARK.md).
+Metodologia e dados brutos em [BENCHMARK.md](BENCHMARK.md). Análise por round e discussão em [docs/benchmarks.md](docs/benchmarks.md).
 
 ## Pra onde isso vai
 
