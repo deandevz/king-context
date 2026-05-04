@@ -18,6 +18,7 @@ from king_context.scraper.enrich import EnrichedChunk, enrich_chunks, estimate_c
 from king_context.scraper.export import export_to_json, save_and_index
 from king_context.scraper.fetch import fetch_pages
 from king_context.scraper.filter import FilterResult, filter_urls
+from king_context.scraper.sync import check_for_updates
 
 PIPELINE_STEPS = ["discover", "filter", "fetch", "chunk", "enrich", "export"]
 
@@ -96,6 +97,37 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
 
     manifest = _load_manifest(work_dir)
 
+    if getattr(args, "check_updates", False):
+        print("[discover] running sync discovery...")
+        discovery_result = await discover_urls(args.url, config)
+        report = await check_for_updates(
+            base_url=args.url,
+            current_urls=discovery_result.urls,
+            work_dir=work_dir,
+            concurrency=config.concurrency,
+        )
+        _update_step(
+            work_dir,
+            "sync",
+            {
+                "status": "done",
+                "checked_at": report.checked_at,
+                "new": len(report.new_urls),
+                "removed": len(report.removed_urls),
+                "changed": len(report.changed),
+                "unchanged": len(report.unchanged_urls),
+                "unchecked": len(report.unchecked),
+            },
+        )
+        print("=== Sync Check Summary ===")
+        print(f"  New: {len(report.new_urls)}")
+        print(f"  Removed: {len(report.removed_urls)}")
+        print(f"  Changed: {len(report.changed)}")
+        print(f"  Unchanged: {len(report.unchanged_urls)}")
+        print(f"  Unchecked: {len(report.unchecked)}")
+        print(f"  Report: {work_dir / 'sync_report.json'}")
+        return
+
     target_step = getattr(args, "step", None)
     if target_step:
         start_idx = PIPELINE_STEPS.index(target_step)
@@ -169,7 +201,7 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
             urls_to_fetch = filter_result.accepted[:]
             if getattr(args, "include_maybe", False):
                 urls_to_fetch += filter_result.maybe
-            fetch_result = await fetch_pages(urls_to_fetch, work_dir, config)
+            fetch_result = await fetch_pages(urls_to_fetch, work_dir, config, base_url=args.url)
             print(f"  fetched {fetch_result.completed}/{fetch_result.total} pages")
 
         elif step == "chunk":
@@ -243,6 +275,12 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=PIPELINE_STEPS,
         default=None,
         help="Start the pipeline from this step (loads earlier stages from checkpoints)",
+    )
+    parser.add_argument(
+        "--check-updates",
+        dest="check_updates",
+        action="store_true",
+        help="Run discovery plus page-level change detection without re-fetching or re-enriching",
     )
     parser.add_argument(
         "--model",
