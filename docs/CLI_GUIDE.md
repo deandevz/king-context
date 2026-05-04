@@ -184,6 +184,55 @@ Flags:
 The indexer writes one directory per corpus and builds reverse indexes for
 keywords, use cases, and tags.
 
+## Ingest local user content
+
+Use `kctx ingest` to turn your own local files into a searchable corpus.
+
+This is the recommended workflow for:
+
+- personal notes and knowledge banks
+- Markdown guides you wrote yourself
+- plain text archives
+- transcript files such as `.srt` and `.vtt`
+
+The MVP supports:
+
+- `.md`
+- `.txt`
+- `.srt`
+- `.vtt`
+
+Examples:
+
+```bash
+kctx ingest ./notes --name my-bank
+kctx ingest ./transcripts --name youtube-bank
+kctx ingest ./notes/agent-memory.md --name agent-memory-notes
+kctx ingest ./dropbox --source research --name custom-research-bank
+kctx ingest ./notes --name my-bank --no-auto-index
+```
+
+Flags:
+
+- `path`: file or directory to ingest.
+- `--name <slug>`: override the corpus slug.
+- `--display-name <name>`: override the display name.
+- `--source docs|research`: choose the target store. The default is `docs`.
+- `--chunk-max-tokens N`: maximum section size before subdivision. The default
+  is `800`.
+- `--chunk-min-tokens N`: minimum chunk size before merging. The default is
+  `50`.
+- `--no-auto-index`: export JSON only, without indexing it into the store.
+
+`kctx ingest` writes JSON to:
+
+- `.king-context/data/<name>.json` for `docs`
+- `.king-context/data/research/<name>.json` for `research`
+
+By default it also indexes the generated corpus immediately, so it becomes
+searchable through `kctx search`, `kctx read`, `kctx grep`, and `kctx topics`
+right away.
+
 ## Manage architectural decisions
 
 Use `kctx adr` to record and retrieve architectural decision records. ADRs are

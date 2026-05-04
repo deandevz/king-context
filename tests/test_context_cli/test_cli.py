@@ -308,6 +308,42 @@ def test_index_file_not_found(tmp_path, monkeypatch):
         _run_cli(["index", "/nonexistent/file.json"], monkeypatch)
 
 
+def test_ingest_directory_into_docs_store(tmp_path, monkeypatch, capsys):
+    store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+    monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
+
+    notes_dir = tmp_path / "notes"
+    notes_dir.mkdir()
+    (notes_dir / "guide.md").write_text("## Intro\n\nWelcome to the notes.", encoding="utf-8")
+    (notes_dir / "summary.txt").write_text("Short transcript summary.", encoding="utf-8")
+
+    _run_cli(["ingest", str(notes_dir), "--name", "my-bank"], monkeypatch)
+    out = capsys.readouterr().out
+    assert "Ingested my-bank (docs)" in out
+    assert (store_dir / "my-bank" / "index.json").exists()
+
+
+def test_ingest_can_target_research_store(tmp_path, monkeypatch, capsys):
+    store_dir = tmp_path / ".king-context" / "docs"
+    research_store = tmp_path / ".king-context" / "research"
+    import context_cli.cli as cli_mod
+    monkeypatch.setattr(cli_mod, "STORE_DIR", store_dir)
+    monkeypatch.setattr(cli_mod, "RESEARCH_STORE_DIR", research_store)
+    monkeypatch.setattr(cli_mod, "PROJECT_ROOT", tmp_path)
+
+    transcript = tmp_path / "episode.txt"
+    transcript.write_text("This episode covers agent memory.", encoding="utf-8")
+
+    _run_cli(["ingest", str(transcript), "--source", "research", "--name", "agent-memory-bank"], monkeypatch)
+    out = capsys.readouterr().out
+    assert "Ingested agent-memory-bank (research)" in out
+    assert (research_store / "agent-memory-bank" / "index.json").exists()
+
+
 def test_help_shows_subcommands(monkeypatch, capsys):
     _run_cli([], monkeypatch)
     out = capsys.readouterr().out
@@ -315,3 +351,4 @@ def test_help_shows_subcommands(monkeypatch, capsys):
     assert "search" in out
     assert "read" in out
     assert "index" in out
+    assert "ingest" in out

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from context_cli import PROJECT_ROOT, RESEARCH_STORE_DIR, STORE_DIR
 from context_cli import adr
+import context_cli.ingest as ingest_mod
 from context_cli.formatter import (
     format_grep,
     format_list,
@@ -251,6 +252,33 @@ def _cmd_index(args: argparse.Namespace) -> None:
         print(f"Indexed {result.doc_name} ({label}): {result.section_count} sections")
 
 
+def _cmd_ingest(args: argparse.Namespace) -> None:
+    input_path = Path(args.path)
+    if not input_path.exists():
+        print(f"Path not found: {args.path}", file=sys.stderr)
+        sys.exit(1)
+
+    ingest_mod.PROJECT_ROOT = PROJECT_ROOT
+    ingest_mod.STORE_DIR = STORE_DIR
+    ingest_mod.RESEARCH_STORE_DIR = RESEARCH_STORE_DIR
+
+    result = ingest_mod.ingest_path(
+        input_path,
+        name=args.name,
+        display_name=args.display_name,
+        source=args.source,
+        chunk_max_tokens=args.chunk_max_tokens,
+        chunk_min_tokens=args.chunk_min_tokens,
+        auto_index=not args.no_auto_index,
+    )
+    status = "and indexed" if result.indexed else "without indexing"
+    print(
+        f"Ingested {result.doc_name} ({result.store_label}): "
+        f"{result.section_count} sections from {result.source_file_count} file(s) {status}"
+    )
+    print(f"Saved JSON: {result.json_path}")
+
+
 def _add_source_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--source",
@@ -329,6 +357,42 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Force routing to a specific store (default: auto-detect from source_type)",
     )
     p_index.set_defaults(func=_cmd_index)
+
+    # ingest
+    p_ingest = subparsers.add_parser(
+        "ingest",
+        help="Ingest local user-provided text content into a searchable corpus",
+    )
+    p_ingest.add_argument("path", help="Path to a file or directory")
+    p_ingest.add_argument("--name", default=None, help="Corpus slug override")
+    p_ingest.add_argument("--display-name", default=None, help="Display name override")
+    p_ingest.add_argument(
+        "--source",
+        choices=("docs", "research"),
+        default="docs",
+        help="Target store for the ingested corpus (default: docs)",
+    )
+    p_ingest.add_argument(
+        "--chunk-max-tokens",
+        dest="chunk_max_tokens",
+        type=int,
+        default=800,
+        help="Maximum tokens per generated section (default: 800)",
+    )
+    p_ingest.add_argument(
+        "--chunk-min-tokens",
+        dest="chunk_min_tokens",
+        type=int,
+        default=50,
+        help="Minimum chunk size before merging (default: 50)",
+    )
+    p_ingest.add_argument(
+        "--no-auto-index",
+        dest="no_auto_index",
+        action="store_true",
+        help="Export JSON only, without indexing into the local store",
+    )
+    p_ingest.set_defaults(func=_cmd_ingest)
 
     adr.add_subparser(subparsers)
 
