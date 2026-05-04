@@ -167,7 +167,7 @@ class TestFetchResumeIntegration:
 
         fetched_urls = []
 
-        async def mock_fetch_one(url, semaphore, pages_dir, app):
+        async def mock_fetch_one(url, semaphore, pages_dir, app, output_dir, base_url):
             fetched_urls.append(url)
             slug = _url_to_slug(url)
             (pages_dir / f"{slug}.md").write_text(f"# {url}")
