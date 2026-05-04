@@ -18,7 +18,7 @@ Documentation search and scraping tools are available in this project.
 # Index documentation
 .king-context/bin/kctx index .king-context/data/<file>.json   # index one doc
 .king-context/bin/kctx index --all                            # index all docs
-.king-context/bin/kctx ingest ./notes --name my-bank          # ingest local notes, transcripts, or PDFs
+.king-context/bin/kctx ingest ./notes --name my-bank          # ingest local Markdown notes
 
 # Scrape new documentation
 .king-context/bin/king-scrape <url>                      # full pipeline
@@ -30,7 +30,7 @@ Documentation search and scraping tools are available in this project.
 
 - API keys: copy `.king-context/.env.example` to `.env` and fill in your keys
 - `FIRECRAWL_API_KEY` (required for scraping)
-- `OPENROUTER_API_KEY` (optional, for automated enrichment)
+- `OPENROUTER_API_KEY` (required for scraping enrichment and kctx ingest)
 
 ### Directory Structure
 

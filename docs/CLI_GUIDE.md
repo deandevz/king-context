@@ -186,30 +186,24 @@ keywords, use cases, and tags.
 
 ## Ingest local user content
 
-Use `kctx ingest` to turn your own local files into a searchable corpus.
+Use `kctx ingest` to turn your own local Markdown files into a searchable corpus.
 
 This is the recommended workflow for:
 
 - personal notes and knowledge banks
 - Markdown guides you wrote yourself
-- plain text archives
-- transcript files such as `.srt` and `.vtt`
+- curated Markdown references you want to query through `kctx`
 
 The current implementation supports:
 
 - `.md`
-- `.txt`
-- `.srt`
-- `.vtt`
-- `.pdf` when `pypdf` is installed in the active Python environment
 
 Examples:
 
 ```bash
 kctx ingest ./notes --name my-bank
-kctx ingest ./transcripts --name youtube-bank
 kctx ingest ./notes/agent-memory.md --name agent-memory-notes
-kctx ingest ./dropbox --source research --name custom-research-bank
+kctx ingest ./notes/research.md --source research --name custom-research-bank
 kctx ingest ./notes --name my-bank --no-auto-index
 ```
 
@@ -219,10 +213,6 @@ Flags:
 - `--name <slug>`: override the corpus slug.
 - `--display-name <name>`: override the display name.
 - `--source docs|research`: choose the target store. The default is `docs`.
-- `--chunk-max-tokens N`: maximum section size before subdivision. The default
-  is `800`.
-- `--chunk-min-tokens N`: minimum chunk size before merging. The default is
-  `50`.
 - `--no-auto-index`: export JSON only, without indexing it into the store.
 
 `kctx ingest` writes JSON to:
@@ -234,22 +224,24 @@ By default it also indexes the generated corpus immediately, so it becomes
 searchable through `kctx search`, `kctx read`, `kctx grep`, and `kctx topics`
 right away.
 
+`kctx ingest` reuses the same enrichment pipeline as `king-scrape`, so
+generated sections get search-friendly keywords, use cases, tags, and
+priority scores from the existing metadata model. This means
+`OPENROUTER_API_KEY` must be available before ingesting content.
+
 Each generated section keeps source metadata such as:
 
 - `source_type`
 - `source_file`
-- `source_format`
-- `source_collection`
-- `source_kind`
 
-This makes user-provided corpora easier to inspect, debug, and extend later in
-the UI or other retrieval flows.
+This keeps user-provided corpora easy to inspect while preserving the same
+search quality expectations as scraped documentation.
 
 When you ingest a directory, the command also applies a few safe defaults:
 
-- ignores hidden files such as `.draft.txt`
+- ignores hidden files such as `.draft.md`
 - ignores common heavy directories such as `.git`, `node_modules`, and `.venv`
-- ignores clearly unsupported binary files such as `.png`, `.zip`, and `.mp4`
+- ignores unsupported files such as `.txt`, `.pdf`, and `.png`
 
 The CLI prints a short ingestion summary so you can see:
 

@@ -258,19 +258,16 @@ def _cmd_ingest(args: argparse.Namespace) -> None:
         print(f"Path not found: {args.path}", file=sys.stderr)
         sys.exit(1)
 
-    ingest_mod.PROJECT_ROOT = PROJECT_ROOT
-    ingest_mod.STORE_DIR = STORE_DIR
-    ingest_mod.RESEARCH_STORE_DIR = RESEARCH_STORE_DIR
-
     try:
         result = ingest_mod.ingest_path(
             input_path,
             name=args.name,
             display_name=args.display_name,
             source=args.source,
-            chunk_max_tokens=args.chunk_max_tokens,
-            chunk_min_tokens=args.chunk_min_tokens,
             auto_index=not args.no_auto_index,
+            project_root=PROJECT_ROOT,
+            store_dir=STORE_DIR,
+            research_store_dir=RESEARCH_STORE_DIR,
         )
     except (FileNotFoundError, RuntimeError) as exc:
         print(str(exc), file=sys.stderr)
@@ -384,20 +381,6 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=("docs", "research"),
         default="docs",
         help="Target store for the ingested corpus (default: docs)",
-    )
-    p_ingest.add_argument(
-        "--chunk-max-tokens",
-        dest="chunk_max_tokens",
-        type=int,
-        default=800,
-        help="Maximum tokens per generated section (default: 800)",
-    )
-    p_ingest.add_argument(
-        "--chunk-min-tokens",
-        dest="chunk_min_tokens",
-        type=int,
-        default=50,
-        help="Minimum chunk size before merging (default: 50)",
     )
     p_ingest.add_argument(
         "--no-auto-index",
