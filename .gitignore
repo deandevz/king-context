@@ -66,6 +66,7 @@ commit-create/
 data/
 
 .claude/skills/tlc-spec-driven/
+.claude/skills/idea-issue/
 .cursor/
 .specs/
 .king-context/*
