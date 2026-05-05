@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from llm_providers.base import LLMClient, ProviderError
-from llm_providers.config import ResolvedConfig, resolve
+from llm_providers.config import ResolvedConfig, provider_concurrency, resolve
 from llm_providers.fallback import FallbackClient
 from llm_providers.ollama import OllamaClient
 from llm_providers.openrouter import OpenRouterClient
@@ -26,7 +26,7 @@ def _openrouter_fallback_config(config: ResolvedConfig) -> ResolvedConfig:
         stage=config.stage,
         provider="openrouter",
         model=config.fallback_model,
-        concurrency=5,
+        concurrency=provider_concurrency("openrouter"),
         openrouter_api_key=config.openrouter_api_key,
         ollama_api_mode=config.ollama_api_mode,
         ollama_base_url=config.ollama_base_url,

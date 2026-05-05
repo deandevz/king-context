@@ -2,12 +2,14 @@ import asyncio
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.discover import _update_step
 from llm_providers import LLMClient, ProviderError, get_stage_clients
 from llm_providers.config import ResolvedConfig, resolve
+from llm_providers.fallback import FallbackClient
 from llm_providers.logging import log_fallback
 from llm_providers.openrouter import OpenRouterClient
 
@@ -156,6 +158,57 @@ def _to_enriched_chunk(chunk: Chunk, enrichment: dict) -> EnrichedChunk:
     )
 
 
+class _SemaphoredClient(LLMClient):
+    def __init__(self, client: LLMClient, semaphore: asyncio.Semaphore) -> None:
+        self._client = client
+        self._semaphore = semaphore
+        self.name = client.name
+        self.model = client.model
+        self.concurrency = client.concurrency
+
+    async def complete(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        json_mode: bool = True,
+    ) -> dict[str, Any]:
+        async with self._semaphore:
+            return await self._client.complete(
+                prompt,
+                system=system,
+                json_mode=json_mode,
+            )
+
+
+def _collect_provider_semaphores(
+    client: LLMClient | None,
+    semaphores: dict[str, asyncio.Semaphore],
+) -> None:
+    if client is None:
+        return
+    if isinstance(client, FallbackClient):
+        _collect_provider_semaphores(client.primary, semaphores)
+        _collect_provider_semaphores(client.fallback, semaphores)
+        return
+    semaphores.setdefault(client.name, asyncio.Semaphore(client.concurrency))
+
+
+def _with_provider_semaphores(
+    client: LLMClient | None,
+    semaphores: dict[str, asyncio.Semaphore],
+) -> LLMClient | None:
+    if client is None:
+        return None
+    if isinstance(client, FallbackClient):
+        primary = _with_provider_semaphores(client.primary, semaphores)
+        fallback = _with_provider_semaphores(client.fallback, semaphores)
+        assert primary is not None
+        assert fallback is not None
+        return FallbackClient(primary=primary, fallback=fallback, stage=client.stage)
+    return _SemaphoredClient(client, semaphores[client.name])
+
+
 async def _enrich_one(
     chunk: Chunk,
     primary_client: LLMClient,
@@ -164,14 +217,16 @@ async def _enrich_one(
     """Enrich a single chunk with up to 2 retries on validation failure."""
     prompt = ENRICHMENT_PROMPT.format(title=chunk.title, content=chunk.content)
 
-    for _ in range(3):  # 1 initial attempt + 2 retries
+    for attempt in range(3):  # 1 initial attempt + 2 retries
         try:
             enrichment = await primary_client.complete(prompt)
             errors = validate_enrichment(enrichment)
             if not errors:
                 return _to_enriched_chunk(chunk, enrichment)
-        except ProviderError:
-            raise
+        except ProviderError as exc:
+            if not exc.transient or attempt == 2:
+                raise
+            continue
         except Exception:
             pass
 
@@ -254,17 +309,21 @@ async def enrich_chunks(
         model_override=config.enrichment_model,
         openrouter_api_key_override=config.openrouter_api_key,
     )
-    semaphore = asyncio.Semaphore(clients.primary.concurrency)
+    semaphores: dict[str, asyncio.Semaphore] = {}
+    _collect_provider_semaphores(clients.primary, semaphores)
+    _collect_provider_semaphores(clients.schema_fallback, semaphores)
+    primary_client = _with_provider_semaphores(clients.primary, semaphores)
+    schema_fallback = _with_provider_semaphores(clients.schema_fallback, semaphores)
+    assert primary_client is not None
     batch_size = config.enrichment_batch_size
     total_chunks = len(chunks) + len(enriched)  # original total
 
     async def guarded(chunk: Chunk) -> EnrichedChunk | None:
-        async with semaphore:
-            return await _enrich_one(
-                chunk,
-                clients.primary,
-                clients.schema_fallback,
-            )
+        return await _enrich_one(
+            chunk,
+            primary_client,
+            schema_fallback,
+        )
 
     for batch_idx, start in enumerate(range(0, len(chunks), batch_size)):
         batch_num = batch_offset + batch_idx

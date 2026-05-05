@@ -51,6 +51,15 @@ def _env_int(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
+def provider_concurrency(provider: str) -> int:
+    """Resolve concurrency for a provider name."""
+    provider_key = provider.upper()
+    return _env_int(
+        f"CONCURRENCY_{provider_key}",
+        5 if provider.lower() == "openrouter" else 2,
+    )
+
+
 def _stage_prefix(stage: str) -> str:
     if stage not in VALID_STAGES:
         raise ConfigError(f"Unknown LLM stage: {stage}")
@@ -103,10 +112,7 @@ def resolve(
         stage=stage,
         provider=provider,
         model=_stage_model(stage, model_override),
-        concurrency=_env_int(
-            f"CONCURRENCY_{provider.upper()}",
-            5 if provider == "openrouter" else 2,
-        ),
+        concurrency=provider_concurrency(provider),
         openrouter_api_key=openrouter_key,
         ollama_api_mode=ollama_mode,
         ollama_base_url=_env("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL).rstrip("/"),

@@ -31,12 +31,16 @@ https://docs.ollama.com/api/openai-compatibility, https://docs.ollama.com/api/ch
 - `king-research` nao herda mais `ENRICH_MODEL` para geracao de queries. Quando `RESEARCH_MODEL` nao esta definido, o stage `research` usa sua propria resolucao/default em `resolve("research")`.
 - O enrichment nao engole mais `ProviderError`. Se Ollama falha e o fallback OpenRouter tambem falha, o erro do `FallbackClient` sobe preservando `primary_error` e `fallback_error`, em vez de transformar o chunk em `None` silenciosamente.
 - O filtro LLM de URLs tambem nao engole mais falhas provider-aware. `ConfigError` e `ProviderError` vindos de `_call_llm` sobem para a CLI, entao configuracoes invalidas de `FILTER_PROVIDER` ou falhas de Ollama/OpenRouter ficam visiveis em vez de cair silenciosamente no resultado heuristico.
-- Testes de regressao cobrem os tres casos: isolamento do modelo de research, surfacing dos erros combinados de fallback e surfacing de falhas de config/provider no filtro LLM.
+- O enrichment agora retenta `ProviderError` transiente ate 3 tentativas no primary. Timeouts, rate limits e erros 5xx de OpenRouter ou Ollama nao abortam o batch na primeira falha; erros nao transientes continuam falhando imediatamente.
+- O fallback Ollama -> OpenRouter agora respeita concorrencia por provider. Quando `CONCURRENCY_OLLAMA` e maior que `CONCURRENCY_OPENROUTER`, chamadas de fallback para OpenRouter ficam protegidas pelo semaforo do OpenRouter, nao pelo limite do primary.
+- A factory de providers agora resolve `CONCURRENCY_OPENROUTER` tambem para o cliente OpenRouter usado como fallback, em vez de usar um valor fixo.
+- Testes de regressao cobrem isolamento do modelo de research, surfacing dos erros combinados de fallback, surfacing de falhas de config/provider no filtro LLM, retry de erros transientes no enrichment, erro apos 3 tentativas e concorrencia do OpenRouter em fallback.
 
 ## Validacao
 
-- `pytest` -> `457 passed`
-- `pytest tests/test_llm_providers tests/test_scraper/test_filter.py` -> `30 passed`
+- `pytest` -> `463 passed`
+- `pytest tests/test_scraper/test_enrich.py tests/test_llm_providers/test_factory.py` -> `11 passed`
+- `pytest tests/test_llm_providers tests/test_scraper tests/test_scraper_manifest.py tests/test_scraper_enrich_resume.py tests/test_scraper_resume_integration.py` -> `94 passed`
 - `python -m context_cli.cli adr status` -> index up to date
 - `python -m context_cli.cli adr validate` -> passed
 - `python -m context_cli.cli llm-doctor --json` -> `{"ollama": null}` quando nenhum stage usa Ollama

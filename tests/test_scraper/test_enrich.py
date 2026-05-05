@@ -113,27 +113,136 @@ def test_enrich_retry_on_validation_fail():
     assert len(result[0].keywords) == 5
 
 
+def test_enrich_retries_transient_provider_error():
+    config = ScraperConfig(
+        openrouter_api_key="test-key",
+        enrichment_batch_size=5,
+    )
+    chunk = make_chunk("Auth Section")
+    provider_error = ProviderError(
+        "timeout",
+        transient=True,
+        message="timeout",
+        provider="openrouter",
+    )
+    client = FakeLLMClient(responses=[provider_error, make_valid_enrichment()])
+
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
+        result = asyncio.run(enrich_chunks([chunk], config))
+
+    assert len(result) == 1
+    assert len(client.calls) == 2
+
+
+def test_enrich_raises_transient_provider_error_after_retries():
+    config = ScraperConfig(
+        openrouter_api_key="test-key",
+        enrichment_batch_size=5,
+    )
+    chunk = make_chunk("Auth Section")
+    provider_errors = [
+        ProviderError(
+            "timeout",
+            transient=True,
+            message="timeout",
+            provider="openrouter",
+        )
+        for _ in range(3)
+    ]
+    client = FakeLLMClient(responses=provider_errors)
+
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
+        with pytest.raises(ProviderError):
+            asyncio.run(enrich_chunks([chunk], config))
+
+    assert len(client.calls) == 3
+
+
+def test_enrich_respects_fallback_provider_concurrency():
+    config = ScraperConfig(
+        openrouter_api_key="test-key",
+        enrichment_batch_size=3,
+    )
+    chunks = [make_chunk(f"Section {i}") for i in range(3)]
+    in_flight = 0
+    max_in_flight = 0
+
+    async def fail_primary(prompt, *, system=None, json_mode=True):
+        raise ProviderError(
+            "timeout",
+            transient=True,
+            message="timeout",
+            provider="ollama",
+        )
+
+    async def fallback_complete(prompt, *, system=None, json_mode=True):
+        nonlocal in_flight, max_in_flight
+        in_flight += 1
+        max_in_flight = max(max_in_flight, in_flight)
+        try:
+            await asyncio.sleep(0.01)
+            return make_valid_enrichment()
+        finally:
+            in_flight -= 1
+
+    fallback = FakeLLMClient(
+        name="openrouter",
+        concurrency=1,
+        side_effect=fallback_complete,
+    )
+    client = FallbackClient(
+        primary=FakeLLMClient(
+            name="ollama",
+            concurrency=3,
+            side_effect=fail_primary,
+        ),
+        fallback=fallback,
+        stage="enrich",
+    )
+
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client, fallback),
+    ):
+        result = asyncio.run(enrich_chunks(chunks, config))
+
+    assert len(result) == 3
+    assert max_in_flight == 1
+
+
 def test_enrich_surfaces_provider_error_from_fallback_client():
     config = ScraperConfig(
         openrouter_api_key="test-key",
         enrichment_batch_size=5,
     )
     chunk = make_chunk("Auth Section")
-    primary_error = ProviderError(
-        "timeout",
-        transient=True,
-        message="timeout",
-        provider="ollama",
-    )
-    fallback_error = ProviderError(
-        "rate_limit",
-        transient=True,
-        message="limited",
-        provider="openrouter",
-    )
+    primary_errors = [
+        ProviderError(
+            "timeout",
+            transient=True,
+            message="timeout",
+            provider="ollama",
+        )
+        for _ in range(3)
+    ]
+    fallback_errors = [
+        ProviderError(
+            "rate_limit",
+            transient=True,
+            message="limited",
+            provider="openrouter",
+        )
+        for _ in range(3)
+    ]
     client = FallbackClient(
-        primary=FakeLLMClient(responses=[primary_error], name="ollama"),
-        fallback=FakeLLMClient(responses=[fallback_error], name="openrouter"),
+        primary=FakeLLMClient(responses=primary_errors, name="ollama"),
+        fallback=FakeLLMClient(responses=fallback_errors, name="openrouter"),
         stage="enrich",
     )
 
@@ -144,8 +253,8 @@ def test_enrich_surfaces_provider_error_from_fallback_client():
         with pytest.raises(ProviderError) as exc:
             asyncio.run(enrich_chunks([chunk], config))
 
-    assert exc.value.primary_error is primary_error
-    assert exc.value.fallback_error is fallback_error
+    assert exc.value.primary_error is primary_errors[-1]
+    assert exc.value.fallback_error is fallback_errors[-1]
 
 
 def test_estimate_cost():
