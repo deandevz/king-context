@@ -6,7 +6,7 @@ from pathlib import Path
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.discover import _update_step
-from llm_providers import LLMClient, get_stage_clients
+from llm_providers import LLMClient, ProviderError, get_stage_clients
 from llm_providers.config import ResolvedConfig, resolve
 from llm_providers.logging import log_fallback
 from llm_providers.openrouter import OpenRouterClient
@@ -170,6 +170,8 @@ async def _enrich_one(
             errors = validate_enrichment(enrichment)
             if not errors:
                 return _to_enriched_chunk(chunk, enrichment)
+        except ProviderError:
+            raise
         except Exception:
             pass
 
@@ -184,6 +186,8 @@ async def _enrich_one(
             enrichment = await schema_fallback.complete(prompt)
             if not validate_enrichment(enrichment):
                 return _to_enriched_chunk(chunk, enrichment)
+        except ProviderError:
+            raise
         except Exception:
             pass
 

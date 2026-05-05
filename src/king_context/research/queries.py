@@ -160,7 +160,7 @@ async def generate_queries(
         return []
 
     user_prompt = _build_user_prompt(topic, count, previous_results, previous_queries)
-    model = config.research_model or config.scraper.enrichment_model or None
+    model = config.research_model or None
     client = get_client(
         "research",
         model_override=model,

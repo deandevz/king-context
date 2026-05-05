@@ -1,6 +1,8 @@
 import asyncio
 from unittest.mock import patch
 
+import pytest
+
 from conftest import FakeLLMClient, fake_stage_clients
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
@@ -10,6 +12,8 @@ from king_context.scraper.enrich import (
     estimate_cost,
     validate_enrichment,
 )
+from llm_providers.base import ProviderError
+from llm_providers.fallback import FallbackClient
 
 
 def make_chunk(title: str = "Test Section", content: str = "Some content here.") -> Chunk:
@@ -107,6 +111,41 @@ def test_enrich_retry_on_validation_fail():
     assert len(result) == 1
     assert attempt["count"] == 2  # failed once, succeeded on retry
     assert len(result[0].keywords) == 5
+
+
+def test_enrich_surfaces_provider_error_from_fallback_client():
+    config = ScraperConfig(
+        openrouter_api_key="test-key",
+        enrichment_batch_size=5,
+    )
+    chunk = make_chunk("Auth Section")
+    primary_error = ProviderError(
+        "timeout",
+        transient=True,
+        message="timeout",
+        provider="ollama",
+    )
+    fallback_error = ProviderError(
+        "rate_limit",
+        transient=True,
+        message="limited",
+        provider="openrouter",
+    )
+    client = FallbackClient(
+        primary=FakeLLMClient(responses=[primary_error], name="ollama"),
+        fallback=FakeLLMClient(responses=[fallback_error], name="openrouter"),
+        stage="enrich",
+    )
+
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
+        with pytest.raises(ProviderError) as exc:
+            asyncio.run(enrich_chunks([chunk], config))
+
+    assert exc.value.primary_error is primary_error
+    assert exc.value.fallback_error is fallback_error
 
 
 def test_estimate_cost():

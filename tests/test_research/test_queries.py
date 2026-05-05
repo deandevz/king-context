@@ -44,6 +44,24 @@ async def test_initial_generation_returns_requested_count(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_research_generation_does_not_use_enrichment_model(monkeypatch):
+    client = FakeLLMClient(responses=[{"queries": ["q1"]}])
+    calls = []
+
+    def fake_get_client(*args, **kwargs):
+        calls.append((args, kwargs))
+        return client
+
+    monkeypatch.setattr("king_context.research.queries.get_client", fake_get_client)
+
+    result = await generate_queries("semantic search", 1, make_config())
+
+    assert result == ["q1"]
+    assert calls[0][0] == ("research",)
+    assert calls[0][1]["model_override"] is None
+
+
+@pytest.mark.asyncio
 async def test_followup_dedupes_against_previous_queries(monkeypatch):
     client = FakeLLMClient(
         responses=[{"queries": ["new angle A", "Semantic Search Basics.", "new angle B"]}]
