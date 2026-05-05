@@ -124,10 +124,51 @@ function checkApiKeys(projectDir) {
   if (envContent.match(/^OPENROUTER_API_KEY=.+/m)) {
     results.push({ status: 'ok', label: 'API Keys: OPENROUTER_API_KEY is set' });
   } else {
-    results.push({ status: 'warn', label: 'API Keys: OPENROUTER_API_KEY is missing (optional, needed for LLM enrichment)' });
+    results.push({ status: 'warn', label: 'API Keys: OPENROUTER_API_KEY is missing (optional, needed for OpenRouter LLM stages or fallback)' });
   }
 
   return results;
+}
+
+function checkLlmProviders(projectDir) {
+  const kctxPath = path.join(projectDir, '.king-context', 'bin', 'kctx');
+  if (!fs.existsSync(kctxPath)) {
+    return [];
+  }
+
+  try {
+    const raw = execSync(`"${kctxPath}" llm-doctor --json`, {
+      stdio: 'pipe',
+      timeout: 10000,
+      cwd: projectDir,
+    }).toString();
+    const payload = JSON.parse(raw);
+    if (!payload.ollama) {
+      return [];
+    }
+
+    const result = payload.ollama;
+    const results = [];
+    const mode = result.mode || 'unknown';
+    const baseUrl = result.base_url || 'unknown';
+    if (result.reachable) {
+      results.push({ status: 'ok', label: `Ollama: reachable (${mode}, ${baseUrl})` });
+    } else {
+      results.push({ status: 'warn', label: `Ollama: not reachable (${mode}, ${baseUrl})` });
+    }
+    if (Array.isArray(result.models_present) && result.models_present.length > 0) {
+      results.push({ status: 'ok', label: `Ollama models: present ${result.models_present.join(', ')}` });
+    }
+    if (Array.isArray(result.models_missing) && result.models_missing.length > 0) {
+      results.push({ status: 'warn', label: `Ollama models: missing ${result.models_missing.join(', ')}` });
+    }
+    if (result.version) {
+      results.push({ status: 'ok', label: `Ollama version: ${result.version}` });
+    }
+    return results;
+  } catch {
+    return [{ status: 'warn', label: 'Ollama: provider check unavailable' }];
+  }
 }
 
 function checkDirStructure(projectDir) {
@@ -187,7 +228,10 @@ async function run() {
   // 6. Dir structure
   results.push(checkDirStructure(projectDir));
 
-  // 7. Version
+  // 7. LLM providers
+  results.push(...checkLlmProviders(projectDir));
+
+  // 8. Version
   results.push(checkVersion());
 
   // Print results
