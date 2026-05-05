@@ -25,6 +25,8 @@ Every `kctx` command is source-aware:
 
 Every search/grep hit is prefixed `[docs]` or `[research]` so you can tell the source at a glance.
 
+Scraping/research LLM stages can use local Ollama by setting env vars such as `ENRICH_PROVIDER=ollama`, `ENRICH_MODEL=<model>`, `OLLAMA_API_MODE=openai`, and `OLLAMA_BASE_URL=http://localhost:11434/v1`. For Ollama Cloud/direct native API, use `OLLAMA_API_MODE=native`, `OLLAMA_BASE_URL=https://ollama.com`, and `OLLAMA_API_KEY`. OpenRouter fallback is opt-in with `ENABLE_FALLBACK=true` plus `OPENROUTER_API_KEY`.
+
 ---
 
 ## Search Strategy

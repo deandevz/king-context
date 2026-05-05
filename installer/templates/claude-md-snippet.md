@@ -29,7 +29,8 @@ Documentation search and scraping tools are available in this project.
 
 - API keys: copy `.king-context/.env.example` to `.env` and fill in your keys
 - `FIRECRAWL_API_KEY` (required for scraping)
-- `OPENROUTER_API_KEY` (optional, for automated enrichment)
+- `OPENROUTER_API_KEY` (optional, for OpenRouter LLM stages or fallback)
+- LLM stages can use OpenRouter or Ollama via provider env vars in `.king-context/.env.example`
 
 ### Directory Structure
 
