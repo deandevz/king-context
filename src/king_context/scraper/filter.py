@@ -5,9 +5,10 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from king_context.errors import ConfigError
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.discover import get_work_dir, _update_step
-from llm_providers import get_client
+from llm_providers import ProviderError, get_client
 
 
 INCLUDE_PATTERNS = [
@@ -157,6 +158,8 @@ def filter_urls(urls: list[str], base_url: str, config: ScraperConfig) -> Filter
                 accepted, rejected, maybe = new_accepted, new_rejected, new_maybe
                 llm_fallback_used = True
                 filter_method = "heuristic+llm"
+            except (ConfigError, ProviderError):
+                raise
             except Exception:
                 pass
 

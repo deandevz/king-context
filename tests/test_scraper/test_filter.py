@@ -1,7 +1,11 @@
 from unittest.mock import patch
 
+import pytest
+
+from king_context.errors import ConfigError
 from king_context.scraper.filter import filter_urls, FilterResult
 from king_context.scraper.config import ScraperConfig
+from llm_providers import ProviderError
 
 
 def _api_urls(n: int = 15) -> list[str]:
@@ -73,6 +77,38 @@ def test_filter_llm_fallback_disabled(tmp_path, monkeypatch):
 
     mock_llm.assert_not_called()
     assert result.llm_fallback_used is False
+
+
+def test_filter_llm_fallback_surfaces_config_error(tmp_path, monkeypatch):
+    monkeypatch.setattr("king_context.scraper.discover.TEMP_DOCS_DIR", tmp_path)
+    config = ScraperConfig(filter_llm_fallback=True)
+    urls = ["https://docs.example.com/misc/page-1"]
+
+    with patch(
+        "king_context.scraper.filter._call_llm",
+        side_effect=ConfigError("FILTER_PROVIDER is invalid"),
+    ):
+        with pytest.raises(ConfigError, match="FILTER_PROVIDER"):
+            filter_urls(urls, "https://docs.example.com", config)
+
+
+def test_filter_llm_fallback_surfaces_provider_error(tmp_path, monkeypatch):
+    monkeypatch.setattr("king_context.scraper.discover.TEMP_DOCS_DIR", tmp_path)
+    config = ScraperConfig(filter_llm_fallback=True)
+    urls = ["https://docs.example.com/misc/page-1"]
+    provider_error = ProviderError(
+        "http_error",
+        transient=True,
+        message="Ollama request failed",
+        provider="ollama",
+    )
+
+    with patch(
+        "king_context.scraper.filter._call_llm",
+        side_effect=provider_error,
+    ):
+        with pytest.raises(ProviderError, match="Ollama request failed"):
+            filter_urls(urls, "https://docs.example.com", config)
 
 
 def test_filter_removes_duplicates(tmp_path, monkeypatch):
