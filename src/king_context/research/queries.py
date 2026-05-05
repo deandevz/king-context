@@ -8,15 +8,13 @@ import re
 import string
 from dataclasses import dataclass
 
-import httpx
-
 from king_context.research.config import ResearchConfig
+from llm_providers import get_client
+from llm_providers.base import ProviderError
 
 
 log = logging.getLogger(__name__)
 
-_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-_REQUEST_TIMEOUT = 30.0
 _MAX_ATTEMPTS = 3
 _RETRY_DELAYS: list[float] = [1.0, 2.0]
 _HIGHLIGHT_MAX_CHARS = 240
@@ -89,15 +87,18 @@ def _strip_code_fence(content: str) -> str:
     return stripped
 
 
-def _extract_queries(raw_content: str) -> list[str]:
-    """Parse the model's content string into a list of query strings."""
-    content = _strip_code_fence(raw_content)
-    try:
-        parsed = json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise QueryGenerationError(
-            f"LLM response was not valid JSON: {exc}"
-        ) from exc
+def _extract_queries(raw_content: str | dict | list) -> list[str]:
+    """Parse the model's content or parsed payload into query strings."""
+    if isinstance(raw_content, str):
+        content = _strip_code_fence(raw_content)
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise QueryGenerationError(
+                f"LLM response was not valid JSON: {exc}"
+            ) from exc
+    else:
+        parsed = raw_content
 
     if isinstance(parsed, list):
         candidates = parsed
@@ -113,90 +114,6 @@ def _extract_queries(raw_content: str) -> list[str]:
         if isinstance(item, str) and item.strip():
             queries.append(item.strip())
     return queries
-
-
-def _should_retry(status_code: int) -> bool:
-    return status_code == 429 or status_code >= 500
-
-
-def _is_fatal_client_error(status_code: int) -> bool:
-    return status_code in (400, 401)
-
-
-async def _post_once(
-    client: httpx.AsyncClient,
-    payload: dict,
-    api_key: str,
-) -> httpx.Response:
-    return await client.post(
-        _OPENROUTER_URL,
-        headers={"Authorization": f"Bearer {api_key}"},
-        json=payload,
-    )
-
-
-async def _call_openrouter(
-    system_prompt: str,
-    user_prompt: str,
-    model: str,
-    api_key: str,
-) -> str:
-    """POST to OpenRouter with retries. Returns the raw ``content`` string."""
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "response_format": {"type": "json_object"},
-    }
-
-    last_error: Exception | None = None
-    async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT) as client:
-        for attempt in range(_MAX_ATTEMPTS):
-            try:
-                response = await _post_once(client, payload, api_key)
-            except (httpx.TimeoutException, httpx.ConnectError) as exc:
-                last_error = exc
-                log.warning(
-                    "OpenRouter transient error on attempt %d: %s", attempt + 1, exc
-                )
-            else:
-                status = response.status_code
-                if status < 400:
-                    data = response.json()
-                    try:
-                        return data["choices"][0]["message"]["content"]
-                    except (KeyError, IndexError, TypeError) as exc:
-                        raise QueryGenerationError(
-                            f"Unexpected OpenRouter response shape: {exc}"
-                        ) from exc
-
-                if _is_fatal_client_error(status):
-                    raise QueryGenerationError(
-                        f"OpenRouter rejected request (status {status}): "
-                        f"{response.text[:200]}"
-                    )
-
-                if not _should_retry(status):
-                    raise QueryGenerationError(
-                        f"OpenRouter returned status {status}: "
-                        f"{response.text[:200]}"
-                    )
-
-                last_error = httpx.HTTPStatusError(
-                    f"status {status}", request=response.request, response=response
-                )
-                log.warning(
-                    "OpenRouter retryable status %d on attempt %d", status, attempt + 1
-                )
-
-            if attempt < len(_RETRY_DELAYS):
-                await asyncio.sleep(_RETRY_DELAYS[attempt])
-
-    raise QueryGenerationError(
-        f"OpenRouter call failed after {_MAX_ATTEMPTS} attempts: {last_error}"
-    )
 
 
 def _dedup(
@@ -242,19 +159,39 @@ async def generate_queries(
     if count <= 0:
         return []
 
-    model = config.research_model or config.scraper.enrichment_model
-    if not model:
-        raise QueryGenerationError("No model configured for query generation")
-    if not config.scraper.openrouter_api_key:
-        raise QueryGenerationError("OPENROUTER_API_KEY is not configured")
-
     user_prompt = _build_user_prompt(topic, count, previous_results, previous_queries)
-    raw_content = await _call_openrouter(
-        _SYSTEM_PROMPT,
-        user_prompt,
-        model,
-        config.scraper.openrouter_api_key,
+    model = config.research_model or config.scraper.enrichment_model or None
+    client = get_client(
+        "research",
+        model_override=model,
+        openrouter_api_key_override=config.scraper.openrouter_api_key,
     )
 
-    candidates = _extract_queries(raw_content)
-    return _dedup(candidates, previous_queries, count)
+    last_error: Exception | None = None
+    for attempt in range(_MAX_ATTEMPTS):
+        try:
+            payload = await client.complete(user_prompt, system=_SYSTEM_PROMPT)
+            candidates = _extract_queries(payload)
+            return _dedup(candidates, previous_queries, count)
+        except ProviderError as exc:
+            last_error = exc
+            if not exc.transient:
+                raise QueryGenerationError(
+                    f"{client.name} query generation failed: {exc.message}"
+                ) from exc
+            log.warning(
+                "%s transient error on attempt %d: %s",
+                client.name,
+                attempt + 1,
+                exc.message,
+            )
+        except QueryGenerationError:
+            raise
+
+        if attempt < len(_RETRY_DELAYS):
+            await asyncio.sleep(_RETRY_DELAYS[attempt])
+
+    raise QueryGenerationError(
+        f"{client.name} query generation failed after {_MAX_ATTEMPTS} attempts: "
+        f"{last_error}"
+    )

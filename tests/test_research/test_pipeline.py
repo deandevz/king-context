@@ -172,7 +172,7 @@ async def test_missing_exa_key_fails_fast(tmp_path, monkeypatch):
     export_mock.assert_not_called()
 
 
-async def test_missing_openrouter_key_fails_fast(tmp_path, monkeypatch):
+async def test_missing_openrouter_key_not_validated_at_pipeline_start(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "king_context.research.pipeline.TEMP_DOCS_DIR", tmp_path
     )
@@ -185,11 +185,12 @@ async def test_missing_openrouter_key_fails_fast(tmp_path, monkeypatch):
     with patch(
         "king_context.research.pipeline.run_deepening_loop",
         new_callable=AsyncMock,
+        return_value=[],
     ) as deepen_mock:
-        with pytest.raises(ConfigError, match="OPENROUTER_API_KEY"):
+        with pytest.raises(RuntimeError, match="No sources"):
             await run_pipeline(make_args(), config)
 
-    deepen_mock.assert_not_called()
+    deepen_mock.assert_awaited_once()
 
 
 async def test_zero_sources_raises_user_friendly_error(tmp_path, monkeypatch):

@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 
+from king_context.env import load_project_env
 from king_context.scraper.config import ConfigError, ScraperConfig, load_config
 
 
@@ -77,6 +78,7 @@ def _env_int(name: str, default: int) -> int:
 
 
 def load_research_config(**overrides) -> ResearchConfig:
+    load_project_env()
     scraper_cfg = load_config()
 
     exa_api_key = os.environ.get("EXA_API_KEY", "").strip()
@@ -84,7 +86,10 @@ def load_research_config(**overrides) -> ResearchConfig:
         raise ConfigError("EXA_API_KEY is not set")
 
     jina_api_key = os.environ.get("JINA_API_KEY", "").strip()
-    research_model = os.environ.get("OPENROUTER_MODEL_RESEARCH", "").strip()
+    research_model = (
+        os.environ.get("RESEARCH_MODEL", "").strip()
+        or os.environ.get("OPENROUTER_MODEL_RESEARCH", "").strip()
+    )
 
     config = ResearchConfig(
         scraper=scraper_cfg,
