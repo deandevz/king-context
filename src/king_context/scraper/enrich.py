@@ -239,8 +239,18 @@ async def _enrich_one(
         )
         try:
             enrichment = await schema_fallback.complete(prompt)
-            if not validate_enrichment(enrichment):
+            fallback_errors = validate_enrichment(enrichment)
+            if not fallback_errors:
                 return _to_enriched_chunk(chunk, enrichment)
+            raise ProviderError(
+                "validation_failed_3x",
+                transient=False,
+                provider=schema_fallback.name,
+                message=(
+                    "Enrichment schema fallback returned invalid metadata: "
+                    + "; ".join(fallback_errors)
+                ),
+            )
         except ProviderError:
             raise
         except Exception:

@@ -35,12 +35,14 @@ https://docs.ollama.com/api/openai-compatibility, https://docs.ollama.com/api/ch
 - O fallback Ollama -> OpenRouter agora respeita concorrencia por provider. Quando `CONCURRENCY_OLLAMA` e maior que `CONCURRENCY_OPENROUTER`, chamadas de fallback para OpenRouter ficam protegidas pelo semaforo do OpenRouter, nao pelo limite do primary.
 - A factory de providers agora resolve `CONCURRENCY_OPENROUTER` tambem para o cliente OpenRouter usado como fallback, em vez de usar um valor fixo.
 - Erros combinados do `FallbackClient` agora usam a transiencia do erro do fallback. Se Ollama falha de forma transiente, mas OpenRouter falha com erro nao transiente, como `auth_error`, o caller falha imediatamente em vez de retentar uma configuracao invalida.
-- Testes de regressao cobrem isolamento do modelo de research, surfacing dos erros combinados de fallback, surfacing de falhas de config/provider no filtro LLM, retry de erros transientes no enrichment, erro apos 3 tentativas, fail-fast para fallback nao transiente e concorrencia do OpenRouter em fallback.
+- O schema fallback do enrichment tambem nao engole mais metadados invalidos. Se Ollama falha validacao 3 vezes e o fallback OpenRouter retorna JSON parseavel mas fora do schema, o enrichment levanta `ProviderError(reason="validation_failed_3x")` em vez de descartar o chunk silenciosamente.
+- Testes de regressao cobrem isolamento do modelo de research, surfacing dos erros combinados de fallback, surfacing de falhas de config/provider no filtro LLM, retry de erros transientes no enrichment, erro apos 3 tentativas, fail-fast para fallback nao transiente, concorrencia do OpenRouter em fallback e falha explicita quando o schema fallback tambem retorna metadados invalidos.
 
 ## Validacao
 
-- `pytest` -> `465 passed`
-- `pytest tests/test_llm_providers/test_fallback.py tests/test_scraper/test_enrich.py` -> `14 passed`
+- `pytest` -> `466 passed`
+- `pytest tests/test_scraper/test_enrich.py` -> `11 passed`
+- `pytest tests/test_llm_providers/test_fallback.py tests/test_scraper/test_enrich.py` -> `15 passed`
 - `pytest tests/test_llm_providers tests/test_scraper tests/test_scraper_manifest.py tests/test_scraper_enrich_resume.py tests/test_scraper_resume_integration.py` -> `96 passed`
 - `python -m context_cli.cli adr status` -> index up to date
 - `python -m context_cli.cli adr validate` -> passed

@@ -295,6 +295,34 @@ def test_enrich_does_not_retry_non_transient_fallback_error():
     assert len(fallback.calls) == 1
 
 
+def test_enrich_raises_when_schema_fallback_returns_invalid_metadata():
+    config = ScraperConfig(
+        openrouter_api_key="test-key",
+        enrichment_batch_size=5,
+    )
+    chunk = make_chunk("Auth Section")
+    invalid = {
+        "keywords": ["one"],
+        "use_cases": ["Use when needed", "Configure when required"],
+        "tags": ["auth"],
+        "priority": 7,
+    }
+    primary = FakeLLMClient(responses=[invalid, invalid, invalid], name="ollama")
+    fallback = FakeLLMClient(responses=[invalid], name="openrouter")
+
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(primary, fallback),
+    ):
+        with pytest.raises(ProviderError) as exc:
+            asyncio.run(enrich_chunks([chunk], config))
+
+    assert exc.value.reason == "validation_failed_3x"
+    assert exc.value.provider == "openrouter"
+    assert len(primary.calls) == 3
+    assert len(fallback.calls) == 1
+
+
 def test_estimate_cost():
     config = ScraperConfig(
         enrichment_model="openai/gpt-4o-mini",
