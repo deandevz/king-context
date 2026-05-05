@@ -11,6 +11,7 @@ In-repo wiki for King Context. Pages live next to the code so they version with 
 ## Using King Context
 
 - [CLI guide](CLI_GUIDE.md) — `kctx` commands and flags.
+- [Ollama guide](ollama.md) — install Ollama and configure beta local model support.
 - [Benchmarks](benchmarks.md) — performance numbers vs Context7.
 
 ## Contributing
