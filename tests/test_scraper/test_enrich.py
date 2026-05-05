@@ -1,6 +1,7 @@
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
+from conftest import FakeLLMClient, fake_stage_clients
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.enrich import (
@@ -40,12 +41,16 @@ def test_enrich_batch_processing():
 
     call_count = 0
 
-    async def mock_openrouter(prompt, cfg):
+    async def mock_complete(prompt, *, system=None, json_mode=True):
         nonlocal call_count
         call_count += 1
         return make_valid_enrichment()
 
-    with patch("king_context.scraper.enrich.call_openrouter", side_effect=mock_openrouter):
+    client = FakeLLMClient(side_effect=mock_complete)
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
         result = asyncio.run(enrich_chunks(chunks, config))
 
     assert len(result) == 12
@@ -86,13 +91,17 @@ def test_enrich_retry_on_validation_fail():
     }
     valid = make_valid_enrichment()
 
-    async def mock_openrouter(prompt, cfg):
+    async def mock_complete(prompt, *, system=None, json_mode=True):
         attempt["count"] += 1
         if attempt["count"] == 1:
             return invalid
         return valid
 
-    with patch("king_context.scraper.enrich.call_openrouter", side_effect=mock_openrouter):
+    client = FakeLLMClient(side_effect=mock_complete)
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
         result = asyncio.run(enrich_chunks([chunk], config))
 
     assert len(result) == 1

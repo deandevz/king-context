@@ -1,12 +1,13 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import json
 import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-import httpx
-
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.discover import get_work_dir, _update_step
+from llm_providers import get_client
 
 
 INCLUDE_PATTERNS = [
@@ -86,22 +87,23 @@ def _matches_patterns(path: str, patterns: list[str]) -> bool:
 
 def _call_llm(urls: list[str], config: ScraperConfig) -> dict[str, str]:
     prompt = FILTER_PROMPT.format(urls="\n".join(urls))
-    response = httpx.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {config.openrouter_api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": config.enrichment_model,
-            "messages": [{"role": "user", "content": prompt}],
-            "response_format": {"type": "json_object"},
-        },
-        timeout=60.0,
+    client = get_client(
+        "filter",
+        openrouter_api_key_override=config.openrouter_api_key,
     )
-    response.raise_for_status()
-    content = response.json()["choices"][0]["message"]["content"]
-    return json.loads(content)
+
+    async def complete() -> dict:
+        return await client.complete(prompt)
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        result = asyncio.run(complete())
+    else:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            result = executor.submit(lambda: asyncio.run(complete())).result()
+
+    return {str(key): str(value) for key, value in result.items()}
 
 
 def filter_urls(urls: list[str], base_url: str, config: ScraperConfig) -> FilterResult:

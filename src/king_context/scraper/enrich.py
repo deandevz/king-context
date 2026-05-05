@@ -3,11 +3,13 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-import httpx
-
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.discover import _update_step
+from llm_providers import LLMClient, get_stage_clients
+from llm_providers.config import ResolvedConfig, resolve
+from llm_providers.logging import log_fallback
+from llm_providers.openrouter import OpenRouterClient
 
 
 ENRICHMENT_PROMPT = """\
@@ -72,7 +74,7 @@ def validate_enrichment(enrichment: dict) -> list[str]:
 
 
 def estimate_cost(chunks: list[Chunk], config: ScraperConfig) -> dict:
-    """Estimate enrichment cost based on chunk token counts."""
+    """Estimate enrichment cost based on chunk token counts and provider."""
     total_chunks = len(chunks)
     total_batches = (
         (total_chunks + config.enrichment_batch_size - 1) // config.enrichment_batch_size
@@ -83,61 +85,105 @@ def estimate_cost(chunks: list[Chunk], config: ScraperConfig) -> dict:
     estimated_input_tokens = sum(c.token_count for c in chunks) + prompt_overhead * total_chunks
     estimated_output_tokens = total_chunks * 150
 
-    # Approximate pricing for gpt-4o-mini: $0.15/1M input, $0.60/1M output
-    input_cost_per_token = 0.15 / 1_000_000
-    output_cost_per_token = 0.60 / 1_000_000
-    estimated_cost = (
-        estimated_input_tokens * input_cost_per_token
-        + estimated_output_tokens * output_cost_per_token
+    provider_cfg = resolve(
+        "enrich",
+        validate=False,
+        model_override=config.enrichment_model,
+        openrouter_api_key_override=config.openrouter_api_key,
     )
+
+    estimated_cost = 0.0
+    cost_note = "local_runtime_only"
+    if provider_cfg.provider == "openrouter":
+        # Approximate pricing for gpt-4o-mini: $0.15/1M input, $0.60/1M output
+        input_cost_per_token = 0.15 / 1_000_000
+        output_cost_per_token = 0.60 / 1_000_000
+        estimated_cost = (
+            estimated_input_tokens * input_cost_per_token
+            + estimated_output_tokens * output_cost_per_token
+        )
+        cost_note = "estimated_openrouter_cost"
 
     return {
         "total_chunks": total_chunks,
         "total_batches": total_batches,
         "estimated_input_tokens": estimated_input_tokens,
         "estimated_output_tokens": estimated_output_tokens,
-        "model": config.enrichment_model,
+        "provider": provider_cfg.provider,
+        "model": provider_cfg.model,
         "estimated_cost": round(estimated_cost, 6),
+        "cost_note": cost_note,
+        "fallback_enabled": provider_cfg.fallback_enabled,
+        "fallback_warning": (
+            provider_cfg.provider == "ollama" and provider_cfg.fallback_enabled
+        ),
     }
 
 
 async def call_openrouter(prompt: str, config: ScraperConfig) -> dict:
-    """POST to OpenRouter and return parsed JSON from the model response."""
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {config.openrouter_api_key}"},
-            json={
-                "model": config.enrichment_model,
-                "messages": [{"role": "user", "content": prompt}],
-                "response_format": {"type": "json_object"},
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        return json.loads(content)
+    """Deprecated compatibility wrapper for direct OpenRouter enrichment."""
+    provider_cfg = resolve(
+        "enrich",
+        validate=False,
+        model_override=config.enrichment_model,
+        openrouter_api_key_override=config.openrouter_api_key,
+    )
+    openrouter_cfg = ResolvedConfig(
+        stage="enrich",
+        provider="openrouter",
+        model=config.enrichment_model,
+        concurrency=provider_cfg.concurrency,
+        openrouter_api_key=config.openrouter_api_key or provider_cfg.openrouter_api_key,
+        ollama_api_mode=provider_cfg.ollama_api_mode,
+        ollama_base_url=provider_cfg.ollama_base_url,
+        ollama_api_key=provider_cfg.ollama_api_key,
+        fallback_enabled=False,
+        fallback_model=provider_cfg.fallback_model,
+    )
+    return await OpenRouterClient(openrouter_cfg).complete(prompt)
 
 
-async def _enrich_one(chunk: Chunk, config: ScraperConfig) -> EnrichedChunk | None:
+def _to_enriched_chunk(chunk: Chunk, enrichment: dict) -> EnrichedChunk:
+    return EnrichedChunk(
+        title=chunk.title,
+        path=chunk.path,
+        url=chunk.source_url,
+        content=chunk.content,
+        keywords=enrichment["keywords"],
+        use_cases=enrichment["use_cases"],
+        tags=enrichment["tags"],
+        priority=enrichment["priority"],
+    )
+
+
+async def _enrich_one(
+    chunk: Chunk,
+    primary_client: LLMClient,
+    schema_fallback: LLMClient | None = None,
+) -> EnrichedChunk | None:
     """Enrich a single chunk with up to 2 retries on validation failure."""
     prompt = ENRICHMENT_PROMPT.format(title=chunk.title, content=chunk.content)
 
     for _ in range(3):  # 1 initial attempt + 2 retries
         try:
-            enrichment = await call_openrouter(prompt, config)
+            enrichment = await primary_client.complete(prompt)
             errors = validate_enrichment(enrichment)
             if not errors:
-                return EnrichedChunk(
-                    title=chunk.title,
-                    path=chunk.path,
-                    url=chunk.source_url,
-                    content=chunk.content,
-                    keywords=enrichment["keywords"],
-                    use_cases=enrichment["use_cases"],
-                    tags=enrichment["tags"],
-                    priority=enrichment["priority"],
-                )
+                return _to_enriched_chunk(chunk, enrichment)
+        except Exception:
+            pass
+
+    if schema_fallback is not None:
+        log_fallback(
+            stage="enrich",
+            primary=primary_client,
+            fallback=schema_fallback,
+            reason="validation_failed_3x",
+        )
+        try:
+            enrichment = await schema_fallback.complete(prompt)
+            if not validate_enrichment(enrichment):
+                return _to_enriched_chunk(chunk, enrichment)
         except Exception:
             pass
 
@@ -199,13 +245,27 @@ async def enrich_chunks(
             # Next batch number continues from existing count
             batch_offset = len(existing_batches)
 
+    clients = get_stage_clients(
+        "enrich",
+        model_override=config.enrichment_model,
+        openrouter_api_key_override=config.openrouter_api_key,
+    )
+    semaphore = asyncio.Semaphore(clients.primary.concurrency)
     batch_size = config.enrichment_batch_size
     total_chunks = len(chunks) + len(enriched)  # original total
+
+    async def guarded(chunk: Chunk) -> EnrichedChunk | None:
+        async with semaphore:
+            return await _enrich_one(
+                chunk,
+                clients.primary,
+                clients.schema_fallback,
+            )
 
     for batch_idx, start in enumerate(range(0, len(chunks), batch_size)):
         batch_num = batch_offset + batch_idx
         batch = chunks[start:start + batch_size]
-        results = await asyncio.gather(*[_enrich_one(c, config) for c in batch])
+        results = await asyncio.gather(*[guarded(c) for c in batch])
 
         for result in results:
             if result is not None:

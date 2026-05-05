@@ -81,6 +81,23 @@ def _load_enriched_from_checkpoints(work_dir: Path) -> list[EnrichedChunk]:
     return [EnrichedChunk(**c) for c in data]
 
 
+def _print_enrichment_cost(cost: dict, *, prefix: str = "  ") -> None:
+    provider = cost.get("provider", "openrouter")
+    if provider == "openrouter":
+        print(
+            f"{prefix}cost estimate: ${cost['estimated_cost']:.4f} "
+            f"({cost['total_chunks']} chunks, model: {cost['model']})"
+        )
+        return
+
+    print(
+        f"{prefix}local model estimate: {cost['total_chunks']} chunks, "
+        f"model: {cost['model']} (no estimated OpenRouter cost)"
+    )
+    if cost.get("fallback_warning"):
+        print(f"{prefix}warning: OpenRouter fallback is enabled and may incur cost")
+
+
 async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
     """Orchestrate the full scraping pipeline with checkpoint resume support.
 
@@ -182,10 +199,7 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
             if not chunks:
                 chunks = _load_chunks_from_checkpoints(work_dir)
             cost = estimate_cost(chunks, config)
-            print(
-                f"  cost estimate: ${cost['estimated_cost']:.4f} "
-                f"({cost['total_chunks']} chunks, model: {cost['model']})"
-            )
+            _print_enrichment_cost(cost)
             if not getattr(args, "yes", False):
                 confirm = input("  Proceed with enrichment? [y/N] ").strip().lower()
                 if confirm != "y":
@@ -246,8 +260,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default="google/gemini-3-flash-preview", # Cheap and Fast Model for enrichment.
-        help="LLM model to use for enrichment (default: google/gemini-3-flash-preview)", ##  default name in cli.
+        default=None,
+        help="LLM model to use for enrichment (default: ENRICH_MODEL or project default)",
     )
     parser.add_argument(
         "--chunk-max-tokens",

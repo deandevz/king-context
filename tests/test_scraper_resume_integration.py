@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from conftest import FakeLLMClient, fake_stage_clients
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.cli import run_pipeline
 from king_context.scraper.config import ScraperConfig
@@ -211,7 +212,7 @@ class TestEnrichResumeIntegration:
 
         api_call_count = 0
 
-        async def mock_call_openrouter(prompt, config):
+        async def mock_complete(prompt, *, system=None, json_mode=True):
             nonlocal api_call_count
             api_call_count += 1
             return {
@@ -221,9 +222,10 @@ class TestEnrichResumeIntegration:
                 "priority": 5,
             }
 
+        client = FakeLLMClient(side_effect=mock_complete)
         with patch(
-            "king_context.scraper.enrich.call_openrouter",
-            side_effect=mock_call_openrouter,
+            "king_context.scraper.enrich.get_stage_clients",
+            return_value=fake_stage_clients(client),
         ):
             args = _make_args(stop_after="enrich", yes=True)
             await run_pipeline(args, _make_config())
@@ -261,7 +263,7 @@ class TestFullPipelineResumeIntegration:
             total_chunks=total_chunks, enriched_chunks=already_enriched,
         )
 
-        async def mock_call_openrouter(prompt, config):
+        async def mock_complete(prompt, *, system=None, json_mode=True):
             return {
                 "keywords": [f"kw{j}" for j in range(5)],
                 "use_cases": [f"Use when {j}" for j in range(2)],
@@ -269,9 +271,10 @@ class TestFullPipelineResumeIntegration:
                 "priority": 5,
             }
 
+        client = FakeLLMClient(side_effect=mock_complete)
         with patch(
-            "king_context.scraper.enrich.call_openrouter",
-            side_effect=mock_call_openrouter,
+            "king_context.scraper.enrich.get_stage_clients",
+            return_value=fake_stage_clients(client),
         ), patch(
             "king_context.scraper.export.seed_data",
         ):

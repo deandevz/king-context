@@ -5,10 +5,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from conftest import FakeLLMClient, fake_stage_clients
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.fetch import FetchResult, PageResult, fetch_pages
-from king_context.scraper.enrich import enrich_chunks, EnrichedChunk
+from king_context.scraper.enrich import enrich_chunks
 
 
 def _make_config() -> ScraperConfig:
@@ -117,10 +118,10 @@ class TestEnrichManifestProgress:
             "priority": 5,
         }
 
+        client = FakeLLMClient(responses=[enrichment] * len(chunks))
         with patch(
-            "king_context.scraper.enrich.call_openrouter",
-            new_callable=AsyncMock,
-            return_value=enrichment,
+            "king_context.scraper.enrich.get_stage_clients",
+            return_value=fake_stage_clients(client),
         ):
             result = await enrich_chunks(chunks, config, output_dir=tmp_path)
 
@@ -145,10 +146,10 @@ class TestEnrichManifestProgress:
             "priority": 5,
         }
 
+        client = FakeLLMClient(responses=[enrichment])
         with patch(
-            "king_context.scraper.enrich.call_openrouter",
-            new_callable=AsyncMock,
-            return_value=enrichment,
+            "king_context.scraper.enrich.get_stage_clients",
+            return_value=fake_stage_clients(client),
         ):
             result = await enrich_chunks(chunks, config, output_dir=tmp_path)
 
@@ -181,10 +182,10 @@ class TestEnrichManifestProgress:
             "priority": 5,
         }
 
+        client = FakeLLMClient(responses=[enrichment] * len(chunks))
         with patch(
-            "king_context.scraper.enrich.call_openrouter",
-            new_callable=AsyncMock,
-            return_value=enrichment,
+            "king_context.scraper.enrich.get_stage_clients",
+            return_value=fake_stage_clients(client),
         ), patch(
             "king_context.scraper.enrich._update_step",
             side_effect=_capture_update,
