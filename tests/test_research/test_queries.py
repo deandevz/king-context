@@ -1,21 +1,19 @@
 import json
 
-import httpx
 import pytest
-import respx
 
+from conftest import FakeLLMClient
 from king_context.research.config import ResearchConfig
 from king_context.research.queries import (
     QueryGenerationError,
     SourceSummary,
     _RETRY_DELAYS,
+    _extract_queries,
     _normalize,
     generate_queries,
 )
 from king_context.scraper.config import ScraperConfig
-
-
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+from llm_providers.base import ProviderError
 
 
 def make_config() -> ResearchConfig:
@@ -28,51 +26,53 @@ def make_config() -> ResearchConfig:
     )
 
 
-def openrouter_payload(queries: list[str]) -> dict:
-    return {
-        "choices": [
-            {"message": {"content": json.dumps({"queries": queries})}}
-        ]
-    }
-
-
-def openrouter_raw(content: str) -> dict:
-    return {"choices": [{"message": {"content": content}}]}
+def _patch_client(monkeypatch, client: FakeLLMClient) -> None:
+    monkeypatch.setattr(
+        "king_context.research.queries.get_client",
+        lambda *args, **kwargs: client,
+    )
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_initial_generation_returns_requested_count():
-    config = make_config()
-    respx.post(OPENROUTER_URL).mock(
-        return_value=httpx.Response(
-            200, json=openrouter_payload(["q1", "q2", "q3"])
-        )
-    )
+async def test_initial_generation_returns_requested_count(monkeypatch):
+    client = FakeLLMClient(responses=[{"queries": ["q1", "q2", "q3"]}])
+    _patch_client(monkeypatch, client)
 
-    result = await generate_queries("semantic search", 3, config)
+    result = await generate_queries("semantic search", 3, make_config())
 
     assert result == ["q1", "q2", "q3"]
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_followup_dedupes_against_previous_queries():
-    config = make_config()
-    respx.post(OPENROUTER_URL).mock(
-        return_value=httpx.Response(
-            200,
-            json=openrouter_payload(
-                ["new angle A", "Semantic Search Basics.", "new angle B"]
-            ),
-        )
+async def test_research_generation_does_not_use_enrichment_model(monkeypatch):
+    client = FakeLLMClient(responses=[{"queries": ["q1"]}])
+    calls = []
+
+    def fake_get_client(*args, **kwargs):
+        calls.append((args, kwargs))
+        return client
+
+    monkeypatch.setattr("king_context.research.queries.get_client", fake_get_client)
+
+    result = await generate_queries("semantic search", 1, make_config())
+
+    assert result == ["q1"]
+    assert calls[0][0] == ("research",)
+    assert calls[0][1]["model_override"] is None
+
+
+@pytest.mark.asyncio
+async def test_followup_dedupes_against_previous_queries(monkeypatch):
+    client = FakeLLMClient(
+        responses=[{"queries": ["new angle A", "Semantic Search Basics.", "new angle B"]}]
     )
+    _patch_client(monkeypatch, client)
 
     previous = ["semantic search basics"]
     result = await generate_queries(
         "semantic search",
         5,
-        config,
+        make_config(),
         previous_queries=previous,
     )
 
@@ -84,117 +84,94 @@ async def test_followup_dedupes_against_previous_queries():
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_malformed_llm_output_raises():
-    config = make_config()
-    respx.post(OPENROUTER_URL).mock(
-        return_value=httpx.Response(200, json=openrouter_raw("not-json {"))
-    )
+async def test_malformed_llm_output_raises(monkeypatch):
+    client = FakeLLMClient(responses=[{"not_queries": ["x"]}])
+    _patch_client(monkeypatch, client)
 
     with pytest.raises(QueryGenerationError):
-        await generate_queries("topic", 3, config)
+        await generate_queries("topic", 3, make_config())
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_retries_on_429_then_succeeds(monkeypatch):
+async def test_retries_on_transient_provider_error_then_succeeds(monkeypatch):
     monkeypatch.setattr(
         "king_context.research.queries._RETRY_DELAYS", [0.0, 0.0]
     )
-    config = make_config()
-
-    route = respx.post(OPENROUTER_URL).mock(
-        side_effect=[
-            httpx.Response(429, json={"error": "rate limited"}),
-            httpx.Response(200, json=openrouter_payload(["a", "b"])),
+    client = FakeLLMClient(
+        responses=[
+            ProviderError(
+                "rate_limit",
+                transient=True,
+                message="limited",
+                provider="openrouter",
+            ),
+            {"queries": ["a", "b"]},
         ]
     )
+    _patch_client(monkeypatch, client)
 
-    result = await generate_queries("topic", 2, config)
+    result = await generate_queries("topic", 2, make_config())
 
     assert result == ["a", "b"]
-    assert route.call_count == 2
+    assert len(client.calls) == 2
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_fails_fast_on_401():
-    config = make_config()
-    route = respx.post(OPENROUTER_URL).mock(
-        return_value=httpx.Response(401, json={"error": "unauthorized"})
+async def test_fails_fast_on_non_transient_provider_error(monkeypatch):
+    client = FakeLLMClient(
+        responses=[
+            ProviderError(
+                "auth_error",
+                transient=False,
+                message="unauthorized",
+                provider="openrouter",
+            )
+        ]
     )
+    _patch_client(monkeypatch, client)
 
     with pytest.raises(QueryGenerationError):
-        await generate_queries("topic", 3, config)
+        await generate_queries("topic", 3, make_config())
 
-    assert route.call_count == 1
+    assert len(client.calls) == 1
 
 
-@pytest.mark.asyncio
-@respx.mock
-async def test_handles_markdown_wrapped_json():
-    config = make_config()
+def test_handles_markdown_wrapped_json():
     wrapped = "```json\n" + json.dumps({"queries": ["x", "y"]}) + "\n```"
-    respx.post(OPENROUTER_URL).mock(
-        return_value=httpx.Response(200, json=openrouter_raw(wrapped))
-    )
 
-    result = await generate_queries("topic", 2, config)
+    result = _extract_queries(wrapped)
 
     assert result == ["x", "y"]
 
 
-@pytest.mark.asyncio
-@respx.mock
-async def test_bare_list_response_accepted():
-    config = make_config()
-    respx.post(OPENROUTER_URL).mock(
-        return_value=httpx.Response(
-            200, json=openrouter_raw(json.dumps(["only", "list"]))
-        )
-    )
-
-    result = await generate_queries("topic", 5, config)
-
-    assert result == ["only", "list"]
+def test_bare_list_response_accepted_by_extractor():
+    assert _extract_queries(json.dumps(["only", "list"])) == ["only", "list"]
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_caps_returned_list_to_count():
-    config = make_config()
-    respx.post(OPENROUTER_URL).mock(
-        return_value=httpx.Response(
-            200, json=openrouter_payload(["a", "b", "c", "d", "e"])
-        )
-    )
+async def test_caps_returned_list_to_count(monkeypatch):
+    client = FakeLLMClient(responses=[{"queries": ["a", "b", "c", "d", "e"]}])
+    _patch_client(monkeypatch, client)
 
-    result = await generate_queries("topic", 2, config)
+    result = await generate_queries("topic", 2, make_config())
 
     assert result == ["a", "b"]
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_previous_results_included_in_prompt():
-    config = make_config()
-    captured: dict = {}
-
-    def capture(request):
-        captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json=openrouter_payload(["followup1"]))
-
-    respx.post(OPENROUTER_URL).mock(side_effect=capture)
+async def test_previous_results_included_in_prompt(monkeypatch):
+    client = FakeLLMClient(responses=[{"queries": ["followup1"]}])
+    _patch_client(monkeypatch, client)
 
     summaries = [
         SourceSummary(title="Paper A", top_highlight="Key insight about X"),
     ]
     result = await generate_queries(
-        "topic", 1, config, previous_results=summaries
+        "topic", 1, make_config(), previous_results=summaries
     )
 
     assert result == ["followup1"]
-    user_msg = captured["body"]["messages"][-1]["content"]
+    user_msg = client.calls[0]["prompt"]
     assert "Paper A" in user_msg
     assert "Key insight about X" in user_msg
 

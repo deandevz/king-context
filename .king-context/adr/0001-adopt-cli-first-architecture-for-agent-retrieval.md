@@ -13,6 +13,7 @@ supersedes: []
 superseded_by: []
 related:
   - ADR-0002
+  - ADR-0003
 keywords:
   - cli-first
   - agent-retrieval

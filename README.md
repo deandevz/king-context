@@ -29,6 +29,8 @@ cp .king-context/.env.example .env
 # OPENROUTER_API_KEY=...    optional, automated enrichment
 ```
 
+Prefer running enrichment locally? Ollama is supported as **beta**. See [docs/ollama.md](docs/ollama.md) for setup.
+
 Build a corpus from a docs site or a topic:
 
 ```bash

@@ -44,10 +44,23 @@ def _validate_config(config: ResearchConfig) -> None:
         raise ConfigError(
             "EXA_API_KEY not set — add it to .env or .king-context/.env"
         )
-    if not config.scraper.openrouter_api_key:
-        raise ConfigError(
-            "OPENROUTER_API_KEY not set — add it to .env or .king-context/.env"
+
+
+def _print_enrichment_cost(cost: dict) -> None:
+    provider = cost.get("provider", "openrouter")
+    if provider == "openrouter":
+        print(
+            f"Enrichment cost estimate: ${cost['estimated_cost']:.4f} "
+            f"({cost['total_chunks']} chunks, model: {cost['model']})"
         )
+        return
+
+    print(
+        f"Enrichment local model estimate: {cost['total_chunks']} chunks, "
+        f"model: {cost['model']} (no estimated OpenRouter cost)"
+    )
+    if cost.get("fallback_warning"):
+        print("Warning: OpenRouter fallback is enabled and may incur cost")
 
 
 def _write_page_artifacts(source: SourceDoc, pages_dir: Path) -> None:
@@ -190,10 +203,7 @@ async def run_pipeline(args: argparse.Namespace, config: ResearchConfig) -> Path
                     "chunking produced no sections or resume state is missing."
                 )
             cost = estimate_cost(chunks, config.scraper)
-            print(
-                f"Enrichment cost estimate: ${cost['estimated_cost']:.4f} "
-                f"({cost['total_chunks']} chunks, model: {cost['model']})"
-            )
+            _print_enrichment_cost(cost)
             if not getattr(args, "yes", False):
                 confirm = input("Proceed? [y/N] ").strip().lower()
                 if confirm != "y":

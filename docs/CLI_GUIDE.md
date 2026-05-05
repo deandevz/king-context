@@ -365,6 +365,72 @@ Useful flags:
 `king-scrape` writes exported documentation JSON to `.king-context/data/`.
 Use `kctx index` to build or rebuild the file-based CLI store from that JSON.
 
+## LLM Provider Configuration
+
+`king-scrape` and `king-research` use OpenRouter by default:
+
+Ollama provider support is beta. If you find bugs, or if you validate local
+models that chunk and enrich content with quality close to Gemini through
+OpenRouter, open an issue with the model name, command, and a short quality
+note: [King Context issues](https://github.com/deandevz/king-context/issues).
+
+```dotenv
+OPENROUTER_API_KEY=...
+ENRICH_PROVIDER=openrouter
+FILTER_PROVIDER=openrouter
+RESEARCH_PROVIDER=openrouter
+```
+
+Each LLM stage can choose its own provider and model:
+
+```dotenv
+ENRICH_PROVIDER=ollama
+ENRICH_MODEL=qwen2.5:7b
+FILTER_PROVIDER=openrouter
+FILTER_MODEL=google/gemini-3-flash-preview
+RESEARCH_PROVIDER=ollama
+RESEARCH_MODEL=qwen2.5:7b
+```
+
+Local Ollama uses the OpenAI-compatible API:
+
+```dotenv
+OLLAMA_API_MODE=openai
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_API_KEY=
+```
+
+Ollama Cloud or another native Ollama host uses the native API:
+
+```dotenv
+OLLAMA_API_MODE=native
+OLLAMA_BASE_URL=https://ollama.com
+OLLAMA_API_KEY=...
+```
+
+Fallback is one-way from Ollama to OpenRouter:
+
+```dotenv
+ENABLE_FALLBACK=true
+FALLBACK_MODEL=google/gemini-3-flash-preview
+OPENROUTER_API_KEY=...
+```
+
+Provider validation is stage-aware. For example, `king-scrape --stop-after chunk`
+does not require LLM credentials, and URL filtering validates the filter provider
+only if the LLM fallback path actually runs. Ollama-only enrichment reports local
+runtime wording instead of a paid cost estimate; if fallback is enabled, the CLI
+warns that OpenRouter fallback may incur cost.
+
+Check configured Ollama stages with:
+
+```bash
+kctx llm-doctor --json
+```
+
+For installation, model download, and smoke test steps, see the
+[Ollama guide](ollama.md).
+
 ## Build research corpora
 
 Use `king-research` to research a topic from the open web and index the result

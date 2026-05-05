@@ -1,15 +1,15 @@
 """Tests for enrich_chunks() resume support."""
 
-import asyncio
 import json
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from conftest import FakeLLMClient, fake_stage_clients
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
-from king_context.scraper.enrich import EnrichedChunk, enrich_chunks
+from king_context.scraper.enrich import enrich_chunks
 
 
 def _make_chunk(index: int) -> Chunk:
@@ -72,12 +72,16 @@ async def test_partial_resume(tmp_path: Path):
 
     call_count = 0
 
-    async def mock_openrouter(prompt, cfg):
+    async def mock_complete(prompt, *, system=None, json_mode=True):
         nonlocal call_count
         call_count += 1
         return VALID_ENRICHMENT
 
-    with patch("king_context.scraper.enrich.call_openrouter", side_effect=mock_openrouter):
+    client = FakeLLMClient(side_effect=mock_complete)
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
         result = await enrich_chunks(chunks, config, output_dir=tmp_path)
 
     # Should have called the API only for the remaining 30 chunks
@@ -108,12 +112,16 @@ async def test_full_resume_no_api_calls(tmp_path: Path):
 
     call_count = 0
 
-    async def mock_openrouter(prompt, cfg):
+    async def mock_complete(prompt, *, system=None, json_mode=True):
         nonlocal call_count
         call_count += 1
         return VALID_ENRICHMENT
 
-    with patch("king_context.scraper.enrich.call_openrouter", side_effect=mock_openrouter):
+    client = FakeLLMClient(side_effect=mock_complete)
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
         result = await enrich_chunks(chunks, config, output_dir=tmp_path)
 
     assert call_count == 0
@@ -135,12 +143,16 @@ async def test_fresh_start_no_existing_batches(tmp_path: Path):
 
     call_count = 0
 
-    async def mock_openrouter(prompt, cfg):
+    async def mock_complete(prompt, *, system=None, json_mode=True):
         nonlocal call_count
         call_count += 1
         return VALID_ENRICHMENT
 
-    with patch("king_context.scraper.enrich.call_openrouter", side_effect=mock_openrouter):
+    client = FakeLLMClient(side_effect=mock_complete)
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
         result = await enrich_chunks(chunks, config, output_dir=tmp_path)
 
     assert call_count == 15
@@ -179,10 +191,14 @@ async def test_batch_numbering_continues(tmp_path: Path):
         enrichment_batch_size=5,  # 10 remaining / 5 = 2 new batches
     )
 
-    async def mock_openrouter(prompt, cfg):
+    async def mock_complete(prompt, *, system=None, json_mode=True):
         return VALID_ENRICHMENT
 
-    with patch("king_context.scraper.enrich.call_openrouter", side_effect=mock_openrouter):
+    client = FakeLLMClient(side_effect=mock_complete)
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
         result = await enrich_chunks(chunks, config, output_dir=tmp_path)
 
     assert len(result) == total
@@ -222,10 +238,14 @@ async def test_new_batches_are_cumulative(tmp_path: Path):
         enrichment_batch_size=3,
     )
 
-    async def mock_openrouter(prompt, cfg):
+    async def mock_complete(prompt, *, system=None, json_mode=True):
         return VALID_ENRICHMENT
 
-    with patch("king_context.scraper.enrich.call_openrouter", side_effect=mock_openrouter):
+    client = FakeLLMClient(side_effect=mock_complete)
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client),
+    ):
         result = await enrich_chunks(chunks, config, output_dir=tmp_path)
 
     batch_files = sorted(enriched_dir.glob("batch_*.json"))

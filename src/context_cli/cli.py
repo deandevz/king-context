@@ -17,6 +17,7 @@ from context_cli.formatter import (
 )
 from context_cli.grep import grep_docs
 from context_cli.indexer import index_doc
+from context_cli.llm_doctor import print_probe
 from context_cli.reader import read_section
 from context_cli.searcher import search
 from context_cli.store import list_docs
@@ -251,6 +252,10 @@ def _cmd_index(args: argparse.Namespace) -> None:
         print(f"Indexed {result.doc_name} ({label}): {result.section_count} sections")
 
 
+def _cmd_llm_doctor(args: argparse.Namespace) -> None:
+    print_probe(as_json=args.json)
+
+
 def _add_source_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--source",
@@ -329,6 +334,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Force routing to a specific store (default: auto-detect from source_type)",
     )
     p_index.set_defaults(func=_cmd_index)
+
+    # llm-doctor
+    p_llm_doctor = subparsers.add_parser(
+        "llm-doctor",
+        help="Check configured LLM providers",
+        description=(
+            "Check configured LLM providers. Ollama provider support is beta; "
+            "report bugs and model-quality validation results in GitHub issues."
+        ),
+        epilog="Issues: https://github.com/deandevz/king-context/issues",
+    )
+    p_llm_doctor.add_argument("--json", action="store_true", help="JSON output")
+    p_llm_doctor.set_defaults(func=_cmd_llm_doctor)
 
     adr.add_subparser(subparsers)
 

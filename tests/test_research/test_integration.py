@@ -1,6 +1,6 @@
 """End-to-end integration test for the research pipeline.
 
-All externals (Exa SDK, Jina httpx, OpenRouter httpx) are mocked. The pipeline,
+All externals (Exa SDK, query LLM, enrichment LLM) are mocked. The pipeline,
 chunk, enrich, export, and indexing code paths run for real so we exercise the
 wiring between components.
 """
@@ -10,18 +10,13 @@ import json
 from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
-import httpx
 import pytest
 
-import respx
-
+from conftest import FakeLLMClient, fake_stage_clients
 from king_context.research.config import EffortLevel, ResearchConfig
 from king_context.research.pipeline import run_pipeline
 from king_context.scraper.config import ScraperConfig
 from context_cli.indexer import index_doc
-
-
-skip_no_respx = pytest.mark.skipif(False, reason="")
 
 
 # ---------------------------------------------------------------------------
@@ -75,46 +70,13 @@ def _make_exa_response(query: str, num_results: int) -> MagicMock:
     return resp
 
 
-def _make_enrichment_response() -> httpx.Response:
-    payload = {
+def _make_enrichment_payload() -> dict:
+    return {
         "keywords": ["alpha", "beta", "gamma", "delta", "epsilon", "zeta"],
         "use_cases": ["Use when testing", "Implement when integrating"],
         "tags": ["research"],
         "priority": 7,
     }
-    return httpx.Response(
-        200,
-        json={
-            "choices": [{"message": {"content": json.dumps(payload)}}]
-        },
-    )
-
-
-def _make_queries_response(queries: list[str]) -> httpx.Response:
-    return httpx.Response(
-        200,
-        json={
-            "choices": [
-                {"message": {"content": json.dumps({"queries": queries})}}
-            ]
-        },
-    )
-
-
-def _is_enrichment_request(body: dict) -> bool:
-    """Enrichment uses a single user message; queries uses system+user.
-    Detect by looking for the enrichment prompt's distinctive preamble.
-    """
-    messages = body.get("messages", [])
-    # Enrichment payload is one user message with the ENRICHMENT_PROMPT text.
-    for msg in messages:
-        content = msg.get("content", "")
-        if isinstance(content, str) and (
-            "documentation metadata specialist" in content
-            or "Documentation section:" in content
-        ):
-            return True
-    return False
 
 
 def _make_config(**overrides) -> ResearchConfig:
@@ -161,8 +123,6 @@ def _make_args(
 # ---------------------------------------------------------------------------
 
 
-@skip_no_respx
-@respx.mock
 async def test_basic_effort_end_to_end(tmp_path, monkeypatch):
     """Happy path: BASIC effort with all externals mocked.
 
@@ -177,22 +137,20 @@ async def test_basic_effort_end_to_end(tmp_path, monkeypatch):
         tmp_path / "data" / "research",
     )
 
-    # ---- Mock OpenRouter ----
-    def openrouter_handler(request):
-        body = json.loads(request.content)
-        if _is_enrichment_request(body):
-            return _make_enrichment_response()
-        return _make_queries_response(["query a", "query b", "query c"])
-
-    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
-        side_effect=openrouter_handler
+    query_client = FakeLLMClient(responses=[{"queries": ["query a", "query b", "query c"]}])
+    enrich_client = FakeLLMClient(
+        responses=[_make_enrichment_payload() for _ in range(100)]
     )
-
-    # ---- Mock Exa ----
     def fake_search_and_contents(**kwargs):
         return _make_exa_response(kwargs["query"], num_results=3)
 
-    with patch("king_context.research.exa.Exa") as mock_exa_cls:
+    with patch(
+        "king_context.research.queries.get_client",
+        return_value=query_client,
+    ), patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(enrich_client),
+    ), patch("king_context.research.exa.Exa") as mock_exa_cls:
         mock_exa_cls.return_value.search_and_contents.side_effect = (
             fake_search_and_contents
         )
@@ -244,8 +202,6 @@ async def test_basic_effort_end_to_end(tmp_path, monkeypatch):
     assert any(h.doc_name == "prompt-engineering" for h in hits)
 
 
-@skip_no_respx
-@respx.mock
 async def test_medium_effort_iteration_sources_present(tmp_path, monkeypatch):
     """MEDIUM effort: verify the deepening loop ran by checking for sections
     from both iteration 0 and iteration 1.
@@ -258,29 +214,27 @@ async def test_medium_effort_iteration_sources_present(tmp_path, monkeypatch):
         tmp_path / "data" / "research",
     )
 
-    call_count = [0]
-
-    def openrouter_handler(request):
-        body = json.loads(request.content)
-        if _is_enrichment_request(body):
-            return _make_enrichment_response()
-
-        call_count[0] += 1
-        if call_count[0] == 1:
-            qs = ["init a", "init b", "init c", "init d", "init e"]
-        else:
-            qs = ["followup a", "followup b", "followup c"]
-        return _make_queries_response(qs)
-
-    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
-        side_effect=openrouter_handler
+    query_client = FakeLLMClient(
+        responses=[
+            {"queries": ["init a", "init b", "init c", "init d", "init e"]},
+            {"queries": ["followup a", "followup b", "followup c"]},
+        ]
+    )
+    enrich_client = FakeLLMClient(
+        responses=[_make_enrichment_payload() for _ in range(200)]
     )
 
     def fake_search_and_contents(**kwargs):
         # Two results per query for a tighter medium run.
         return _make_exa_response(kwargs["query"], num_results=2)
 
-    with patch("king_context.research.exa.Exa") as mock_exa_cls:
+    with patch(
+        "king_context.research.queries.get_client",
+        return_value=query_client,
+    ), patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(enrich_client),
+    ), patch("king_context.research.exa.Exa") as mock_exa_cls:
         mock_exa_cls.return_value.search_and_contents.side_effect = (
             fake_search_and_contents
         )

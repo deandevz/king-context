@@ -18,7 +18,11 @@ def _set_base_env(monkeypatch):
 
 def _clear_research_env(monkeypatch):
     for name in [
+        "FIRECRAWL_API_KEY",
+        "OPENROUTER_API_KEY",
+        "EXA_API_KEY",
         "JINA_API_KEY",
+        "RESEARCH_MODEL",
         "OPENROUTER_MODEL_RESEARCH",
         "RESEARCH_BASIC_QUERIES",
         "RESEARCH_MEDIUM_QUERIES",
@@ -71,6 +75,29 @@ def test_env_override_applies(monkeypatch):
     config = load_research_config()
 
     assert config.high_queries == 20
+
+
+def test_load_research_config_loads_project_env(monkeypatch, tmp_path):
+    _clear_research_env(monkeypatch)
+    monkeypatch.delenv("KING_CONTEXT_DISABLE_DOTENV", raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text(
+        "\n".join(
+            [
+                "FIRECRAWL_API_KEY=fc-file",
+                "OPENROUTER_API_KEY=or-file",
+                "EXA_API_KEY=exa-file",
+                "RESEARCH_MODEL=qwen2.5:7b",
+            ]
+        )
+    )
+
+    config = load_research_config()
+
+    assert config.scraper.firecrawl_api_key == "fc-file"
+    assert config.scraper.openrouter_api_key == "or-file"
+    assert config.exa_api_key == "exa-file"
+    assert config.research_model == "qwen2.5:7b"
 
 
 def test_missing_exa_key_raises(monkeypatch):
