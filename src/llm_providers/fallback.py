@@ -70,7 +70,7 @@ class FallbackClient(LLMClient):
             except ProviderError as fallback_error:
                 raise ProviderError(
                     reason,
-                    transient=primary_error.transient or fallback_error.transient,
+                    transient=fallback_error.transient,
                     provider=self.name,
                     message=(
                         f"Primary {self.primary.name} failed with {primary_error.reason}; "

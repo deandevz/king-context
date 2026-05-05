@@ -62,6 +62,34 @@ async def test_fallback_surfaces_both_errors():
     assert exc.value.fallback_error is fallback_error
 
 
+@pytest.mark.asyncio
+async def test_fallback_combined_error_uses_fallback_transience():
+    primary_error = ProviderError(
+        "timeout",
+        transient=True,
+        message="timeout",
+        provider="ollama",
+    )
+    fallback_error = ProviderError(
+        "auth_error",
+        transient=False,
+        message="unauthorized",
+        provider="openrouter",
+    )
+    client = FallbackClient(
+        primary=FakeLLMClient(responses=[primary_error], name="ollama"),
+        fallback=FakeLLMClient(responses=[fallback_error], name="openrouter"),
+        stage="enrich",
+    )
+
+    with pytest.raises(ProviderError) as exc:
+        await client.complete("hello")
+
+    assert exc.value.transient is False
+    assert exc.value.primary_error is primary_error
+    assert exc.value.fallback_error is fallback_error
+
+
 def test_rejects_reverse_fallback():
     with pytest.raises(ConfigError):
         FallbackClient(

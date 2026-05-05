@@ -257,6 +257,44 @@ def test_enrich_surfaces_provider_error_from_fallback_client():
     assert exc.value.fallback_error is fallback_errors[-1]
 
 
+def test_enrich_does_not_retry_non_transient_fallback_error():
+    config = ScraperConfig(
+        openrouter_api_key="test-key",
+        enrichment_batch_size=5,
+    )
+    chunk = make_chunk("Auth Section")
+    primary_error = ProviderError(
+        "timeout",
+        transient=True,
+        message="timeout",
+        provider="ollama",
+    )
+    fallback_error = ProviderError(
+        "auth_error",
+        transient=False,
+        message="unauthorized",
+        provider="openrouter",
+    )
+    primary = FakeLLMClient(responses=[primary_error], name="ollama")
+    fallback = FakeLLMClient(responses=[fallback_error], name="openrouter")
+    client = FallbackClient(
+        primary=primary,
+        fallback=fallback,
+        stage="enrich",
+    )
+
+    with patch(
+        "king_context.scraper.enrich.get_stage_clients",
+        return_value=fake_stage_clients(client, fallback),
+    ):
+        with pytest.raises(ProviderError) as exc:
+            asyncio.run(enrich_chunks([chunk], config))
+
+    assert exc.value.transient is False
+    assert len(primary.calls) == 1
+    assert len(fallback.calls) == 1
+
+
 def test_estimate_cost():
     config = ScraperConfig(
         enrichment_model="openai/gpt-4o-mini",

@@ -34,13 +34,14 @@ https://docs.ollama.com/api/openai-compatibility, https://docs.ollama.com/api/ch
 - O enrichment agora retenta `ProviderError` transiente ate 3 tentativas no primary. Timeouts, rate limits e erros 5xx de OpenRouter ou Ollama nao abortam o batch na primeira falha; erros nao transientes continuam falhando imediatamente.
 - O fallback Ollama -> OpenRouter agora respeita concorrencia por provider. Quando `CONCURRENCY_OLLAMA` e maior que `CONCURRENCY_OPENROUTER`, chamadas de fallback para OpenRouter ficam protegidas pelo semaforo do OpenRouter, nao pelo limite do primary.
 - A factory de providers agora resolve `CONCURRENCY_OPENROUTER` tambem para o cliente OpenRouter usado como fallback, em vez de usar um valor fixo.
-- Testes de regressao cobrem isolamento do modelo de research, surfacing dos erros combinados de fallback, surfacing de falhas de config/provider no filtro LLM, retry de erros transientes no enrichment, erro apos 3 tentativas e concorrencia do OpenRouter em fallback.
+- Erros combinados do `FallbackClient` agora usam a transiencia do erro do fallback. Se Ollama falha de forma transiente, mas OpenRouter falha com erro nao transiente, como `auth_error`, o caller falha imediatamente em vez de retentar uma configuracao invalida.
+- Testes de regressao cobrem isolamento do modelo de research, surfacing dos erros combinados de fallback, surfacing de falhas de config/provider no filtro LLM, retry de erros transientes no enrichment, erro apos 3 tentativas, fail-fast para fallback nao transiente e concorrencia do OpenRouter em fallback.
 
 ## Validacao
 
-- `pytest` -> `463 passed`
-- `pytest tests/test_scraper/test_enrich.py tests/test_llm_providers/test_factory.py` -> `11 passed`
-- `pytest tests/test_llm_providers tests/test_scraper tests/test_scraper_manifest.py tests/test_scraper_enrich_resume.py tests/test_scraper_resume_integration.py` -> `94 passed`
+- `pytest` -> `465 passed`
+- `pytest tests/test_llm_providers/test_fallback.py tests/test_scraper/test_enrich.py` -> `14 passed`
+- `pytest tests/test_llm_providers tests/test_scraper tests/test_scraper_manifest.py tests/test_scraper_enrich_resume.py tests/test_scraper_resume_integration.py` -> `96 passed`
 - `python -m context_cli.cli adr status` -> index up to date
 - `python -m context_cli.cli adr validate` -> passed
 - `python -m context_cli.cli llm-doctor --json` -> `{"ollama": null}` quando nenhum stage usa Ollama
