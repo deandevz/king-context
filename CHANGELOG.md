@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-05
+
+### Added
+
+- Beta Ollama and local model support via a new pluggable provider layer
+  in `src/llm_providers/`. `king-scrape`, `king-research`, and the new
+  `kctx llm-doctor` command can now talk to OpenRouter, Ollama local
+  (OpenAI-compatible), Ollama native/cloud, and an optional Ollama to
+  OpenRouter fallback. Default behavior for existing OpenRouter users is
+  unchanged. ([#40](https://github.com/deandevz/king-context/pull/40))
+- Stage-aware provider configuration via new env vars: `ENRICH_*`,
+  `FILTER_*`, `RESEARCH_*`, `OLLAMA_*`, `CONCURRENCY_*`, and
+  `ENABLE_FALLBACK`. Centralized `.king-context/.env` and `.env` loading
+  through `src/king_context/env.py`.
+- `kctx llm-doctor` diagnostics command and a Node-side `doctor` Ollama
+  hook (warning only) so users can verify provider, model, and
+  reachability before running a stage.
+- ADR-0003 recording the pluggable LLM provider decision, plus
+  `docs/ollama.md` setup guide and updated `docs/CLI_GUIDE.md` LLM
+  section, EN/PT-BR READMEs, installer env template, and king-context
+  skills.
+
+### Changed
+
+- Bumped the Python package version from `0.2.0` to `0.3.0` so it matches
+  the npm installer release and the `v0.3.0` GitHub tag. Code already
+  shipped in v0.3.0, this is metadata only.
+  ([#41](https://github.com/deandevz/king-context/pull/41))
+
+### Removed
+
+- Untracked `.specs/features/local-models-enrichment/human.md` that
+  slipped through the `.specs/` gitignore rule in the previous PR. Local
+  copy preserved on disk and now ignored as intended.
+  ([#41](https://github.com/deandevz/king-context/pull/41))
+
 ## [0.2.1] - 2026-05-02
 
 ### Fixed
