@@ -3,16 +3,20 @@
 const { execFileSync, spawnSync } = require('child_process');
 const path = require('path');
 
+function pathFor() {
+  return process.platform === 'win32' ? path.win32 : path.posix;
+}
+
 function getVenvPath(projectDir) {
-  return path.join(projectDir, '.king-context', 'core', 'venv');
+  return pathFor().join(projectDir, '.king-context', 'core', 'venv');
 }
 
 function getVenvBinDir(projectDir) {
-  return path.join(getVenvPath(projectDir), process.platform === 'win32' ? 'Scripts' : 'bin');
+  return pathFor().join(getVenvPath(projectDir), process.platform === 'win32' ? 'Scripts' : 'bin');
 }
 
 function getVenvPython(projectDir) {
-  return path.join(getVenvBinDir(projectDir), process.platform === 'win32' ? 'python.exe' : 'python');
+  return pathFor().join(getVenvBinDir(projectDir), process.platform === 'win32' ? 'python.exe' : 'python');
 }
 
 function getPythonCandidates() {
