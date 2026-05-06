@@ -99,13 +99,13 @@ class TestRouterHealth:
 
 
 class TestStaticHandler:
-    def test_serves_placeholder(self):
+    def test_serves_style_css(self):
         status, headers, body = router.dispatch(
-            "GET", "/static/placeholder.txt", {}
+            "GET", "/static/style.css", {}
         )
         assert status == 200
-        assert headers["Content-Type"] == "text/plain"
-        assert b"static asset server reachable" in body
+        assert headers["Content-Type"] == "text/css"
+        assert len(body) > 0
 
     def test_blocks_path_traversal(self):
         status, _, body = router.dispatch(
@@ -202,11 +202,11 @@ class TestMainIntegration:
             assert payload["status"] == "ok"
             assert isinstance(payload["version"], str)
 
-    def test_main_serves_static_placeholder(self, running_server):
-        with urlopen(f"{running_server}/static/placeholder.txt", timeout=5) as resp:
+    def test_main_serves_static_style_css(self, running_server):
+        with urlopen(f"{running_server}/static/style.css", timeout=5) as resp:
             assert resp.status == 200
-            assert resp.headers.get("Content-Type") == "text/plain"
-            assert b"static asset server reachable" in resp.read()
+            assert resp.headers.get("Content-Type") == "text/css"
+            assert len(resp.read()) > 0
 
     def test_main_returns_404_for_unknown(self, running_server):
         with pytest.raises(HTTPError) as exc:
