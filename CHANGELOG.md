@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-06
+
+### Added
+
+- `kctx ui` command: local read-only web UI (stdlib HTTP, port 7373 with
+  auto-increment, bind 127.0.0.1 only) for browsing ADRs, indexed docs,
+  and research stored under `.king-context/`. Reads through the CLI
+  flat-file surface; no write paths in the MVP. Static assets and
+  templates are bundled inside the Python wheel.
+  ([#44](https://github.com/deandevz/king-context/pull/44))
+- ADR-0005 to ADR-0008: record decisions on flat-file source of truth,
+  read-only MVP scope, stdlib HTTP with adapter-swap design, and
+  bundling UI assets in the Python wheel.
+- `docs/ui-local.md` plus screenshots under `docs/assets/ui-local/`,
+  linked from `README.md` and `docs/index.md`.
+- `markdown>=3.5` runtime dependency for HTML rendering of stored
+  Markdown.
+
+### Changed
+
+- `installer/templates/claude-md-snippet.md`: surface `kctx ui` to
+  installed projects.
+
 ## [0.3.1] - 2026-05-06
 
 ### Added

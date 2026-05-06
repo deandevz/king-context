@@ -256,6 +256,19 @@ def _cmd_llm_doctor(args: argparse.Namespace) -> None:
     print_probe(as_json=args.json)
 
 
+def _cmd_ui(args: argparse.Namespace) -> None:
+    from king_context.web.server import main as web_main
+
+    argv: list[str] = []
+    if args.port is not None:
+        argv += ["--port", str(args.port)]
+    if args.host:
+        argv += ["--host", args.host]
+    if args.no_open:
+        argv += ["--no-open"]
+    sys.exit(web_main(argv))
+
+
 def _add_source_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--source",
@@ -349,6 +362,16 @@ def _build_parser() -> argparse.ArgumentParser:
     p_llm_doctor.set_defaults(func=_cmd_llm_doctor)
 
     adr.add_subparser(subparsers)
+
+    # ui
+    p_ui = subparsers.add_parser("ui", help="Launch the local read-only UI server")
+    p_ui.add_argument("--port", type=int, default=None,
+                      help="Port to bind (default: 7373; auto-increment if busy)")
+    p_ui.add_argument("--host", default=None,
+                      help="Host to bind (default: 127.0.0.1; 0.0.0.0 not supported in MVP)")
+    p_ui.add_argument("--no-open", action="store_true",
+                      help="Do not open the browser automatically")
+    p_ui.set_defaults(func=_cmd_ui)
 
     return parser
 

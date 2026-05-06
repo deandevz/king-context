@@ -13,6 +13,7 @@ superseded_by: []
 related:
   - ADR-0001
   - ADR-0004
+  - ADR-0008
 keywords:
   - installer-layout
   - upgrade
@@ -24,6 +25,7 @@ tags:
   - upgrade
   - adr
 ---
+
 
 
 

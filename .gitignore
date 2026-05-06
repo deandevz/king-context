@@ -54,6 +54,8 @@ Thumbs.db
 # Claude Code
 CLAUDE.md
 .tasks/
+.docs/
+tasks/
 
 # Skill output
 pr-create/
@@ -66,14 +68,19 @@ commit-create/
 data/
 
 .claude/skills/tlc-spec-driven/
+.claude/skills/docs-writer
 .claude/skills/idea-issue/
 .claude/skills/pr-review-flow/
+.claude/skills/arch/
+.claude/skills/arch-tasks/
+.claude/skills/implement/
 .cursor/
 .specs/
 .king-context/*
 !.king-context/adr/
 !.king-context/adr/**
 .claude/projects/
+.king_lopper/
 
 # Codex: ignore everything except skills/
 .agents/*

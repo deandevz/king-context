@@ -152,6 +152,8 @@ See [open issues](https://github.com/deandevz/king-context/issues) for active wo
 
 The CLI is the canonical interface. Any agent that can run shell commands can use King Context: today that means Claude Code via dedicated skills, with Codex support and a unified skill format on the roadmap. The MCP server still ships and runs on the same corpus, useful for non-coding agents and IDE integrations that expect an MCP endpoint. Same corpus, same retrieval shape, pick what fits your environment.
 
+For humans browsing the index, `kctx ui` opens a local, read-only web UI for ADRs, docs, and research. See [docs/ui-local.md](docs/ui-local.md).
+
 ## Contributing
 
 Three areas where help moves the project the most.

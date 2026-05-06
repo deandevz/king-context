@@ -1,0 +1,863 @@
+/* style.css: minimalist styles for the local UI server.
+ * No build step, no preprocessor, no external resources. */
+
+:root {
+  --color-bg: #ffffff;
+  --color-bg-alt: #f5f7fa;
+  --color-border: #d8dee5;
+  --color-text: #1f2933;
+  --color-muted: #5a6a7a;
+  --color-link: #1466cf;
+  --color-link-hover: #0a4ea3;
+  --color-accent: #1466cf;
+  --color-status-accepted: #2f8f4f;
+  --color-status-superseded: #d97706;
+  --color-status-deprecated: #6b7280;
+  --color-status-rejected: #c0392b;
+  --color-status-proposed: #2563eb;
+  --color-status-unknown: #6b7280;
+  --color-broken: #c33;
+  --radius: 6px;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+code {
+  background: var(--color-bg-alt);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 0.9em;
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+pre {
+  background: var(--color-bg-alt);
+  padding: 12px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Top navigation */
+
+.kctx-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 20px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.kctx-brand {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--color-text);
+}
+
+.kctx-brand:hover {
+  text-decoration: none;
+  color: var(--color-link-hover);
+}
+
+.kctx-nav-links {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kctx-nav-links a {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.kctx-nav-links a:hover {
+  color: var(--color-link);
+}
+
+/* Main + footer */
+
+.kctx-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+.kctx-footer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px 20px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.kctx-subtitle {
+  color: var(--color-muted);
+  margin-top: 4px;
+}
+
+.kctx-sep {
+  color: var(--color-muted);
+}
+
+/* Empty state blocks */
+
+.kctx-empty,
+.kctx-search-hint,
+.kctx-search-empty,
+.kctx-viewer-hint,
+.graph-empty-state {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin: 12px 0;
+}
+
+.kctx-empty-reason {
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 4px;
+  text-transform: capitalize;
+}
+
+.kctx-empty-hint {
+  color: var(--color-muted);
+  margin: 0;
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+}
+
+.graph-warning {
+  background: #fff7e6;
+  border: 1px solid #fcd9a8;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin: 8px 0;
+  color: #8a5300;
+  font-size: 0.9rem;
+}
+
+/* Loading + error pieces */
+
+.loading {
+  color: var(--color-muted);
+  padding: 12px 0;
+}
+
+.error {
+  color: var(--color-broken);
+  background: #fdecea;
+  border: 1px solid #f5c2c7;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+
+/* Home dashboard */
+
+.kctx-home-header h1 {
+  margin: 0;
+}
+
+.kctx-home-search {
+  margin: 24px 0 16px;
+}
+
+.kctx-home-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 16px 0 24px;
+}
+
+.kctx-home-card {
+  display: block;
+  padding: 18px 20px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  color: inherit;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.kctx-home-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  text-decoration: none;
+}
+
+.kctx-home-card-heading {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kctx-home-count {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.kctx-home-card-label {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.kctx-home-empty {
+  margin-top: 4px;
+}
+
+.kctx-home-footer {
+  margin-top: 32px;
+  color: var(--color-muted);
+}
+
+.kctx-footnote {
+  font-size: 0.85rem;
+}
+
+/* ADR page */
+
+.kctx-adrs-header h1 {
+  margin: 0;
+}
+
+.kctx-graph {
+  margin: 16px 0 24px;
+  padding: 12px;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  position: relative;
+}
+
+#adr-graph {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+.kctx-adrs-body {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+.kctx-adr-list {
+  min-width: 0;
+}
+
+.kctx-adr-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kctx-adr-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  margin-bottom: 8px;
+}
+
+.kctx-adr-link {
+  color: var(--color-text);
+}
+
+.kctx-adr-link:hover .kctx-adr-title {
+  color: var(--color-link);
+}
+
+.kctx-adr-id {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.kctx-adr-title {
+  font-weight: 500;
+}
+
+.kctx-adr-date {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  margin-left: auto;
+}
+
+/* Status badges (text labels, not color-only). */
+
+.kctx-adr-status {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+}
+
+.kctx-adr-status.status-accepted,
+.status-accepted {
+  background: #e6f3ec;
+  color: var(--color-status-accepted);
+  border-color: #b7e0c5;
+}
+
+.kctx-adr-status.status-superseded,
+.status-superseded {
+  background: #fdf0d6;
+  color: var(--color-status-superseded);
+  border-color: #fcd9a8;
+}
+
+.kctx-adr-status.status-deprecated,
+.status-deprecated {
+  background: #ecedef;
+  color: var(--color-status-deprecated);
+  border-color: #cfd3d8;
+}
+
+.kctx-adr-status.status-rejected,
+.status-rejected {
+  background: #fdecea;
+  color: var(--color-status-rejected);
+  border-color: #f5c2c7;
+}
+
+.kctx-adr-status.status-proposed,
+.status-proposed {
+  background: #e7eefd;
+  color: var(--color-status-proposed);
+  border-color: #b9cdf6;
+}
+
+/* ADR side panel */
+
+.kctx-adr-panel {
+  position: sticky;
+  top: 64px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+.kctx-adr-panel:empty {
+  display: none;
+}
+
+.kctx-adr-detail-title {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+}
+
+.kctx-adr-detail-meta,
+.kctx-adr-detail-areas {
+  color: var(--color-muted);
+  margin: 4px 0;
+  font-size: 0.9rem;
+}
+
+.kctx-adr-content {
+  margin-top: 12px;
+  word-wrap: break-word;
+}
+
+.kctx-adr-content h2 {
+  font-size: 1.05rem;
+  margin: 16px 0 6px;
+}
+
+.kctx-adr-content h3 {
+  font-size: 0.95rem;
+  margin: 12px 0 4px;
+}
+
+.kctx-adr-refs {
+  margin-top: 14px;
+}
+
+.kctx-adr-refs h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  margin: 0 0 6px;
+}
+
+.kctx-adr-refs ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.kctx-adr-ref {
+  margin: 2px 0;
+  font-size: 0.92rem;
+}
+
+.kctx-adr-ref.broken-ref,
+.kctx-adr-ref.broken {
+  color: var(--color-broken);
+  font-style: italic;
+}
+
+.kctx-adr-ref.broken-ref::before,
+.kctx-adr-ref.broken::before {
+  content: "[broken] ";
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* SVG graph elements */
+
+.adr-node {
+  fill: var(--color-bg);
+  stroke: var(--color-muted);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: stroke 80ms ease, fill 80ms ease;
+}
+
+.adr-node-group:hover .adr-node,
+.adr-node-group:focus-visible .adr-node {
+  stroke: var(--color-accent);
+  fill: var(--color-bg-alt);
+}
+
+.adr-node.status-accepted {
+  fill: #e6f3ec;
+  stroke: var(--color-status-accepted);
+}
+
+.adr-node.status-superseded {
+  fill: #fdf0d6;
+  stroke: var(--color-status-superseded);
+}
+
+.adr-node.status-deprecated {
+  fill: #ecedef;
+  stroke: var(--color-status-deprecated);
+}
+
+.adr-node.status-rejected {
+  fill: #fdecea;
+  stroke: var(--color-status-rejected);
+}
+
+.adr-node.status-proposed {
+  fill: #e7eefd;
+  stroke: var(--color-status-proposed);
+}
+
+.adr-node-label {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  fill: var(--color-text);
+  pointer-events: none;
+  user-select: none;
+}
+
+.edge-related {
+  stroke: #777;
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.edge-supersedes {
+  stroke: #c33;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 4, 4;
+}
+
+.graph-axis {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+}
+
+.graph-axis-tick {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+}
+
+.graph-axis-label {
+  font-size: 10px;
+  fill: var(--color-muted);
+}
+
+/* Corpus root pages (/docs and /research grids) */
+
+.kctx-corpus-root-header h1 {
+  margin: 0;
+}
+
+.kctx-corpus-root-subtitle {
+  color: var(--color-muted);
+  margin-top: 4px;
+}
+
+.kctx-corpus-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 16px 0 24px;
+}
+
+.kctx-corpus-card {
+  display: block;
+  padding: 16px 18px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  color: inherit;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.kctx-corpus-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  text-decoration: none;
+}
+
+.kctx-corpus-card-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  color: var(--color-text);
+}
+
+.kctx-corpus-card-meta {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.kctx-corpus-card-name,
+.kctx-corpus-card-version,
+.kctx-corpus-card-count {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+}
+
+/* Corpus pages (docs / research) */
+
+.kctx-corpus-header h1 {
+  margin: 0;
+}
+
+.kctx-corpus-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.kctx-corpus-sidebar {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  padding: 12px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  position: sticky;
+  top: 72px;
+}
+
+.kctx-corpus-nav .kctx-tag-group {
+  margin-bottom: 12px;
+}
+
+.kctx-tag-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin: 8px 0 4px;
+}
+
+.kctx-section-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.kctx-section-item {
+  margin: 0;
+}
+
+.kctx-section-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  color: var(--color-text);
+}
+
+.kctx-section-link:hover {
+  background: var(--color-bg-alt);
+  text-decoration: none;
+  color: var(--color-link);
+}
+
+.kctx-section-priority {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.kctx-section-viewer {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  padding: 18px 22px;
+  overflow-wrap: break-word;
+}
+
+.kctx-section-detail-title {
+  margin: 0 0 6px;
+}
+
+.kctx-section-meta {
+  color: var(--color-muted);
+  margin: 4px 0;
+  font-size: 0.9rem;
+}
+
+/* Constrain embedded media inside content blocks so wide assets
+ * (screenshots, diagrams, videos) cannot escape the container. */
+
+.kctx-section-viewer img,
+.kctx-section-viewer svg,
+.kctx-section-viewer video,
+.kctx-section-viewer iframe,
+.kctx-adr-content img,
+.kctx-adr-content svg,
+.kctx-adr-content video,
+.kctx-adr-content iframe {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: var(--radius);
+}
+
+.kctx-section-viewer table,
+.kctx-adr-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Search page */
+
+.kctx-search-header h1 {
+  margin: 0;
+}
+
+.kctx-search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.kctx-search-form input[type="search"] {
+  flex: 1 1 280px;
+  min-width: 180px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.kctx-search-form select {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  font-family: inherit;
+}
+
+.kctx-search-form button {
+  padding: 8px 16px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.kctx-search-form button:hover {
+  background: var(--color-link-hover);
+  border-color: var(--color-link-hover);
+}
+
+.kctx-search-source-label {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.kctx-search-summary {
+  color: var(--color-muted);
+  margin: 12px 0 4px;
+}
+
+.kctx-search-results {
+  margin-top: 8px;
+}
+
+.kctx-search-group {
+  margin-top: 16px;
+}
+
+.kctx-search-group-title {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  margin: 0 0 6px;
+}
+
+.kctx-search-count {
+  color: var(--color-muted);
+}
+
+.kctx-search-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.kctx-search-item {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  background: var(--color-bg);
+}
+
+.kctx-search-item-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.kctx-search-item-meta {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.kctx-search-source,
+.kctx-search-score {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.kctx-search-keywords {
+  font-style: italic;
+}
+
+/* Responsive: tablet (~768) and mobile (~400). */
+
+@media (max-width: 960px) {
+  .kctx-home-cards,
+  .kctx-corpus-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .kctx-corpus-body {
+    grid-template-columns: 220px 1fr;
+  }
+  .kctx-adrs-body {
+    grid-template-columns: 1fr 320px;
+  }
+}
+
+@media (max-width: 700px) {
+  .kctx-nav {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .kctx-home-cards,
+  .kctx-corpus-grid {
+    grid-template-columns: 1fr;
+  }
+  .kctx-corpus-body {
+    grid-template-columns: 1fr;
+  }
+  .kctx-corpus-sidebar {
+    position: static;
+    max-height: none;
+  }
+  .kctx-adrs-body {
+    grid-template-columns: 1fr;
+  }
+  .kctx-adr-panel {
+    position: static;
+    max-height: none;
+  }
+  .kctx-adr-date {
+    margin-left: 0;
+  }
+}

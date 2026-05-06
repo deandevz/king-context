@@ -1,6 +1,6 @@
 [project]
 name = "king-context"
-version = "0.3.1"
+version = "0.3.2"
 description = "Local-first, token-efficient documentation server for LLM context injection"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -38,6 +38,7 @@ dependencies = [
     "firecrawl-py>=1.0.0",
     "httpx>=0.27.0",
     "exa-py>=1.0.0",
+    "markdown>=3.5",
 ]
 
 [project.optional-dependencies]
