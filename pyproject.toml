@@ -1,6 +1,6 @@
 [project]
 name = "king-context"
-version = "0.3.2"
+version = "0.4.0"
 description = "Local-first, token-efficient documentation server for LLM context injection"
 readme = "README.md"
 license = { file = "LICENSE" }
