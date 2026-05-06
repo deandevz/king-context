@@ -72,7 +72,9 @@ Full command reference in [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md).
 
 ## Scraper providers
 
-`king-scrape` supports pluggable scraper backends. The default is Firecrawl (cloud, zero-config, pay per page). Crawl4AI is available as a local opt-in backend.
+`king-scrape` supports pluggable scraper backends. The default is Firecrawl (cloud, zero-config, pay per page). Crawl4AI is the first local opt-in backend, added so users can index documentation without external credits, without sending HTML through a third party, and with full transparency over the HTML to Markdown conversion. It also unblocks indexing private or internal docs that should not leave your machine.
+
+Crawl4AI support is **beta**. If something breaks or feels off, open an issue at [github.com/deandevz/king-context/issues](https://github.com/deandevz/king-context/issues) with the URL, the command, and the error. Improvements are welcome.
 
 Default (Firecrawl, no install needed beyond `init`):
 
@@ -82,20 +84,33 @@ king-scrape https://docs.example.com
 
 Requires `FIRECRAWL_API_KEY` in `.env`.
 
-Local mode (Crawl4AI, free, ~300MB Playwright install):
+### Enable Crawl4AI
+
+If you installed via `npx @king-context/cli init`, the Crawl4AI Python package is already in the project venv (bundled by `[all]`). You only need to download the Playwright browser once (~300MB):
 
 ```bash
-pip install king-context[crawl4ai] && crawl4ai-setup
-SCRAPE_PROVIDER=crawl4ai king-scrape https://docs.example.com
+.king-context/core/venv/bin/crawl4ai-setup
 ```
 
-Or with a flag for a single run:
+Then pick the backend per run:
 
 ```bash
 king-scrape https://docs.example.com --provider=crawl4ai
 ```
 
-Mixing providers per stage:
+Or set it as the default for the project:
+
+```bash
+SCRAPE_PROVIDER=crawl4ai king-scrape https://docs.example.com
+```
+
+Standalone pip install (without the npm installer):
+
+```bash
+pip install king-context[crawl4ai] && crawl4ai-setup
+```
+
+### Mixing providers per stage
 
 ```bash
 SCRAPE_DISCOVER_PROVIDER=crawl4ai SCRAPE_FETCH_PROVIDER=firecrawl king-scrape https://docs.example.com
@@ -103,7 +118,7 @@ SCRAPE_DISCOVER_PROVIDER=crawl4ai SCRAPE_FETCH_PROVIDER=firecrawl king-scrape ht
 
 Useful when one backend handles a stage better than the other (for example, Crawl4AI for SPA discovery, Firecrawl for stable fetch).
 
-Environment variables:
+### Environment variables
 
 | Variable | Effect |
 |----------|--------|
