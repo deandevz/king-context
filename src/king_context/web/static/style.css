@@ -670,6 +670,7 @@ pre code {
   border-radius: var(--radius);
   background: var(--color-bg);
   padding: 18px 22px;
+  overflow-wrap: break-word;
 }
 
 .kctx-section-detail-title {
@@ -680,6 +681,31 @@ pre code {
   color: var(--color-muted);
   margin: 4px 0;
   font-size: 0.9rem;
+}
+
+/* Constrain embedded media inside content blocks so wide assets
+ * (screenshots, diagrams, videos) cannot escape the container. */
+
+.kctx-section-viewer img,
+.kctx-section-viewer svg,
+.kctx-section-viewer video,
+.kctx-section-viewer iframe,
+.kctx-adr-content img,
+.kctx-adr-content svg,
+.kctx-adr-content video,
+.kctx-adr-content iframe {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: var(--radius);
+}
+
+.kctx-section-viewer table,
+.kctx-adr-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* Search page */
