@@ -1,4 +1,6 @@
-# King Context
+<p align="center">
+  <img width="400" alt="king context" src="https://github.com/user-attachments/assets/17d3e733-80b3-4eb0-b8de-dfb44e1c2642" />
+</p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@king-context/cli?label=installer&color=blue)](https://www.npmjs.com/package/@king-context/cli)
