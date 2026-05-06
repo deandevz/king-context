@@ -22,6 +22,8 @@ npx @king-context/cli init
 
 This sets up `.king-context/` in any project: Python venv, CLI tools, agent skills, config templates. Zero manual wiring.
 
+Windows is supported as **beta** since 0.3.1. Report any platform-specific issue at [github.com/deandevz/king-context/issues](https://github.com/deandevz/king-context/issues).
+
 Add your keys:
 
 ```bash
@@ -139,7 +141,7 @@ The aim is not "agent asks, corpus answers". The aim is that your agent always h
 - `pip install king-context` distribution
 - Agent-generated skills built from indexed corpora
 - Incremental doc updates without full re-scrape
-- Windows installer support
+- Windows installer general availability (currently beta)
 - Benchmark suite covering docs, ADRs, and research corpora
 - Workflow hooks that surface relevant sections during active coding
 - Indexing for user content (md, txt, pdf, docx, video transcripts)
