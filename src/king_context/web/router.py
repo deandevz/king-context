@@ -44,26 +44,58 @@ def _content_type_for(path: str) -> str:
 
 
 def _try_match(pattern: str, path: str) -> dict | None:
-    """Return path params if path matches pattern, else None."""
+    """Return path params if `path` matches `pattern`, else None.
+
+    Supported pattern forms:
+      - exact: ``/api/health``
+      - trailing wildcard: ``/static/{*rest}`` captures the remainder as a
+        single value under the wildcard name (no per-segment URL decoding).
+      - single-segment named param: ``/api/adrs/{id}`` captures one path
+        segment and URL-decodes it before returning.
+
+    A path matches a `{name}` segment for any non-empty value (including
+    "graph"); ordering of route registration disambiguates overlap.
+    """
     if "{*" in pattern:
-        prefix, _ = pattern.split("{*", 1)
+        prefix, rest = pattern.split("{*", 1)
+        if not rest.endswith("}"):
+            return None
+        wildcard_name = rest[:-1]
         if path.startswith(prefix):
-            return {"rest": path[len(prefix):]}
+            return {wildcard_name: path[len(prefix):]}
         return None
-    if path == pattern:
-        return {}
-    return None
+
+    if "{" not in pattern:
+        if path == pattern:
+            return {}
+        return None
+
+    pat_segments = pattern.split("/")
+    path_segments = path.split("/")
+    if len(pat_segments) != len(path_segments):
+        return None
+
+    params: dict[str, str] = {}
+    for pat_seg, path_seg in zip(pat_segments, path_segments):
+        if pat_seg.startswith("{") and pat_seg.endswith("}"):
+            name = pat_seg[1:-1]
+            if not path_seg:
+                return None
+            params[name] = unquote(path_seg)
+        elif pat_seg != path_seg:
+            return None
+    return params
 
 
 def _handle_health(path: str, query: dict, **_: object) -> tuple[int, dict]:
-    """GET /api/health — server liveness and version probe."""
+    """GET /api/health: server liveness and version probe."""
     return 200, {"status": "ok", "version": _resolve_version()}
 
 
 def _handle_static(
     path: str, query: dict, *, rest: str = "", **_: object
 ) -> tuple[int, bytes] | tuple[int, dict]:
-    """GET /static/{rest} — serve files from the bundled static directory.
+    """GET /static/{rest}: serve files from the bundled static directory.
 
     Rejects empty paths, absolute paths, backslashes, and any segment equal
     to "..". Resolves the target and verifies it stays inside _STATIC_DIR.
@@ -88,9 +120,50 @@ def _handle_static(
     return 200, target.read_bytes()
 
 
-_ROUTES: list[tuple[str, str, Callable[..., tuple]]] = [
-    ("GET", "/api/health", _handle_health),
-    ("GET", "/static/{*rest}", _handle_static),
+def _import_handlers():
+    """Lazy import to avoid pulling context_cli at module-load time."""
+    from king_context.web import handlers as _handlers
+    return _handlers
+
+
+def _handle_adr_list(path: str, query: dict, **kw: object) -> tuple[int, dict]:
+    return _import_handlers().adr_list(path, query, **kw)
+
+
+def _handle_adr_graph(path: str, query: dict, **kw: object) -> tuple[int, dict]:
+    return _import_handlers().adr_graph(path, query, **kw)
+
+
+def _handle_adr_detail(path: str, query: dict, **kw: object) -> tuple[int, dict]:
+    return _import_handlers().adr_detail(path, query, **kw)
+
+
+def _handle_adr_page(path: str, query: dict, **kw: object) -> tuple[int, bytes]:
+    return _import_handlers().adr_page(path, query, **kw)
+
+
+def _handle_adr_detail_page(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().adr_detail_page(path, query, **kw)
+
+
+_HTML = "text/html; charset=utf-8"
+
+
+# Route tuple: (method, pattern, handler, content_type_override).
+# `content_type_override=None` means: derive from response body type
+# (`dict` → JSON, `bytes` → MIME by path extension).
+_ROUTES: list[tuple[str, str, Callable[..., tuple], str | None]] = [
+    ("GET", "/api/health", _handle_health, None),
+    # Order matters: register the exact-path /api/adrs/graph before the
+    # parameterized /api/adrs/{id} so "graph" is not captured as an id.
+    ("GET", "/api/adrs", _handle_adr_list, None),
+    ("GET", "/api/adrs/graph", _handle_adr_graph, None),
+    ("GET", "/api/adrs/{id}", _handle_adr_detail, None),
+    ("GET", "/adrs", _handle_adr_page, _HTML),
+    ("GET", "/adrs/{id}", _handle_adr_detail_page, _HTML),
+    ("GET", "/static/{*rest}", _handle_static, None),
 ]
 
 
@@ -114,8 +187,9 @@ def dispatch(
     matched_path = False
     matched_handler: Callable[..., tuple] | None = None
     matched_params: dict = {}
+    matched_content_type: str | None = None
 
-    for r_method, pattern, handler in _ROUTES:
+    for r_method, pattern, handler, content_type in _ROUTES:
         params = _try_match(pattern, path)
         if params is None:
             continue
@@ -123,6 +197,7 @@ def dispatch(
         if r_method == method:
             matched_handler = handler
             matched_params = params
+            matched_content_type = content_type
             break
 
     if matched_handler is None:
@@ -132,7 +207,8 @@ def dispatch(
     status, body = matched_handler(path, query, **matched_params)
 
     if isinstance(body, (bytes, bytearray)):
-        headers = {"Content-Type": _content_type_for(path)}
+        ctype = matched_content_type or _content_type_for(path)
+        headers = {"Content-Type": ctype}
         body_bytes = bytes(body)
     elif isinstance(body, dict):
         body_bytes = json.dumps(body).encode("utf-8")
