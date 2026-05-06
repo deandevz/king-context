@@ -14,6 +14,7 @@ Documentation search and scraping tools are available in this project.
 .king-context/bin/kctx read <doc> <section>              # read full section
 .king-context/bin/kctx topics <doc>                      # browse by tags
 .king-context/bin/kctx grep "pattern"                    # regex search across docs
+.king-context/bin/kctx ui                                # launch the local read-only UI
 
 # Index documentation
 .king-context/bin/kctx index .king-context/data/<file>.json   # index one doc
