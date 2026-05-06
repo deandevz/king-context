@@ -184,6 +184,18 @@ def _handle_section_detail_research(
     return _import_handlers().section_detail("research", path, query, **kw)
 
 
+def _handle_corpus_root_page_docs(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().corpus_root_page("docs", path, query, **kw)
+
+
+def _handle_corpus_root_page_research(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().corpus_root_page("research", path, query, **kw)
+
+
 def _handle_corpus_page_docs(
     path: str, query: dict, **kw: object
 ) -> tuple[int, bytes]:
@@ -264,6 +276,10 @@ _ROUTES: list[tuple[str, str, Callable[..., tuple], str | None]] = [
         None,
     ),
     # Corpus HTML pages.
+    # Root index pages registered first so the intent is explicit (the path
+    # length differs so there is no ambiguity, but ordering reads cleaner).
+    ("GET", "/docs", _handle_corpus_root_page_docs, _HTML),
+    ("GET", "/research", _handle_corpus_root_page_research, _HTML),
     ("GET", "/docs/{name}", _handle_corpus_page_docs, _HTML),
     ("GET", "/docs/{name}/{section_path}", _handle_section_page_docs, _HTML),
     ("GET", "/research/{name}", _handle_corpus_page_research, _HTML),

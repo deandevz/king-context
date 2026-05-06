@@ -528,6 +528,86 @@ def corpus_index(
     return 200, {"items": items}
 
 
+_CORPUS_ROOT_HEADINGS = {"docs": "Docs", "research": "Research"}
+_CORPUS_ROOT_SUBTITLES = {
+    "docs": "Documentation corpora indexed in .king-context/docs/",
+    "research": "Research corpora indexed in .king-context/research/",
+}
+
+
+def _build_corpus_root_cards_html(source_label: str, payload: dict) -> str:
+    """Build the cards grid HTML or the canonical empty-state block.
+
+    Mirrors the empty-state branch of `_build_list_html` / `_build_sidebar_html`
+    so the visual shape is consistent across endpoints.
+    """
+    items = payload.get("items") or []
+    if not items:
+        reason = payload.get("reason", "")
+        hint = payload.get("hint", "")
+        return (
+            '<div class="kctx-empty">'
+            f'<p class="kctx-empty-reason">{html_escape(str(reason))}</p>'
+            f'<p class="kctx-empty-hint">{html_escape(str(hint))}</p>'
+            '</div>'
+        )
+
+    parts: list[str] = []
+    for item in items:
+        name = str(item.get("name", ""))
+        display_name = str(item.get("display_name", "")) or name
+        version = str(item.get("version", ""))
+        section_count = int(item.get("section_count") or 0)
+        link = f"/{source_label}/{quote(name, safe='')}"
+        meta_parts = [
+            f'<span class="kctx-corpus-card-name">{html_escape(name)}</span>',
+        ]
+        if version:
+            meta_parts.append(
+                f'<span class="kctx-corpus-card-version">'
+                f'{html_escape(version)}</span>'
+            )
+        meta_parts.append(
+            f'<span class="kctx-corpus-card-count">'
+            f'{html_escape(str(section_count))} sections</span>'
+        )
+        meta_html = ' <span class="kctx-sep">.</span> '.join(meta_parts)
+        parts.append(
+            '<a class="kctx-corpus-card" '
+            f'href="{html_escape(link)}">'
+            f'<h2 class="kctx-corpus-card-title">{html_escape(display_name)}</h2>'
+            f'<p class="kctx-corpus-card-meta">{meta_html}</p>'
+            '</a>'
+        )
+    return "".join(parts)
+
+
+def corpus_root_page(
+    source_label: str, path: str, query: dict, **_: object
+) -> tuple[int, bytes]:
+    """GET /{docs|research}: grid of CorpusInfo cards (or canonical empty state).
+
+    Reuses `corpus_index(source_label, path, query)` for the JSON payload, then
+    renders `corpus_root.html` with either a card grid (one per corpus) or the
+    EmptyState block produced by `empty_state(reason, hint)` upstream.
+    """
+    _status, payload = corpus_index(source_label, path, query)
+    cards_html = _build_corpus_root_cards_html(source_label, payload)
+    heading = _CORPUS_ROOT_HEADINGS.get(source_label, source_label.title())
+    subtitle = _CORPUS_ROOT_SUBTITLES.get(
+        source_label,
+        f"Corpora indexed in .king-context/{source_label}/",
+    )
+    ctx = {
+        "heading": html_escape(heading),
+        "subtitle": html_escape(subtitle),
+        "cards_html_raw": cards_html,
+    }
+    page_title = f"{heading} - King Context"
+    body = render_page("corpus_root.html", ctx, title=page_title)
+    return 200, body
+
+
 def section_list(
     source_label: str, path: str, query: dict, **path_params: object
 ) -> tuple[int, dict]:

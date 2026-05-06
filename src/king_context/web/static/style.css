@@ -541,6 +541,60 @@ pre code {
   fill: var(--color-muted);
 }
 
+/* Corpus root pages (/docs and /research grids) */
+
+.kctx-corpus-root-header h1 {
+  margin: 0;
+}
+
+.kctx-corpus-root-subtitle {
+  color: var(--color-muted);
+  margin-top: 4px;
+}
+
+.kctx-corpus-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 16px 0 24px;
+}
+
+.kctx-corpus-card {
+  display: block;
+  padding: 16px 18px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  color: inherit;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.kctx-corpus-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  text-decoration: none;
+}
+
+.kctx-corpus-card-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  color: var(--color-text);
+}
+
+.kctx-corpus-card-meta {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.kctx-corpus-card-name,
+.kctx-corpus-card-version,
+.kctx-corpus-card-count {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+}
+
 /* Corpus pages (docs / research) */
 
 .kctx-corpus-header h1 {
@@ -742,7 +796,8 @@ pre code {
 /* Responsive: tablet (~768) and mobile (~400). */
 
 @media (max-width: 960px) {
-  .kctx-home-cards {
+  .kctx-home-cards,
+  .kctx-corpus-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .kctx-corpus-body {
@@ -758,7 +813,8 @@ pre code {
     flex-wrap: wrap;
     gap: 12px;
   }
-  .kctx-home-cards {
+  .kctx-home-cards,
+  .kctx-corpus-grid {
     grid-template-columns: 1fr;
   }
   .kctx-corpus-body {

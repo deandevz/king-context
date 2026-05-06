@@ -571,3 +571,242 @@ class TestRouterIntegration:
         payload = json.loads(body)
         assert payload["reason"] == "dir_missing"
         assert payload["items"] == []
+
+
+# ---------------------------------------------------------------------------
+# Corpus root pages (/docs and /research grids)
+# ---------------------------------------------------------------------------
+
+
+class TestCorpusRootPages:
+    @pytest.mark.parametrize(
+        "source,fixture_name,corpus_name",
+        [
+            ("docs", "docs_populated", "sample"),
+            ("research", "research_populated", "papers"),
+        ],
+    )
+    def test_renders_grid_with_card_per_corpus(
+        self, request, source, fixture_name, corpus_name
+    ):
+        request.getfixturevalue(fixture_name)
+        status, body = handlers.corpus_root_page(source, f"/{source}", {})
+        assert status == 200
+        assert isinstance(body, bytes)
+        text = body.decode("utf-8")
+        assert text.count('class="kctx-corpus-card"') >= 1
+        assert f'href="/{source}/{corpus_name}"' in text
+
+    @pytest.mark.parametrize("source", ["docs", "research"])
+    def test_dir_missing_renders_empty_state(
+        self, docs_root, source
+    ):
+        status, body = handlers.corpus_root_page(source, f"/{source}", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        assert 'class="kctx-empty"' in text
+        assert 'kctx-empty-reason' in text
+        assert 'kctx-empty-hint' in text
+        # The dir_missing hint for both docs and research mentions `init`.
+        assert "init" in text.lower()
+
+    def test_docs_not_indexed_hint_mentions_scrape_or_kctx_index(
+        self, docs_empty
+    ):
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        assert 'class="kctx-empty"' in text
+        # `default_hint("docs", "not_indexed")` mentions both commands.
+        assert "king-scrape" in text or "kctx index" in text
+
+    def test_research_not_indexed_hint_mentions_king_research(
+        self, tmp_path, monkeypatch
+    ):
+        base = _patch_project(tmp_path, monkeypatch)
+        (base / "research").mkdir(parents=True)
+        status, body = handlers.corpus_root_page(
+            "research", "/research", {}
+        )
+        assert status == 200
+        text = body.decode("utf-8")
+        assert 'class="kctx-empty"' in text
+        assert "king-research" in text
+
+    def test_card_link_url_encoded(self, tmp_path, monkeypatch):
+        base = _patch_project(tmp_path, monkeypatch)
+        # Corpus name with spaces and special chars must be URL-encoded.
+        corpus = base / "docs" / "weird name"
+        _write_index(corpus, name="weird name", section_count=1)
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        # `quote("weird name", safe="")` produces `weird%20name`.
+        assert 'href="/docs/weird%20name"' in text
+
+    def test_display_name_fallback_to_name_when_empty(
+        self, tmp_path, monkeypatch
+    ):
+        base = _patch_project(tmp_path, monkeypatch)
+        corpus = base / "docs" / "fallback"
+        _write_index(
+            corpus, name="fallback", display_name="", section_count=0
+        )
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        assert (
+            '<h2 class="kctx-corpus-card-title">fallback</h2>' in text
+        )
+
+    def test_display_name_with_html_is_escaped(self, tmp_path, monkeypatch):
+        base = _patch_project(tmp_path, monkeypatch)
+        corpus = base / "docs" / "evil"
+        _write_index(
+            corpus,
+            name="evil",
+            display_name="<script>alert(1)</script>",
+            section_count=0,
+        )
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        assert "<script>alert(1)</script>" not in text
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in text
+
+    def test_section_count_renders_as_number(self, docs_populated):
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        # `docs_populated` writes section_count=3 in index.json.
+        assert "3 sections" in text
+
+    def test_zero_section_count_renders_without_error(
+        self, tmp_path, monkeypatch
+    ):
+        base = _patch_project(tmp_path, monkeypatch)
+        corpus = base / "docs" / "empty-index"
+        _write_index(corpus, name="empty-index", section_count=0)
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        assert b"0 sections" in body
+
+    def test_empty_version_does_not_break_layout(
+        self, tmp_path, monkeypatch
+    ):
+        base = _patch_project(tmp_path, monkeypatch)
+        corpus = base / "docs" / "noversion"
+        _write_index(corpus, name="noversion", version="", section_count=2)
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        # No empty version chunk like `v</span>`; the version segment is
+        # omitted entirely when blank.
+        assert 'kctx-corpus-card-version' not in text
+        assert 'class="kctx-corpus-card"' in text
+
+    def test_unicode_display_name_renders(self, tmp_path, monkeypatch):
+        base = _patch_project(tmp_path, monkeypatch)
+        corpus = base / "docs" / "japanese"
+        _write_index(
+            corpus,
+            name="japanese",
+            display_name="日本語 Docs",
+            section_count=1,
+        )
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        assert "日本語 Docs" in text
+
+    @pytest.mark.parametrize(
+        "source,heading",
+        [
+            ("docs", "Docs"),
+            ("research", "Research"),
+        ],
+    )
+    def test_title_tag(
+        self,
+        request,
+        docs_populated,
+        research_populated,
+        source,
+        heading,
+    ):
+        status, body = handlers.corpus_root_page(source, f"/{source}", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        assert f"<title>{heading} - King Context</title>" in text
+
+    def test_includes_layout_nav(self, docs_populated):
+        status, body = handlers.corpus_root_page("docs", "/docs", {})
+        assert status == 200
+        text = body.decode("utf-8")
+        # Smoke check: render_page wrapped the template in `_layout.html`.
+        assert 'class="kctx-nav"' in text
+        assert '<a href="/adrs">ADRs</a>' in text
+        assert '<a href="/search">Search</a>' in text
+
+    def test_empty_state_shape_matches_other_endpoints(self, docs_root):
+        # Build the same EmptyState payload through `_build_list_html` and
+        # through `_build_corpus_root_cards_html` to verify identical CSS
+        # classes (the only stable shape contract across endpoints).
+        payload = {
+            "items": [],
+            "reason": "dir_missing",
+            "hint": "Run `npx @king-context/cli init`.",
+        }
+        list_html = handlers._build_list_html(payload)
+        cards_html = handlers._build_corpus_root_cards_html("docs", payload)
+        for needle in (
+            'class="kctx-empty"',
+            'class="kctx-empty-reason"',
+            'class="kctx-empty-hint"',
+        ):
+            assert needle in list_html
+            assert needle in cards_html
+
+
+# ---------------------------------------------------------------------------
+# Router integration for /docs and /research root paths
+# ---------------------------------------------------------------------------
+
+
+class TestCorpusRootRouter:
+    @pytest.mark.parametrize("source", ["docs", "research"])
+    def test_dispatch_returns_200(
+        self, docs_populated, research_populated, source
+    ):
+        status, headers, body = router.dispatch("GET", f"/{source}", {})
+        assert status == 200
+        assert headers["Content-Type"] == "text/html; charset=utf-8"
+        assert b"<title>" in body
+
+    @pytest.mark.parametrize("source", ["docs", "research"])
+    def test_dispatch_post_returns_405(
+        self, docs_populated, research_populated, source
+    ):
+        # The path is registered, only GET is allowed; method mismatch
+        # surfaces as 405 (not 404), confirming the route was matched.
+        status, _headers, _body = router.dispatch(
+            "POST", f"/{source}", {}
+        )
+        assert status == 405
+
+    def test_dispatch_dir_missing_still_200(self, docs_root):
+        status, _headers, body = router.dispatch("GET", "/docs", {})
+        assert status == 200
+        assert b'class="kctx-empty"' in body
+
+    def test_dispatch_does_not_collide_with_corpus_page(
+        self, docs_populated
+    ):
+        # `/docs/sample` (3 segments) must still hit `corpus_page`, not the
+        # new root handler. Distinct outputs verify the routes do not collide.
+        root_status, _, root_body = router.dispatch("GET", "/docs", {})
+        page_status, _, page_body = router.dispatch("GET", "/docs/sample", {})
+        assert root_status == 200
+        assert page_status == 200
+        assert b'class="kctx-corpus-grid"' in root_body
+        assert b'data-source="docs"' in page_body
