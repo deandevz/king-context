@@ -29,6 +29,7 @@ def make_args(**kwargs) -> argparse.Namespace:
         name="example",
         display_name="Example Docs",
         step=None,
+        check_updates=False,
         model="google/gemini-flash-2.0",
         chunk_max_tokens=800,
         chunk_min_tokens=50,
@@ -36,6 +37,8 @@ def make_args(**kwargs) -> argparse.Namespace:
         no_llm_filter=False,
         no_auto_seed=True,
         include_maybe=False,
+        stop_after=None,
+        yes=False,
     )
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -106,6 +109,7 @@ def test_cli_parse_args_basic():
     assert args.no_llm_filter is False
     assert args.no_auto_seed is False
     assert args.include_maybe is False
+    assert args.check_updates is False
 
 
 def test_cli_parse_args_with_flags():
@@ -122,6 +126,7 @@ def test_cli_parse_args_with_flags():
         "--no-llm-filter",
         "--no-auto-seed",
         "--include-maybe",
+        "--check-updates",
     ])
     assert args.name == "stripe"
     assert args.display_name == "Stripe Docs"
@@ -133,12 +138,53 @@ def test_cli_parse_args_with_flags():
     assert args.no_llm_filter is True
     assert args.no_auto_seed is True
     assert args.include_maybe is True
+    assert args.check_updates is True
 
 
 def test_cli_parse_args_invalid_step():
     parser = _build_parser()
     with pytest.raises(SystemExit):
         parser.parse_args(["https://docs.example.com", "--step", "invalid"])
+
+
+@pytest.mark.asyncio
+async def test_cli_check_updates_runs_sync_only(tmp_path):
+    work_dir = tmp_path / "docs-example-com"
+    work_dir.mkdir()
+
+    discovery = DiscoveryResult(
+        base_url="https://docs.example.com",
+        discovered_at="2026-01-01T00:00:00+00:00",
+        total_urls=2,
+        urls=["https://docs.example.com/a", "https://docs.example.com/b"],
+    )
+
+    report = type(
+        "Report",
+        (),
+        {
+            "checked_at": "2026-01-01T00:00:00+00:00",
+            "new_urls": ["https://docs.example.com/b"],
+            "removed_urls": [],
+            "changed": [],
+            "unchanged_urls": ["https://docs.example.com/a"],
+            "unchecked": [],
+        },
+    )()
+
+    with (
+        patch("king_context.scraper.cli.get_work_dir", return_value=work_dir),
+        patch("king_context.scraper.cli.discover_urls", new_callable=AsyncMock, return_value=discovery) as mock_discover,
+        patch("king_context.scraper.cli.check_for_updates", new_callable=AsyncMock, return_value=report) as mock_check,
+        patch("king_context.scraper.cli.fetch_pages", new_callable=AsyncMock) as mock_fetch,
+        patch("king_context.scraper.cli._update_step") as mock_update,
+    ):
+        await run_pipeline(make_args(check_updates=True), ScraperConfig())
+
+    mock_discover.assert_awaited_once()
+    mock_check.assert_awaited_once()
+    mock_fetch.assert_not_called()
+    mock_update.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +221,7 @@ def test_cli_full_pipeline(tmp_path):
         call_order.append("discover")
         return discovery
 
-    async def mock_fetch(urls, out_dir, cfg):
+    async def mock_fetch(urls, out_dir, cfg, base_url=""):
         call_order.append("fetch")
         return fetch_res
 

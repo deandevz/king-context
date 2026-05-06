@@ -5,7 +5,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
-from firecrawl import FirecrawlApp
+try:
+    from firecrawl import FirecrawlApp
+except ImportError:  # pragma: no cover - exercised via patched tests/dev envs
+    class FirecrawlApp:  # type: ignore[override]
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError("firecrawl is required for URL discovery")
 
 from king_context import PROJECT_ROOT
 from king_context.scraper.config import ScraperConfig

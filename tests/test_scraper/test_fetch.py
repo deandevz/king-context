@@ -1,7 +1,7 @@
 import asyncio
 import json
 import threading
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 from king_context.scraper.fetch import fetch_pages, FetchResult
 from king_context.scraper.config import ScraperConfig
@@ -19,7 +19,12 @@ def test_fetch_pages_success(tmp_path):
     ]
 
     with patch("king_context.scraper.fetch.FirecrawlApp", return_value=mock_app):
-        result = asyncio.run(fetch_pages(urls, tmp_path, config))
+        with patch(
+            "king_context.scraper.fetch.probe_url_state",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "etag": '"abc"', "last_modified": "Mon, 01 Jan 2026 00:00:00 GMT", "probe_hash": None, "content_length": 123},
+        ):
+            result = asyncio.run(fetch_pages(urls, tmp_path, config))
 
     assert isinstance(result, FetchResult)
     assert result.total == 2
@@ -49,7 +54,12 @@ def test_fetch_handles_failure(tmp_path):
     ]
 
     with patch("king_context.scraper.fetch.FirecrawlApp", return_value=mock_app):
-        result = asyncio.run(fetch_pages(urls, tmp_path, config))
+        with patch(
+            "king_context.scraper.fetch.probe_url_state",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "etag": None, "last_modified": None, "probe_hash": "bodyhash", "content_length": 12},
+        ):
+            result = asyncio.run(fetch_pages(urls, tmp_path, config))
 
     assert result.total == 2
     assert result.completed == 1
@@ -80,7 +90,12 @@ def test_fetch_respects_concurrency(tmp_path):
     urls = [f"https://docs.example.com/page-{i}" for i in range(6)]
 
     with patch("king_context.scraper.fetch.FirecrawlApp", return_value=mock_app):
-        asyncio.run(fetch_pages(urls, tmp_path, config))
+        with patch(
+            "king_context.scraper.fetch.probe_url_state",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "etag": '"etag"', "last_modified": None, "probe_hash": None, "content_length": 10},
+        ):
+            asyncio.run(fetch_pages(urls, tmp_path, config))
 
     assert active["max"] <= 2
 
@@ -94,7 +109,12 @@ def test_fetch_updates_manifest(tmp_path):
     urls = ["https://docs.example.com/api/intro"]
 
     with patch("king_context.scraper.fetch.FirecrawlApp", return_value=mock_app):
-        asyncio.run(fetch_pages(urls, tmp_path, config))
+        with patch(
+            "king_context.scraper.fetch.probe_url_state",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "etag": None, "last_modified": None, "probe_hash": "bodyhash", "content_length": 10},
+        ):
+            asyncio.run(fetch_pages(urls, tmp_path, config))
 
     manifest_path = tmp_path / "manifest.json"
     assert manifest_path.exists()
@@ -102,3 +122,5 @@ def test_fetch_updates_manifest(tmp_path):
     assert "fetch" in manifest
     assert manifest["fetch"]["completed"] == 1
     assert manifest["fetch"]["total"] == 1
+    page_manifest = json.loads((tmp_path / "page_manifest.json").read_text())
+    assert page_manifest["page_count"] == 1
