@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Pluggable scraper provider abstraction for `king-scrape`. Choose backend
+  via `SCRAPE_PROVIDER` env var or `--provider` flag. Stage-aware overrides
+  via `SCRAPE_DISCOVER_PROVIDER` and `SCRAPE_FETCH_PROVIDER`. Mirrors the
+  layout of `src/llm_providers/` (ADR-0009, ADR-0010).
+- Crawl4AI local backend, opt-in via
+  `pip install king-context[crawl4ai] && crawl4ai-setup` (ADR-0011).
+- `.github/workflows/test.yml` with a `test` job (pytest on the firecrawl
+  path) and a `smoke-crawl4ai` job that runs `scripts/smoke-crawl4ai.py`
+  to detect API churn across `crawl4ai>=0.8.5,<0.9` minor versions.
+
+### Changed
+
+- `firecrawl-py` moved from core dependencies to the `[firecrawl]` extra.
+  `pip install king-context[all]` (run by `npx @king-context/cli init`)
+  installs everything as before. No breaking change for the default flow.
+- `installer/lib/python.js` now installs `king-context[all]` via PEP 508
+  direct reference, so `init` and `update` keep pulling the firecrawl
+  extra after the core dependency move.
+
 ## [0.3.2] - 2026-05-06
 
 ### Added

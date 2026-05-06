@@ -70,6 +70,49 @@ Full command reference in [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md).
 
 **One retrieval surface, many corpora.** Vendor docs, research sweeps, internal runbooks, and ADRs are all reachable through the same CLI primitives.
 
+## Scraper providers
+
+`king-scrape` supports pluggable scraper backends. The default is Firecrawl (cloud, zero-config, pay per page). Crawl4AI is available as a local opt-in backend.
+
+Default (Firecrawl, no install needed beyond `init`):
+
+```bash
+king-scrape https://docs.example.com
+```
+
+Requires `FIRECRAWL_API_KEY` in `.env`.
+
+Local mode (Crawl4AI, free, ~300MB Playwright install):
+
+```bash
+pip install king-context[crawl4ai] && crawl4ai-setup
+SCRAPE_PROVIDER=crawl4ai king-scrape https://docs.example.com
+```
+
+Or with a flag for a single run:
+
+```bash
+king-scrape https://docs.example.com --provider=crawl4ai
+```
+
+Mixing providers per stage:
+
+```bash
+SCRAPE_DISCOVER_PROVIDER=crawl4ai SCRAPE_FETCH_PROVIDER=firecrawl king-scrape https://docs.example.com
+```
+
+Useful when one backend handles a stage better than the other (for example, Crawl4AI for SPA discovery, Firecrawl for stable fetch).
+
+Environment variables:
+
+| Variable | Effect |
+|----------|--------|
+| `SCRAPE_PROVIDER` | Sets provider for both stages. Default `firecrawl`. |
+| `SCRAPE_DISCOVER_PROVIDER` | Overrides `SCRAPE_PROVIDER` for the `discover` stage only. |
+| `SCRAPE_FETCH_PROVIDER` | Overrides `SCRAPE_PROVIDER` for the `fetch` stage only. |
+
+Stage-specific variables take precedence over `SCRAPE_PROVIDER` and over the `--provider` flag. Full reference in [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md).
+
 ## How it works
 
 Every section of every scraped page or researched source ends up annotated:
