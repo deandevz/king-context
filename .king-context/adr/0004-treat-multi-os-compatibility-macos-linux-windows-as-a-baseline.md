@@ -13,6 +13,8 @@ superseded_by: []
 related:
   - ADR-0001
   - ADR-0002
+  - ADR-0007
+  - ADR-0008
 keywords:
   - multi-os
   - windows
@@ -24,6 +26,8 @@ tags:
   - installer
   - platform
 ---
+
+
 
 
 
