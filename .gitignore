@@ -80,6 +80,7 @@ data/
 !.king-context/adr/
 !.king-context/adr/**
 .claude/projects/
+.king_lopper/
 
 # Codex: ignore everything except skills/
 .agents/*
