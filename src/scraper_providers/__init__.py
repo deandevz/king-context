@@ -22,12 +22,14 @@ from .registry import (
     resolve_provider_name,
 )
 
-# Built-in providers — soft import (added by Tasks 2 and 3).
-# Pattern (do NOT add until provider modules exist):
-# try:
-#     from . import firecrawl_provider  # noqa: F401  -- side effect: registers
-# except ImportError:
-#     pass
+# Built-in providers — soft import.
+try:
+    from scraper_providers.firecrawl_provider import (  # pyright: ignore[reportMissingImports]
+        register as _register_firecrawl,
+    )
+    _register_firecrawl()
+except ImportError:
+    pass
 
 # Third-party plugins via entry_points (after built-ins so built-ins win conflicts).
 load_entry_point_providers()
