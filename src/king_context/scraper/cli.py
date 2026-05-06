@@ -1,8 +1,17 @@
 import argparse
 import asyncio
 import json
+import os
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
+
+from scraper_providers import (
+    ProviderUnavailableError,
+    get_discovery_provider,
+    get_fetch_provider,
+    resolve_provider_name,
+)
 
 from king_context import PROJECT_ROOT
 from king_context.scraper.chunk import Chunk, chunk_pages
@@ -108,6 +117,15 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
     name = args.name or _name_from_url(args.url)
     display_name = getattr(args, "display_name", None) or name.replace("-", " ").title()
 
+    flag_provider = getattr(args, "provider", None)
+    if flag_provider:
+        # Stage-specific envs always win (per ADR-0009). setdefault preserves
+        # an existing SCRAPE_PROVIDER but overrides the implicit 'firecrawl' default.
+        os.environ.setdefault("SCRAPE_PROVIDER", flag_provider)
+
+    discovery_provider = get_discovery_provider(resolve_provider_name("discover"))
+    fetch_provider = get_fetch_provider(resolve_provider_name("fetch"))
+
     work_dir = get_work_dir(args.url)
     work_dir.mkdir(parents=True, exist_ok=True)
 
@@ -163,7 +181,7 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
         print(f"[{step}] running...")
 
         if step == "discover":
-            discovery_result = await discover_urls(args.url, config)
+            discovery_result = await discover_urls(args.url, config, discovery_provider)
             print(f"  found {discovery_result.total_urls} URLs")
 
         elif step == "filter":
@@ -186,7 +204,7 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
             urls_to_fetch = filter_result.accepted[:]
             if getattr(args, "include_maybe", False):
                 urls_to_fetch += filter_result.maybe
-            fetch_result = await fetch_pages(urls_to_fetch, work_dir, config)
+            fetch_result = await fetch_pages(urls_to_fetch, work_dir, config, fetch_provider)
             print(f"  fetched {fetch_result.completed}/{fetch_result.total} pages")
 
         elif step == "chunk":
@@ -314,6 +332,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip interactive confirmations (e.g. enrichment cost prompt)",
     )
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default=None,
+        help=(
+            "Scraper provider name (e.g. 'firecrawl', 'crawl4ai'). "
+            "Sets SCRAPE_PROVIDER for this run. "
+            "Stage-specific envs (SCRAPE_DISCOVER_PROVIDER / SCRAPE_FETCH_PROVIDER) "
+            "have precedence."
+        ),
+    )
     return parser
 
 
@@ -327,7 +356,14 @@ def main() -> None:
         concurrency=args.concurrency,
         filter_llm_fallback=not args.no_llm_filter,
     )
-    asyncio.run(run_pipeline(args, config))
+    try:
+        asyncio.run(run_pipeline(args, config))
+    except ProviderUnavailableError as exc:
+        print(f"error: {exc.hint}", file=sys.stderr)
+        sys.exit(3)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

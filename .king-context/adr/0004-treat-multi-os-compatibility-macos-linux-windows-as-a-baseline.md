@@ -15,6 +15,7 @@ related:
   - ADR-0002
   - ADR-0007
   - ADR-0008
+  - ADR-0011
 keywords:
   - multi-os
   - windows
@@ -26,6 +27,7 @@ tags:
   - installer
   - platform
 ---
+
 
 
 

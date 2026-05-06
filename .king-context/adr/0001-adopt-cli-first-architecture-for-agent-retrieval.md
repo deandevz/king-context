@@ -19,6 +19,7 @@ related:
   - ADR-0006
   - ADR-0007
   - ADR-0008
+  - ADR-0009
 keywords:
   - cli-first
   - agent-retrieval
@@ -33,6 +34,7 @@ tags:
   - retrieval
   - agents
 ---
+
 
 
 

@@ -35,6 +35,7 @@ def _make_args(**overrides) -> argparse.Namespace:
         include_maybe=False,
         stop_after=None,
         yes=False,
+        provider=None,
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)

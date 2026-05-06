@@ -1,8 +1,10 @@
 """Tests for fetch resume support — skip pages already fetched."""
 
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from scraper_providers import PageContent
 
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.fetch import (
@@ -19,6 +21,18 @@ def _make_config() -> ScraperConfig:
         openrouter_api_key="fake",
         concurrency=5,
     )
+
+
+class _FakeFetchProvider:
+    name = "fake"
+
+    async def fetch_one(self, url: str) -> PageContent:
+        return PageContent(
+            url=url,
+            markdown=f"# {url}",
+            title=None,
+            fetched_at=datetime.now(timezone.utc),
+        )
 
 
 def _create_page_file(pages_dir, url: str) -> None:
@@ -48,7 +62,7 @@ class TestFetchResume:
         config = _make_config()
         fetched_urls = []
 
-        async def _mock_fetch_one(url, semaphore, pages_dir, app):
+        async def _mock_fetch_one(url, semaphore, pages_dir, provider):
             fetched_urls.append(url)
             return PageResult(url=url, markdown=f"# {url}", success=True, error=None)
 
@@ -58,10 +72,8 @@ class TestFetchResume:
             side_effect=_mock_fetch_one,
         ), patch(
             "king_context.scraper.fetch._update_step",
-        ), patch(
-            "king_context.scraper.fetch.FirecrawlApp",
         ):
-            result = await fetch_pages(urls, tmp_path, config)
+            result = await fetch_pages(urls, tmp_path, config, _FakeFetchProvider())
 
         # Only URLs b and c should have been fetched
         assert len(fetched_urls) == 2
@@ -92,10 +104,8 @@ class TestFetchResume:
             fetch_one_mock,
         ), patch(
             "king_context.scraper.fetch._update_step",
-        ), patch(
-            "king_context.scraper.fetch.FirecrawlApp",
         ):
-            result = await fetch_pages(urls, tmp_path, config)
+            result = await fetch_pages(urls, tmp_path, config, _FakeFetchProvider())
 
         # _fetch_one should never have been called
         fetch_one_mock.assert_not_called()
@@ -118,7 +128,7 @@ class TestFetchResume:
         config = _make_config()
         fetched_urls = []
 
-        async def _mock_fetch_one(url, semaphore, pages_dir, app):
+        async def _mock_fetch_one(url, semaphore, pages_dir, provider):
             fetched_urls.append(url)
             return PageResult(url=url, markdown=f"# {url}", success=True, error=None)
 
@@ -128,10 +138,8 @@ class TestFetchResume:
             side_effect=_mock_fetch_one,
         ), patch(
             "king_context.scraper.fetch._update_step",
-        ), patch(
-            "king_context.scraper.fetch.FirecrawlApp",
         ):
-            result = await fetch_pages(urls, tmp_path, config)
+            result = await fetch_pages(urls, tmp_path, config, _FakeFetchProvider())
 
         # All 3 URLs should have been fetched
         assert len(fetched_urls) == 3
@@ -158,7 +166,7 @@ class TestFetchResume:
 
         config = _make_config()
 
-        async def _mock_fetch_one(url, semaphore, pages_dir, app):
+        async def _mock_fetch_one(url, semaphore, pages_dir, provider):
             return PageResult(url=url, markdown=f"# {url}", success=True, error=None)
 
         with patch(
@@ -167,10 +175,8 @@ class TestFetchResume:
             side_effect=_mock_fetch_one,
         ), patch(
             "king_context.scraper.fetch._update_step",
-        ), patch(
-            "king_context.scraper.fetch.FirecrawlApp",
         ):
-            result = await fetch_pages(urls, tmp_path, config)
+            result = await fetch_pages(urls, tmp_path, config, _FakeFetchProvider())
 
         # total = all 4 URLs
         assert result.total == 4
@@ -199,19 +205,15 @@ class TestFetchResume:
 
         config = _make_config()
 
-        async def _mock_fetch_one(url, semaphore, pages_dir, app):
+        async def _mock_fetch_one(url, semaphore, pages_dir, provider):
             return PageResult(url=url, markdown=f"# {url}", success=True, error=None)
 
         with patch(
             "king_context.scraper.fetch._fetch_one",
             new_callable=AsyncMock,
             side_effect=_mock_fetch_one,
-        ), patch(
-            "king_context.scraper.fetch._update_step",
-        ), patch(
-            "king_context.scraper.fetch.FirecrawlApp",
         ):
-            await fetch_pages(urls, tmp_path, config)
+            await fetch_pages(urls, tmp_path, config, _FakeFetchProvider())
 
         captured = capsys.readouterr()
         assert "Resuming: 1 pages already fetched, 2 remaining" in captured.out

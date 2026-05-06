@@ -361,9 +361,127 @@ Useful flags:
 - `--no-auto-seed`: skip database seeding after export.
 - `--include-maybe`: fetch URLs classified as `maybe`.
 - `--yes`: skip interactive confirmation prompts.
+- `--provider <name>`: choose the scraper backend for this run. Sets
+  `SCRAPE_PROVIDER` for the process. Stage-specific environment variables
+  take precedence over the flag. See [Scraper providers](#scraper-providers)
+  for the full table.
 
 `king-scrape` writes exported documentation JSON to `.king-context/data/`.
 Use `kctx index` to build or rebuild the file-based CLI store from that JSON.
+
+### Scraper providers
+
+`king-scrape` supports pluggable scraper backends. The default is Firecrawl
+(cloud, zero-config, pay per page). Crawl4AI is available as a local opt-in
+backend (free, requires a one-time ~300MB Playwright install).
+
+Resolution rules:
+
+1. `SCRAPE_DISCOVER_PROVIDER` and `SCRAPE_FETCH_PROVIDER` set the backend for
+   their respective stages.
+2. `SCRAPE_PROVIDER` sets the backend for both stages when the stage-specific
+   variables are not set.
+3. `--provider <name>` is shorthand for setting `SCRAPE_PROVIDER` for one run.
+4. When nothing is set, both stages use `firecrawl`.
+
+Stage-specific environment variables always win over the flag and over
+`SCRAPE_PROVIDER`.
+
+Environment variables:
+
+| Variable | Effect |
+|----------|--------|
+| `SCRAPE_PROVIDER` | Sets provider for both stages. Default `firecrawl`. |
+| `SCRAPE_DISCOVER_PROVIDER` | Overrides `SCRAPE_PROVIDER` for the `discover` stage only. |
+| `SCRAPE_FETCH_PROVIDER` | Overrides `SCRAPE_PROVIDER` for the `fetch` stage only. |
+
+#### Default (Firecrawl)
+
+```bash
+king-scrape https://docs.example.com
+```
+
+Requires `FIRECRAWL_API_KEY` in `.env`. No additional install beyond
+`npx @king-context/cli init`.
+
+#### Local mode (Crawl4AI)
+
+If you installed via `npx @king-context/cli init`, the Crawl4AI Python
+package is already in the project venv (bundled by the `[all]` extra).
+You only need to download the Playwright browser once:
+
+```bash
+.king-context/core/venv/bin/crawl4ai-setup
+```
+
+Then pick the backend per run:
+
+```bash
+king-scrape https://docs.example.com --provider=crawl4ai
+```
+
+Or set it as the default for the project:
+
+```bash
+SCRAPE_PROVIDER=crawl4ai king-scrape https://docs.example.com
+```
+
+Cloned the repo for development? Run from the repo root:
+
+```bash
+pip install -e ".[crawl4ai]" && crawl4ai-setup
+```
+
+A standalone PyPI distribution (`pip install king-context`) is on the
+roadmap.
+
+#### Mixing providers per stage
+
+Crawl4AI for SPA-style discovery plus Firecrawl for stable fetch:
+
+```bash
+SCRAPE_DISCOVER_PROVIDER=crawl4ai SCRAPE_FETCH_PROVIDER=firecrawl king-scrape https://docs.example.com
+```
+
+Stage-specific variables take precedence over `SCRAPE_PROVIDER` and over
+`--provider`.
+
+#### Resume across providers
+
+The pipeline checkpoint is keyed by URL slug, not by provider. Resuming a
+partial run with a different backend works:
+
+```bash
+SCRAPE_PROVIDER=firecrawl king-scrape https://docs.example.com --stop-after fetch
+SCRAPE_PROVIDER=crawl4ai king-scrape https://docs.example.com --step chunk
+```
+
+URLs already fetched with one backend are not re-fetched when you switch.
+
+#### Troubleshooting
+
+`Unknown discovery provider 'X'. Registered: ['crawl4ai', 'firecrawl']`
+
+The provider name is misspelled or not installed. Check the spelling of
+`--provider`, `SCRAPE_PROVIDER`, `SCRAPE_DISCOVER_PROVIDER`, and
+`SCRAPE_FETCH_PROVIDER`. The error message lists the registered providers.
+
+`ProviderUnavailableError: crawl4ai not installed in the active Python environment...`
+
+The Crawl4AI package is not in the active venv. For npx-installed
+projects, run `npx @king-context/cli update`. For dev clones, run
+`pip install -e ".[crawl4ai]" && crawl4ai-setup` from the repo root.
+
+`ProviderUnavailableError: Crawl4AI installed but Playwright browser missing. Run: crawl4ai-setup`
+
+The Python package is installed but the chromium binary is not. Run
+`crawl4ai-setup` once. The setup downloads about 300MB on first run.
+
+`FIRECRAWL_API_KEY missing` (or equivalent SDK error)
+
+Firecrawl is selected (default) but no API key is set. Add
+`FIRECRAWL_API_KEY=...` to `.env`, or switch to Crawl4AI with
+`--provider=crawl4ai`.
 
 ## LLM Provider Configuration
 

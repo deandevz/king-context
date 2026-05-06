@@ -36,6 +36,7 @@ def make_args(**kwargs) -> argparse.Namespace:
         no_llm_filter=False,
         no_auto_seed=True,
         include_maybe=False,
+        provider=None,
     )
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -171,11 +172,11 @@ def test_cli_full_pipeline(tmp_path):
     enriched = [make_enriched_chunk()]
     doc_data = {"name": "example", "sections": []}
 
-    async def mock_discover(url, cfg):
+    async def mock_discover(url, cfg, provider):
         call_order.append("discover")
         return discovery
 
-    async def mock_fetch(urls, out_dir, cfg):
+    async def mock_fetch(urls, out_dir, cfg, provider):
         call_order.append("fetch")
         return fetch_res
 

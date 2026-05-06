@@ -40,6 +40,7 @@ def _make_args(**overrides) -> argparse.Namespace:
         include_maybe=False,
         stop_after=None,
         yes=True,
+        provider=None,
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
@@ -168,7 +169,7 @@ class TestFetchResumeIntegration:
 
         fetched_urls = []
 
-        async def mock_fetch_one(url, semaphore, pages_dir, app):
+        async def mock_fetch_one(url, semaphore, pages_dir, provider):
             fetched_urls.append(url)
             slug = _url_to_slug(url)
             (pages_dir / f"{slug}.md").write_text(f"# {url}")
@@ -177,8 +178,6 @@ class TestFetchResumeIntegration:
         with patch(
             "king_context.scraper.fetch._fetch_one",
             side_effect=mock_fetch_one,
-        ), patch(
-            "king_context.scraper.fetch.FirecrawlApp",
         ), patch(
             "king_context.scraper.cli.chunk_pages",
             return_value=[],

@@ -1,25 +1,46 @@
 import asyncio
 import json
 import threading
-from unittest.mock import patch, MagicMock
+from datetime import datetime, timezone
+
+from scraper_providers import PageContent
 
 from king_context.scraper.fetch import fetch_pages, FetchResult
 from king_context.scraper.config import ScraperConfig
 
 
+def _page(url: str, markdown: str = "# Page Content") -> PageContent:
+    return PageContent(
+        url=url,
+        markdown=markdown,
+        title=None,
+        fetched_at=datetime.now(timezone.utc),
+    )
+
+
+class _FakeFetchProvider:
+    name = "fake"
+
+    def __init__(self, side_effect=None, fixed_markdown: str = "# Content"):
+        self._side_effect = side_effect
+        self._fixed_markdown = fixed_markdown
+
+    async def fetch_one(self, url: str) -> PageContent:
+        if self._side_effect is not None:
+            return self._side_effect(url)
+        return _page(url, self._fixed_markdown)
+
+
 def test_fetch_pages_success(tmp_path):
     config = ScraperConfig(firecrawl_api_key="fc-test")
-
-    mock_app = MagicMock()
-    mock_app.scrape.return_value = {"markdown": "# Page Content"}
+    provider = _FakeFetchProvider(fixed_markdown="# Page Content")
 
     urls = [
         "https://docs.example.com/api/intro",
         "https://docs.example.com/guide/start",
     ]
 
-    with patch("king_context.scraper.fetch.FirecrawlApp", return_value=mock_app):
-        result = asyncio.run(fetch_pages(urls, tmp_path, config))
+    result = asyncio.run(fetch_pages(urls, tmp_path, config, provider))
 
     assert isinstance(result, FetchResult)
     assert result.total == 2
@@ -35,21 +56,19 @@ def test_fetch_pages_success(tmp_path):
 def test_fetch_handles_failure(tmp_path):
     config = ScraperConfig(firecrawl_api_key="fc-test")
 
-    def side_effect(url, **kwargs):
+    def side_effect(url: str) -> PageContent:
         if "failing" in url:
             raise RuntimeError("Network error")
-        return {"markdown": "# Good Page"}
+        return _page(url, "# Good Page")
 
-    mock_app = MagicMock()
-    mock_app.scrape.side_effect = side_effect
+    provider = _FakeFetchProvider(side_effect=side_effect)
 
     urls = [
         "https://docs.example.com/api/good",
         "https://docs.example.com/failing/page",
     ]
 
-    with patch("king_context.scraper.fetch.FirecrawlApp", return_value=mock_app):
-        result = asyncio.run(fetch_pages(urls, tmp_path, config))
+    result = asyncio.run(fetch_pages(urls, tmp_path, config, provider))
 
     assert result.total == 2
     assert result.completed == 1
@@ -64,37 +83,32 @@ def test_fetch_respects_concurrency(tmp_path):
     lock = threading.Lock()
     active = {"count": 0, "max": 0}
 
-    def slow_scrape(url):
-        import time
-        with lock:
-            active["count"] += 1
-            active["max"] = max(active["max"], active["count"])
-        time.sleep(0.05)
-        with lock:
-            active["count"] -= 1
-        return {"markdown": "# Content"}
+    class _SlowProvider:
+        name = "slow-fake"
 
-    mock_app = MagicMock()
-    mock_app.scrape.side_effect = slow_scrape
+        async def fetch_one(self, url: str) -> PageContent:
+            with lock:
+                active["count"] += 1
+                active["max"] = max(active["max"], active["count"])
+            await asyncio.sleep(0.05)
+            with lock:
+                active["count"] -= 1
+            return _page(url)
 
     urls = [f"https://docs.example.com/page-{i}" for i in range(6)]
 
-    with patch("king_context.scraper.fetch.FirecrawlApp", return_value=mock_app):
-        asyncio.run(fetch_pages(urls, tmp_path, config))
+    asyncio.run(fetch_pages(urls, tmp_path, config, _SlowProvider()))
 
     assert active["max"] <= 2
 
 
 def test_fetch_updates_manifest(tmp_path):
     config = ScraperConfig(firecrawl_api_key="fc-test")
-
-    mock_app = MagicMock()
-    mock_app.scrape.return_value = {"markdown": "# Content"}
+    provider = _FakeFetchProvider()
 
     urls = ["https://docs.example.com/api/intro"]
 
-    with patch("king_context.scraper.fetch.FirecrawlApp", return_value=mock_app):
-        asyncio.run(fetch_pages(urls, tmp_path, config))
+    asyncio.run(fetch_pages(urls, tmp_path, config, provider))
 
     manifest_path = tmp_path / "manifest.json"
     assert manifest_path.exists()

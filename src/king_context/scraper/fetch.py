@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from firecrawl import FirecrawlApp
+from scraper_providers import FetchProvider
 
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.discover import _update_step
@@ -36,13 +36,12 @@ async def _fetch_one(
     url: str,
     semaphore: asyncio.Semaphore,
     pages_dir: Path,
-    app: FirecrawlApp,
+    provider: FetchProvider,
 ) -> PageResult:
     async with semaphore:
         try:
-            loop = asyncio.get_running_loop()
-            raw = await loop.run_in_executor(None, lambda: app.scrape(url, formats=["markdown"]))
-            markdown = raw.markdown if hasattr(raw, "markdown") else (raw.get("markdown", "") if isinstance(raw, dict) else str(raw))
+            page = await provider.fetch_one(url)
+            markdown = page.markdown
             slug = _url_to_slug(url)
             (pages_dir / f"{slug}.md").write_text(markdown)
             return PageResult(url=url, markdown=markdown, success=True, error=None)
@@ -54,6 +53,7 @@ async def fetch_pages(
     urls: list[str],
     output_dir: Path,
     config: ScraperConfig,
+    provider: FetchProvider,
 ) -> FetchResult:
     pages_dir = output_dir / "pages"
     pages_dir.mkdir(parents=True, exist_ok=True)
@@ -65,14 +65,13 @@ async def fetch_pages(
     if skipped > 0:
         print(f"Resuming: {skipped} pages already fetched, {len(pending_urls)} remaining")
 
-    app = FirecrawlApp(api_key=config.firecrawl_api_key)
     semaphore = asyncio.Semaphore(config.concurrency)
 
     total = len(urls)
     progress = {"completed": skipped, "failed": 0}
 
     async def _fetch_and_track(url: str) -> PageResult:
-        result = await _fetch_one(url, semaphore, pages_dir, app)
+        result = await _fetch_one(url, semaphore, pages_dir, provider)
         if result.success:
             progress["completed"] += 1
         else:

@@ -105,7 +105,7 @@ function installPackage(projectDir) {
 
   execFileSync(
     python,
-    ['-m', 'pip', 'install', '--no-cache-dir', 'git+https://github.com/deandevz/king-context.git'],
+    ['-m', 'pip', 'install', '--no-cache-dir', 'king-context[all] @ git+https://github.com/deandevz/king-context.git'],
     { stdio: 'pipe', timeout: 300000, windowsHide: true }
   );
 }
@@ -126,7 +126,7 @@ function upgradePackage(projectDir) {
       '--force-reinstall',
       '--no-deps',
       '--no-cache-dir',
-      'git+https://github.com/deandevz/king-context.git',
+      'king-context[all] @ git+https://github.com/deandevz/king-context.git',
     ],
     { stdio: 'pipe', timeout: 300000, windowsHide: true }
   );

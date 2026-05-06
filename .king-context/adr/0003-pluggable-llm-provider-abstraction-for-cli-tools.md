@@ -12,6 +12,7 @@ supersedes: []
 superseded_by: []
 related:
   - ADR-0001
+  - ADR-0009
 keywords:
   - llm-provider
   - openrouter
@@ -24,6 +25,7 @@ tags:
   - llm
   - cli
 ---
+
 
 
 # ADR-0003: Pluggable LLM provider abstraction for CLI tools

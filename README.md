@@ -70,6 +70,66 @@ Full command reference in [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md).
 
 **One retrieval surface, many corpora.** Vendor docs, research sweeps, internal runbooks, and ADRs are all reachable through the same CLI primitives.
 
+## Scraper providers
+
+`king-scrape` supports pluggable scraper backends. The default is Firecrawl (cloud, zero-config, pay per page). Crawl4AI is the first local opt-in backend, added so users can index documentation without external credits, without sending HTML through a third party, and with full transparency over the HTML to Markdown conversion. It also unblocks indexing private or internal docs that should not leave your machine.
+
+Crawl4AI support is **beta**. If something breaks or feels off, open an issue at [github.com/deandevz/king-context/issues](https://github.com/deandevz/king-context/issues) with the URL, the command, and the error. Improvements are welcome.
+
+Default (Firecrawl, no install needed beyond `init`):
+
+```bash
+king-scrape https://docs.example.com
+```
+
+Requires `FIRECRAWL_API_KEY` in `.env`.
+
+### Enable Crawl4AI
+
+If you installed via `npx @king-context/cli init`, the Crawl4AI Python package is already in the project venv (bundled by `[all]`). You only need to download the Playwright browser once (~300MB):
+
+```bash
+.king-context/core/venv/bin/crawl4ai-setup
+```
+
+Then pick the backend per run:
+
+```bash
+king-scrape https://docs.example.com --provider=crawl4ai
+```
+
+Or set it as the default for the project:
+
+```bash
+SCRAPE_PROVIDER=crawl4ai king-scrape https://docs.example.com
+```
+
+Cloned the repo for development? From the repo root:
+
+```bash
+pip install -e ".[crawl4ai]" && crawl4ai-setup
+```
+
+A standalone PyPI distribution (`pip install king-context`) is on the roadmap.
+
+### Mixing providers per stage
+
+```bash
+SCRAPE_DISCOVER_PROVIDER=crawl4ai SCRAPE_FETCH_PROVIDER=firecrawl king-scrape https://docs.example.com
+```
+
+Useful when one backend handles a stage better than the other (for example, Crawl4AI for SPA discovery, Firecrawl for stable fetch).
+
+### Environment variables
+
+| Variable | Effect |
+|----------|--------|
+| `SCRAPE_PROVIDER` | Sets provider for both stages. Default `firecrawl`. |
+| `SCRAPE_DISCOVER_PROVIDER` | Overrides `SCRAPE_PROVIDER` for the `discover` stage only. |
+| `SCRAPE_FETCH_PROVIDER` | Overrides `SCRAPE_PROVIDER` for the `fetch` stage only. |
+
+Stage-specific variables take precedence over `SCRAPE_PROVIDER` and over the `--provider` flag. Full reference in [`docs/CLI_GUIDE.md`](docs/CLI_GUIDE.md).
+
 ## How it works
 
 Every section of every scraped page or researched source ends up annotated:
