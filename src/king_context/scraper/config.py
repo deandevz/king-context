@@ -17,6 +17,9 @@ class ScraperConfig:
     chunk_min_tokens: int = 100
     concurrency: int = 5
     filter_llm_fallback: bool = True
+    scrape_provider: str | None = None
+    scrape_discover_provider: str | None = None
+    scrape_fetch_provider: str | None = None
 
 
 def get_firecrawl_key() -> str:
@@ -45,6 +48,9 @@ def load_config(**overrides) -> ScraperConfig:
         firecrawl_api_key=firecrawl_api_key,
         openrouter_api_key=openrouter_api_key,
         enrichment_model=enrichment_model,
+        scrape_provider=os.environ.get("SCRAPE_PROVIDER") or None,
+        scrape_discover_provider=os.environ.get("SCRAPE_DISCOVER_PROVIDER") or None,
+        scrape_fetch_provider=os.environ.get("SCRAPE_FETCH_PROVIDER") or None,
     )
 
     for key, value in overrides.items():

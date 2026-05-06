@@ -1,24 +1,35 @@
 import asyncio
 import json
-from unittest.mock import patch, MagicMock
 
 from king_context.scraper.discover import discover_urls, DiscoveryResult
 from king_context.scraper.config import ScraperConfig
 
 
+class _FakeDiscoveryProvider:
+    name = "fake"
+
+    def __init__(self, urls: list[str]):
+        self._urls = urls
+
+    async def discover_urls(self, base_url: str) -> list[str]:
+        return self._urls
+
+
 def test_discover_urls(tmp_path, monkeypatch):
     monkeypatch.setattr("king_context.scraper.discover.TEMP_DOCS_DIR", tmp_path)
 
-    mock_app = MagicMock()
-    mock_app.map.return_value = [
+    provider = _FakeDiscoveryProvider([
         "https://docs.example.com/api",
         "https://docs.example.com/guide",
-    ]
+    ])
 
-    with patch("king_context.scraper.discover.FirecrawlApp", return_value=mock_app):
-        result = asyncio.run(
-            discover_urls("https://docs.example.com", ScraperConfig(firecrawl_api_key="fc-test"))
+    result = asyncio.run(
+        discover_urls(
+            "https://docs.example.com",
+            ScraperConfig(firecrawl_api_key="fc-test"),
+            provider,
         )
+    )
 
     assert isinstance(result, DiscoveryResult)
     assert result.base_url == "https://docs.example.com"
@@ -35,13 +46,15 @@ def test_discover_urls(tmp_path, monkeypatch):
 def test_discover_creates_work_dir(tmp_path, monkeypatch):
     monkeypatch.setattr("king_context.scraper.discover.TEMP_DOCS_DIR", tmp_path)
 
-    mock_app = MagicMock()
-    mock_app.map.return_value = []
+    provider = _FakeDiscoveryProvider([])
 
-    with patch("king_context.scraper.discover.FirecrawlApp", return_value=mock_app):
-        asyncio.run(
-            discover_urls("https://docs.example.com", ScraperConfig(firecrawl_api_key="fc-test"))
+    asyncio.run(
+        discover_urls(
+            "https://docs.example.com",
+            ScraperConfig(firecrawl_api_key="fc-test"),
+            provider,
         )
+    )
 
     work_dir = tmp_path / "docs-example-com"
     assert work_dir.exists()

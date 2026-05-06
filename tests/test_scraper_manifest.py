@@ -1,9 +1,11 @@
 """Tests for partial progress tracking in manifest during fetch and enrich."""
 
 import json
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from scraper_providers import PageContent
 
 from conftest import FakeLLMClient, fake_stage_clients
 from king_context.scraper.chunk import Chunk
@@ -19,6 +21,18 @@ def _make_config() -> ScraperConfig:
         enrichment_batch_size=2,
         concurrency=5,
     )
+
+
+class _FakeFetchProvider:
+    name = "fake"
+
+    async def fetch_one(self, url: str) -> PageContent:
+        return PageContent(
+            url=url,
+            markdown=f"# {url}",
+            title=None,
+            fetched_at=datetime.now(timezone.utc),
+        )
 
 
 def _read_manifest(work_dir):
@@ -56,10 +70,8 @@ class TestFetchManifestProgress:
         ), patch(
             "king_context.scraper.fetch._update_step",
             side_effect=_capture_update,
-        ), patch(
-            "king_context.scraper.fetch.FirecrawlApp",
         ):
-            result = await fetch_pages(urls, tmp_path, config)
+            result = await fetch_pages(urls, tmp_path, config, _FakeFetchProvider())
 
         # At least one in_progress update happened
         in_progress = [m for m in manifests_during_fetch if m["status"] == "in_progress"]
@@ -87,10 +99,8 @@ class TestFetchManifestProgress:
             "king_context.scraper.fetch._fetch_one",
             new_callable=AsyncMock,
             return_value=PageResult(url=urls[0], markdown="# A", success=True, error=None),
-        ), patch(
-            "king_context.scraper.fetch.FirecrawlApp",
         ):
-            result = await fetch_pages(urls, tmp_path, config)
+            result = await fetch_pages(urls, tmp_path, config, _FakeFetchProvider())
 
         manifest = _read_manifest(tmp_path)
         assert manifest["fetch"]["status"] == "done"

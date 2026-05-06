@@ -1,11 +1,10 @@
-import asyncio
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
-from firecrawl import FirecrawlApp
+from scraper_providers import DiscoveryProvider
 
 from king_context import PROJECT_ROOT
 from king_context.scraper.config import ScraperConfig
@@ -51,15 +50,15 @@ def _update_step(work_dir: Path, step: str, stats: dict) -> None:
     _save_manifest(work_dir, manifest)
 
 
-async def discover_urls(base_url: str, config: ScraperConfig) -> DiscoveryResult:
+async def discover_urls(
+    base_url: str,
+    config: ScraperConfig,
+    provider: DiscoveryProvider,
+) -> DiscoveryResult:
     work_dir = get_work_dir(base_url)
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    app = FirecrawlApp(api_key=config.firecrawl_api_key)
-    loop = asyncio.get_running_loop()
-    raw = await loop.run_in_executor(None, lambda: app.map(base_url))
-    links = raw.links if hasattr(raw, "links") else (raw if isinstance(raw, list) else raw.get("links", []))
-    urls = [lnk.url if hasattr(lnk, "url") else str(lnk) for lnk in (links or [])]
+    urls = await provider.discover_urls(base_url)
 
     discovered_at = datetime.now(timezone.utc).isoformat()
     result = DiscoveryResult(
