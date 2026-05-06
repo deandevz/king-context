@@ -21,8 +21,12 @@ except ImportError:
 
 
 _INSTALL_HINT = (
-    "firecrawl-py not installed. Run: pip install king-context[firecrawl] "
-    "(or king-context[all]) and set FIRECRAWL_API_KEY."
+    "firecrawl-py not installed in the active Python environment. "
+    "If you installed via npx @king-context/cli, run "
+    "'npx @king-context/cli update' to refresh the venv. "
+    "If you cloned the repo for development, run "
+    "'pip install -e \".[firecrawl]\"' (or '.[all]'). "
+    "Set FIRECRAWL_API_KEY before running."
 )
 
 

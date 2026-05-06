@@ -29,8 +29,11 @@ except ImportError:
 
 
 _INSTALL_HINT = (
-    "crawl4ai not installed. Run: "
-    "pip install king-context[crawl4ai] && crawl4ai-setup"
+    "crawl4ai not installed in the active Python environment. "
+    "If you installed via npx @king-context/cli, run "
+    "'npx @king-context/cli update' to refresh the venv. "
+    "If you cloned the repo for development, run "
+    "'pip install -e \".[crawl4ai]\" && crawl4ai-setup'."
 )
 _SETUP_HINT = (
     "crawl4ai installed but Playwright browser (chromium) missing. "

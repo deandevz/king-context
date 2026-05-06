@@ -104,11 +104,13 @@ Or set it as the default for the project:
 SCRAPE_PROVIDER=crawl4ai king-scrape https://docs.example.com
 ```
 
-Standalone pip install (without the npm installer):
+Cloned the repo for development? From the repo root:
 
 ```bash
-pip install king-context[crawl4ai] && crawl4ai-setup
+pip install -e ".[crawl4ai]" && crawl4ai-setup
 ```
+
+A standalone PyPI distribution (`pip install king-context`) is on the roadmap.
 
 ### Mixing providers per stage
 

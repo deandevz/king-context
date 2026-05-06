@@ -406,24 +406,34 @@ Requires `FIRECRAWL_API_KEY` in `.env`. No additional install beyond
 
 #### Local mode (Crawl4AI)
 
-Install once:
+If you installed via `npx @king-context/cli init`, the Crawl4AI Python
+package is already in the project venv (bundled by the `[all]` extra).
+You only need to download the Playwright browser once:
 
 ```bash
-pip install king-context[crawl4ai]
-crawl4ai-setup
+.king-context/core/venv/bin/crawl4ai-setup
 ```
 
-Then run with the env var:
+Then pick the backend per run:
+
+```bash
+king-scrape https://docs.example.com --provider=crawl4ai
+```
+
+Or set it as the default for the project:
 
 ```bash
 SCRAPE_PROVIDER=crawl4ai king-scrape https://docs.example.com
 ```
 
-Or with a flag for a single run:
+Cloned the repo for development? Run from the repo root:
 
 ```bash
-king-scrape https://docs.example.com --provider=crawl4ai
+pip install -e ".[crawl4ai]" && crawl4ai-setup
 ```
+
+A standalone PyPI distribution (`pip install king-context`) is on the
+roadmap.
 
 #### Mixing providers per stage
 
@@ -456,10 +466,11 @@ The provider name is misspelled or not installed. Check the spelling of
 `--provider`, `SCRAPE_PROVIDER`, `SCRAPE_DISCOVER_PROVIDER`, and
 `SCRAPE_FETCH_PROVIDER`. The error message lists the registered providers.
 
-`ProviderUnavailableError: Crawl4AI not installed. Run: pip install king-context[crawl4ai] && crawl4ai-setup`
+`ProviderUnavailableError: crawl4ai not installed in the active Python environment...`
 
-The Crawl4AI extra is not installed in the active venv. Run the install
-command exactly as shown, then retry.
+The Crawl4AI package is not in the active venv. For npx-installed
+projects, run `npx @king-context/cli update`. For dev clones, run
+`pip install -e ".[crawl4ai]" && crawl4ai-setup` from the repo root.
 
 `ProviderUnavailableError: Crawl4AI installed but Playwright browser missing. Run: crawl4ai-setup`
 
