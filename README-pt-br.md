@@ -20,6 +20,8 @@ npx @king-context/cli init
 
 Isso configura `.king-context/` em qualquer projeto: ambiente virtual Python, ferramentas CLI, skills de agente e templates de configuração. Zero setup manual.
 
+Windows é suportado como **beta** a partir da versão 0.3.1. Reporte qualquer problema específico de plataforma em [github.com/deandevz/king-context/issues](https://github.com/deandevz/king-context/issues).
+
 Adicione suas chaves:
 
 ```bash
@@ -137,7 +139,7 @@ A ideia não é "o agente pergunta, o corpus responde". A ideia é que seu agent
 - Distribuição via `pip install king-context`
 - Skills geradas por agente a partir de corpus indexado
 - Atualização incremental de docs sem rescrape completo
-- Suporte a Windows no instalador
+- Suporte estável a Windows no instalador (atualmente em beta)
 - Suíte de benchmark cobrindo docs, ADRs e corpus de pesquisa
 - Hooks de workflow que mostram seções relevantes durante o desenvolvimento
 - Indexação de conteúdo do usuário (md, txt, pdf, docx, transcrições de vídeo)

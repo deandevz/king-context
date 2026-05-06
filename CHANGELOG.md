@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-06
+
+### Added
+
+- Windows support for the installer (beta). `king-context init`, `update`,
+  and `doctor` now work on Windows: `py -3` detection, `Scripts\python.exe`
+  resolution, `python -m pip` invocation, and `.cmd` shims for `kctx`,
+  `king-scrape`, and `king-research`. Existing macOS and Linux behavior is
+  preserved. Co-authored with @Vadelo (issue #19).
+- ADR-0004: treat multi-OS compatibility (macOS, Linux, Windows) as a
+  baseline development constraint.
+
+### Changed
+
+- Path helpers in `installer/lib/python.js` now use `path.win32` /
+  `path.posix` based on `process.platform`, so Windows path assertions
+  pass on any host.
+- Removed orphan `installer/templates/wrapper-*.sh` files. Wrapper bodies
+  are inlined in `scaffold.js` and the templates are no longer read.
+
 ## [0.3.0] - 2026-05-05
 
 ### Added

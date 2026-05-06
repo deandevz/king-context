@@ -33,23 +33,28 @@ function createDirs(projectDir) {
  * Makes them executable (mode 0o755).
  */
 function writeWrappers(projectDir) {
-  const templatesDir = path.join(__dirname, '..', 'templates');
   const binDir = path.join(projectDir, '.king-context', 'bin');
 
   fs.mkdirSync(binDir, { recursive: true });
 
   const wrappers = [
-    { template: 'wrapper-kctx.sh', target: 'kctx' },
-    { template: 'wrapper-scrape.sh', target: 'king-scrape' },
-    { template: 'wrapper-research.sh', target: 'king-research' },
+    { module: 'context_cli.cli', target: 'kctx' },
+    { module: 'king_context.scraper.cli', target: 'king-scrape' },
+    { module: 'king_context.research.cli', target: 'king-research' },
   ];
 
-  for (const { template, target } of wrappers) {
-    const src = path.join(templatesDir, template);
-    const dest = path.join(binDir, target);
+  for (const { module, target } of wrappers) {
+    const shellPath = path.join(binDir, target);
+    const shellContent = process.platform === 'win32'
+      ? `#!/bin/sh\nSCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"\nexec "$SCRIPT_DIR/../core/venv/Scripts/python.exe" -m ${module} "$@"\n`
+      : `#!/bin/sh\nSCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"\nexec "$SCRIPT_DIR/../core/venv/bin/python" -m ${module} "$@"\n`;
+    fs.writeFileSync(shellPath, shellContent, { mode: 0o755 });
 
-    const content = fs.readFileSync(src, 'utf8');
-    fs.writeFileSync(dest, content, { mode: 0o755 });
+    if (process.platform === 'win32') {
+      const cmdPath = path.join(binDir, `${target}.cmd`);
+      const cmdContent = `@echo off\r\nset SCRIPT_DIR=%~dp0\r\n"%SCRIPT_DIR%..\\core\\venv\\Scripts\\python.exe" -m ${module} %*\r\n`;
+      fs.writeFileSync(cmdPath, cmdContent);
+    }
   }
 }
 
