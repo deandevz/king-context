@@ -31,6 +31,14 @@ try:
 except ImportError:
     pass
 
+try:
+    from scraper_providers.crawl4ai_provider import (  # pyright: ignore[reportMissingImports]
+        register as _register_crawl4ai,
+    )
+    _register_crawl4ai()
+except ImportError:
+    pass
+
 # Third-party plugins via entry_points (after built-ins so built-ins win conflicts).
 load_entry_point_providers()
 
