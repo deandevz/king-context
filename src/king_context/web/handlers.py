@@ -33,10 +33,14 @@ from context_cli.adr import (
     _normalize_id,
     _source_path_by_id,
     parse_adr,
+    search_decisions,
 )
+from context_cli.searcher import SearchResult, search as searcher_search
 from context_cli.store import list_docs
 
 from king_context.web.render import (
+    default_hint,
+    empty_state,
     html_escape,
     render_markdown,
     render_page,
@@ -44,17 +48,8 @@ from king_context.web.render import (
 )
 
 
-_HINT_INDEX = "Run `kctx adr index`"
-_HINT_INIT = "Run `kctx adr index` to populate from .king-context/adr/*.md"
 _HINT_GRAPH = "Run `kctx adr index` to generate the graph"
 _HINT_VALIDATE = "Run `kctx adr validate` to inspect the broken ADR"
-_HINT_INDEX_DOCS = "Run `kctx index <url>` to populate .king-context/docs/"
-_HINT_INDEX_RESEARCH = "Run `king-research <topic>` to populate .king-context/research/"
-_HINT_INIT_PROJECT = "Run `npx @king-context/cli init` to scaffold .king-context/"
-
-
-def _empty(reason: str, hint: str) -> dict[str, Any]:
-    return {"items": [], "reason": reason, "hint": hint}
 
 
 def _adr_link(adr_id: str) -> str:
@@ -88,14 +83,14 @@ def adr_list(path: str, query: dict, **_: object) -> tuple[int, dict]:
     """GET /api/adrs: list of ADRListItem entries (no `content`)."""
     decisions_dir = _decisions_dir()
     if not decisions_dir.exists():
-        return 200, _empty("dir_missing", _HINT_INIT)
+        return 200, empty_state("dir_missing", default_hint("adrs", "dir_missing"))
     sections_dir = decisions_dir / "sections"
     if not sections_dir.exists():
-        return 200, _empty("not_indexed", _HINT_INDEX)
+        return 200, empty_state("not_indexed", default_hint("adrs", "dir_missing"))
 
     indexed = _load_indexed_decisions()
     if not indexed:
-        return 200, _empty("not_indexed", _HINT_INDEX)
+        return 200, empty_state("not_indexed", default_hint("adrs", "not_indexed"))
 
     items = []
     for entry in indexed:
@@ -140,7 +135,7 @@ def adr_detail(path: str, query: dict, **path_params: object) -> tuple[int, dict
     try:
         adr_id = _normalize_id(raw_id)
     except AdrError:
-        return 200, _empty("dir_missing", _HINT_INIT)
+        return 200, empty_state("dir_missing", default_hint("adrs", "dir_missing"))
 
     decision_data: dict[str, Any] | None = None
 
@@ -157,7 +152,7 @@ def adr_detail(path: str, query: dict, **path_params: object) -> tuple[int, dict
                 if decision_data.get("id") != adr_id:
                     decision_data = None
             except AdrError:
-                return 200, _empty("parse_error", _HINT_VALIDATE)
+                return 200, empty_state("parse_error", _HINT_VALIDATE)
 
     indexed = _load_indexed_decisions()
     if decision_data is None:
@@ -167,7 +162,7 @@ def adr_detail(path: str, query: dict, **path_params: object) -> tuple[int, dict
                 break
 
     if decision_data is None:
-        return 200, _empty("dir_missing", _HINT_INIT)
+        return 200, empty_state("dir_missing", default_hint("adrs", "dir_missing"))
 
     raw_content = str(decision_data.get("content", ""))
     content_md = _strip_frontmatter(raw_content)
@@ -195,13 +190,13 @@ def adr_graph(path: str, query: dict, **_: object) -> tuple[int, dict]:
     """GET /api/adrs/graph: pass-through of decisions/project/graph.json."""
     graph_path = _decisions_dir() / "graph.json"
     if not graph_path.exists():
-        return 200, _empty("not_indexed", _HINT_GRAPH)
+        return 200, empty_state("not_indexed", _HINT_GRAPH)
     try:
         data = json.loads(graph_path.read_text())
     except (OSError, json.JSONDecodeError):
-        return 200, _empty("not_indexed", _HINT_GRAPH)
+        return 200, empty_state("not_indexed", _HINT_GRAPH)
     if not isinstance(data, dict) or "nodes" not in data or "edges" not in data:
-        return 200, _empty("not_indexed", _HINT_GRAPH)
+        return 200, empty_state("not_indexed", _HINT_GRAPH)
     return 200, data
 
 
@@ -374,14 +369,6 @@ def _store_dir_for(source_label: str) -> Path:
     raise ValueError(f"unknown source_label: {source_label!r}")
 
 
-def _hint_for(source_label: str, kind: str) -> str:
-    if kind == "init":
-        return _HINT_INIT_PROJECT
-    if source_label == "docs":
-        return _HINT_INDEX_DOCS
-    return _HINT_INDEX_RESEARCH
-
-
 def _safe_segment(value: str) -> str | None:
     """Validate a single URL path segment (corpus name or section path).
 
@@ -457,22 +444,37 @@ def _section_list_payload(
     """
     store_dir = _store_dir_for(source_label)
     if not store_dir.exists():
-        return _empty("dir_missing", _hint_for(source_label, "init")), None
+        return (
+            empty_state("dir_missing", default_hint(source_label, "dir_missing")),
+            None,
+        )
 
     safe_name = _safe_segment(name)
     if safe_name is None:
-        return _empty("dir_missing", _hint_for(source_label, "init")), None
+        return (
+            empty_state("dir_missing", default_hint(source_label, "dir_missing")),
+            None,
+        )
 
     corpus_dir = _resolve_within(store_dir, safe_name)
     if corpus_dir is None or not corpus_dir.is_dir():
-        return _empty("dir_missing", _hint_for(source_label, "init")), None
+        return (
+            empty_state("dir_missing", default_hint(source_label, "dir_missing")),
+            None,
+        )
 
     if not (corpus_dir / "index.json").exists():
-        return _empty("parse_error", _hint_for(source_label, "index")), corpus_dir
+        return (
+            empty_state("parse_error", default_hint(source_label, "parse_error")),
+            corpus_dir,
+        )
 
     sections_dir = corpus_dir / "sections"
     if not sections_dir.is_dir():
-        return _empty("not_indexed", _hint_for(source_label, "index")), corpus_dir
+        return (
+            empty_state("not_indexed", default_hint(source_label, "not_indexed")),
+            corpus_dir,
+        )
 
     items: list[dict[str, Any]] = []
     for entry in sorted(sections_dir.glob("*.json")):
@@ -488,7 +490,10 @@ def _section_list_payload(
             }
         )
     if not items:
-        return _empty("not_indexed", _hint_for(source_label, "index")), corpus_dir
+        return (
+            empty_state("not_indexed", default_hint(source_label, "not_indexed")),
+            corpus_dir,
+        )
 
     items.sort(key=lambda it: (-it["priority"], it["title"]))
     return {"items": items}, corpus_dir
@@ -500,11 +505,15 @@ def corpus_index(
     """GET /api/{docs|research}: list of CorpusInfo entries for the source."""
     store_dir = _store_dir_for(source_label)
     if not store_dir.exists():
-        return 200, _empty("dir_missing", _hint_for(source_label, "init"))
+        return 200, empty_state(
+            "dir_missing", default_hint(source_label, "dir_missing")
+        )
 
     docs = list_docs(store_dir)
     if not docs:
-        return 200, _empty("not_indexed", _hint_for(source_label, "index"))
+        return 200, empty_state(
+            "not_indexed", default_hint(source_label, "not_indexed")
+        )
 
     items = [
         {
@@ -538,21 +547,29 @@ def section_detail(
     safe_name = _safe_segment(name)
     safe_path = _safe_segment(raw_path)
     if safe_name is None or safe_path is None:
-        return 200, _empty("dir_missing", _hint_for(source_label, "init"))
+        return 200, empty_state(
+            "dir_missing", default_hint(source_label, "dir_missing")
+        )
 
     store_dir = _store_dir_for(source_label)
     if not store_dir.exists():
-        return 200, _empty("dir_missing", _hint_for(source_label, "init"))
+        return 200, empty_state(
+            "dir_missing", default_hint(source_label, "dir_missing")
+        )
 
     section_file = _resolve_within(
         store_dir, safe_name, "sections", f"{safe_path}.json"
     )
     if section_file is None or not section_file.is_file():
-        return 200, _empty("dir_missing", _hint_for(source_label, "init"))
+        return 200, empty_state(
+            "dir_missing", default_hint(source_label, "dir_missing")
+        )
 
     data = _read_section_file(section_file)
     if data is None or not isinstance(data, dict):
-        return 200, _empty("parse_error", _hint_for(source_label, "index"))
+        return 200, empty_state(
+            "parse_error", default_hint(source_label, "parse_error")
+        )
 
     content_md = str(data.get("content", ""))
     content_html = render_markdown(content_md)
@@ -783,3 +800,415 @@ def section_page(
         source_label, name, list_payload, detail_payload, corpus_dir
     )
     return 200, body
+
+
+# ---------------------------------------------------------------------------
+# Unified search + Home
+# ---------------------------------------------------------------------------
+
+
+SEARCH_SCORING = {
+    "keyword_weight": 3.0,
+    "use_case_weight": 2.0,
+    "tag_weight": 1.0,
+    "priority_multiplier": 0.5,
+}
+
+VALID_SEARCH_SOURCES = ("all", "adrs", "docs", "research")
+
+_SEARCH_TOP_DEFAULT = 10
+_SEARCH_TOP_MAX = 50
+
+
+def _query_first(query: dict, key: str, default: str = "") -> str:
+    """Return the first value for `key` in a parse_qs-style dict.
+
+    `urllib.parse.parse_qs` returns lists; this normalizes to a single string
+    while gracefully accepting plain strings (helpful for direct handler
+    calls in tests).
+    """
+    value = query.get(key, default)
+    if isinstance(value, list):
+        return value[0] if value else default
+    return str(value)
+
+
+def _parse_top(query: dict) -> int:
+    raw = _query_first(query, "top", "")
+    if not raw:
+        return _SEARCH_TOP_DEFAULT
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return _SEARCH_TOP_DEFAULT
+    if value < 0:
+        return 0
+    return min(value, _SEARCH_TOP_MAX)
+
+
+def _search_result_to_dict(result: SearchResult) -> dict[str, Any]:
+    """Serialize a `searcher.SearchResult` to the arch-doc SearchResult shape.
+
+    Renames the section-level `keywords` / `use_cases` / `tags` fields to
+    `matched_*` per the public contract. The current scorer does not track
+    which terms specifically matched, so the full lists are surfaced.
+    """
+    return {
+        "source": result.source,
+        "doc_name": result.doc_name,
+        "section_path": result.section_path,
+        "title": result.title,
+        "score": float(result.score),
+        "matched_keywords": list(result.keywords),
+        "matched_use_cases": list(result.use_cases),
+        "matched_tags": list(result.tags),
+        "priority": int(result.priority),
+    }
+
+
+def _adr_to_search_result(adr_result: Any) -> dict[str, Any]:
+    """Remap an `AdrSearchResult` to the SearchResult shape.
+
+    Per the task contract: `source="adrs"`, `doc_name="project"`,
+    `section_path` is the lowercase ADR id, `matched_tags` is the ADR's
+    `areas` list, `priority` is fixed at 10.
+    """
+    adr_id = str(getattr(adr_result, "id", "") or "")
+    return {
+        "source": "adrs",
+        "doc_name": "project",
+        "section_path": adr_id.lower(),
+        "title": str(getattr(adr_result, "title", "") or ""),
+        "score": float(getattr(adr_result, "score", 0.0) or 0.0),
+        "matched_keywords": [],
+        "matched_use_cases": [],
+        "matched_tags": list(getattr(adr_result, "areas", []) or []),
+        "priority": 10,
+    }
+
+
+def _scoring_block() -> dict[str, float]:
+    return dict(SEARCH_SCORING)
+
+
+def search_unified(path: str, query: dict, **_: object) -> tuple[int, dict]:
+    """GET /api/search: unified results across ADRs, docs, research.
+
+    Query params:
+      - `q` (required): search string. Empty/missing returns
+        `{"results": [], "scoring": {...}}` with status 200, not an error.
+      - `source` (optional, default "all"): one of `all` / `adrs` / `docs` /
+        `research`. Anything else returns 400 with `{"error": "invalid_source"}`.
+      - `top` (optional, default 10, max 50, negative coerced to 0).
+
+    The handler runs each scoped source, combines, sorts by score desc, and
+    slices to `top`. ADR results are remapped to the `SearchResult` shape
+    documented in the arch doc with `source="adrs"` extending the enum.
+    """
+    raw_q = _query_first(query, "q", "").strip()
+    raw_source = _query_first(query, "source", "all").strip() or "all"
+    if raw_source not in VALID_SEARCH_SOURCES:
+        return 400, {"error": "invalid_source"}
+
+    top = _parse_top(query)
+
+    if not raw_q or top == 0:
+        return 200, {"results": [], "scoring": _scoring_block()}
+
+    sources = (
+        ("adrs", "docs", "research")
+        if raw_source == "all"
+        else (raw_source,)
+    )
+
+    results: list[dict[str, Any]] = []
+    fetch_top = max(top * 2, top)
+
+    if "adrs" in sources:
+        try:
+            adr_hits = search_decisions(raw_q, active_only=False, top=fetch_top)
+        except Exception:
+            adr_hits = []
+        for hit in adr_hits:
+            results.append(_adr_to_search_result(hit))
+
+    if "docs" in sources:
+        try:
+            docs_hits = searcher_search(
+                raw_q,
+                _store_dir_for("docs"),
+                top=fetch_top,
+                source="docs",
+            )
+        except Exception:
+            docs_hits = []
+        for hit in docs_hits:
+            results.append(_search_result_to_dict(hit))
+
+    if "research" in sources:
+        try:
+            research_hits = searcher_search(
+                raw_q,
+                _store_dir_for("research"),
+                top=fetch_top,
+                source="research",
+            )
+        except Exception:
+            research_hits = []
+        for hit in research_hits:
+            results.append(_search_result_to_dict(hit))
+
+    results.sort(key=lambda r: float(r.get("score", 0.0)), reverse=True)
+    results = results[:top]
+    return 200, {"results": results, "scoring": _scoring_block()}
+
+
+def _result_link(result: dict[str, Any]) -> str:
+    """Build the canonical link for a result row."""
+    source = str(result.get("source", ""))
+    section_path = str(result.get("section_path", ""))
+    doc_name = str(result.get("doc_name", ""))
+    if source == "adrs":
+        adr_id = section_path.upper()
+        return f"/adrs/{quote(adr_id, safe='')}"
+    if source in ("docs", "research") and doc_name and section_path:
+        return (
+            f"/{source}/"
+            f"{quote(doc_name, safe='')}/"
+            f"{quote(section_path, safe='')}"
+        )
+    return ""
+
+
+_SOURCE_LABELS = {"adrs": "ADRs", "docs": "Docs", "research": "Research"}
+
+
+def _build_results_html(results: list[dict[str, Any]]) -> str:
+    if not results:
+        return (
+            '<div class="kctx-search-empty">'
+            '<p>No results yet. Try a different query or '
+            '<code>source=all</code>.</p>'
+            '</div>'
+        )
+
+    grouped: dict[str, list[dict[str, Any]]] = {"adrs": [], "docs": [], "research": []}
+    for r in results:
+        src = str(r.get("source", ""))
+        grouped.setdefault(src, []).append(r)
+
+    parts: list[str] = ['<div class="kctx-search-results">']
+    for source in ("adrs", "docs", "research"):
+        rows = grouped.get(source) or []
+        if not rows:
+            continue
+        label = _SOURCE_LABELS.get(source, source.title())
+        parts.append('<section class="kctx-search-group">')
+        parts.append(
+            f'<h2 class="kctx-search-group-title">'
+            f'{html_escape(label)} '
+            f'<span class="kctx-search-count">({len(rows)})</span>'
+            '</h2>'
+        )
+        parts.append('<ul class="kctx-search-items">')
+        for r in rows:
+            link = _result_link(r)
+            title = str(r.get("title", "")) or str(r.get("section_path", ""))
+            score = float(r.get("score", 0.0))
+            tags = list(r.get("matched_tags") or [])
+            keywords = list(r.get("matched_keywords") or [])
+            badges_html = "".join(
+                f'<span class="kctx-tag-badge">{html_escape(str(t))}</span>'
+                for t in tags
+            )
+            kw_html = ""
+            if keywords:
+                kw_html = (
+                    '<span class="kctx-search-keywords">'
+                    f'{html_escape(", ".join(str(k) for k in keywords))}'
+                    '</span>'
+                )
+            title_html = (
+                f'<a href="{html_escape(link)}">{html_escape(title)}</a>'
+                if link
+                else html_escape(title)
+            )
+            parts.append(
+                '<li class="kctx-search-item">'
+                f'<div class="kctx-search-item-title">{title_html}</div>'
+                '<div class="kctx-search-item-meta">'
+                f'<span class="kctx-search-source">{html_escape(source)}</span>'
+                f' <span class="kctx-sep">.</span> '
+                f'<span class="kctx-search-score">'
+                f'score {html_escape(f"{score:.2f}")}</span>'
+                + (f' <span class="kctx-sep">.</span> {badges_html}' if badges_html else "")
+                + (f' <span class="kctx-sep">.</span> {kw_html}' if kw_html else "")
+                + '</div>'
+                '</li>'
+            )
+        parts.append('</ul></section>')
+    parts.append('</div>')
+    return "".join(parts)
+
+
+def _build_search_form_html(q: str, source: str) -> str:
+    safe_q = html_escape(q)
+    options = []
+    for value in VALID_SEARCH_SOURCES:
+        selected = ' selected' if value == source else ''
+        options.append(
+            f'<option value="{html_escape(value)}"{selected}>'
+            f'{html_escape(value)}</option>'
+        )
+    return (
+        '<form class="kctx-search-form" method="get" action="/search">'
+        '<input type="search" name="q" '
+        f'value="{safe_q}" placeholder="Search ADRs, docs, research..." '
+        'autocomplete="off" autofocus>'
+        '<label class="kctx-search-source-label">'
+        'source <select name="source">'
+        + "".join(options)
+        + '</select></label>'
+        '<button type="submit">Search</button>'
+        '</form>'
+    )
+
+
+def search_page(path: str, query: dict, **_: object) -> tuple[int, bytes]:
+    """GET /search: server-rendered HTML page with form and results."""
+    q = _query_first(query, "q", "").strip()
+    source = _query_first(query, "source", "all").strip() or "all"
+    display_source = source if source in VALID_SEARCH_SOURCES else "all"
+
+    form_html = _build_search_form_html(q, display_source)
+
+    if not q:
+        results_html = (
+            '<div class="kctx-search-hint">'
+            '<p>Enter a query above to search across ADRs, docs and research.</p>'
+            '</div>'
+        )
+        summary_html = ""
+    else:
+        status, payload = search_unified(path, query)
+        if status == 400:
+            results_html = (
+                '<div class="kctx-search-empty">'
+                '<p>Invalid <code>source</code>. Use one of: '
+                + ", ".join(
+                    f'<code>{html_escape(v)}</code>' for v in VALID_SEARCH_SOURCES
+                )
+                + '.</p></div>'
+            )
+            summary_html = ""
+        else:
+            results = list(payload.get("results") or [])
+            results_html = _build_results_html(results)
+            summary_html = (
+                '<p class="kctx-search-summary">'
+                f'{len(results)} result(s) for '
+                f'<strong>{html_escape(q)}</strong> '
+                f'(source: <code>{html_escape(display_source)}</code>)</p>'
+            )
+
+    ctx = {
+        "search_form_html_raw": form_html,
+        "search_summary_html_raw": summary_html,
+        "search_results_html_raw": results_html,
+    }
+    return 200, render_page("search.html", ctx, title="Search - King Context")
+
+
+# ---------------------------------------------------------------------------
+# Home page
+# ---------------------------------------------------------------------------
+
+
+def _count_or_empty(payload: dict) -> tuple[int, str | None, str | None]:
+    """Pull `(count, reason, hint)` from a list-shape payload.
+
+    Returns `count = len(items)` when items are present and reason/hint are
+    None. When the payload is an EmptyState envelope, returns
+    `(0, reason, hint)` so the UI can surface the hint inline.
+    """
+    items = payload.get("items")
+    reason = payload.get("reason")
+    if items:
+        return len(items), None, None
+    return 0, reason, payload.get("hint") if reason else None
+
+
+def _build_home_card_html(
+    *,
+    label: str,
+    count: int,
+    reason: str | None,
+    hint: str | None,
+    link: str,
+) -> str:
+    safe_label = html_escape(label)
+    safe_link = html_escape(link)
+    if count > 0 or reason is None:
+        body = (
+            f'<div class="kctx-home-count">{html_escape(str(count))}</div>'
+            f'<div class="kctx-home-card-label">{safe_label}</div>'
+        )
+    else:
+        body = (
+            f'<div class="kctx-home-empty">'
+            f'<p class="kctx-empty-reason">{html_escape(str(reason))}</p>'
+            f'<p class="kctx-empty-hint">{html_escape(str(hint or ""))}</p>'
+            '</div>'
+        )
+    return (
+        '<a class="kctx-home-card" '
+        f'href="{safe_link}">'
+        f'<h2 class="kctx-home-card-heading">{safe_label}</h2>'
+        f'{body}'
+        '</a>'
+    )
+
+
+def home_page(path: str, query: dict, **_: object) -> tuple[int, bytes]:
+    """GET /: home dashboard with global search + per-source counts."""
+    _adr_status, adr_payload = adr_list(path, query)
+    _docs_status, docs_payload = corpus_index("docs", path, query)
+    _research_status, research_payload = corpus_index("research", path, query)
+
+    adr_count, adr_reason, adr_hint = _count_or_empty(adr_payload)
+    docs_count, docs_reason, docs_hint = _count_or_empty(docs_payload)
+    research_count, research_reason, research_hint = _count_or_empty(
+        research_payload
+    )
+
+    cards = "".join([
+        _build_home_card_html(
+            label="ADRs",
+            count=adr_count,
+            reason=adr_reason,
+            hint=adr_hint,
+            link="/adrs",
+        ),
+        _build_home_card_html(
+            label="Docs",
+            count=docs_count,
+            reason=docs_reason,
+            hint=docs_hint,
+            link="/docs",
+        ),
+        _build_home_card_html(
+            label="Research",
+            count=research_count,
+            reason=research_reason,
+            hint=research_hint,
+            link="/research",
+        ),
+    ])
+
+    form_html = _build_search_form_html("", "all")
+
+    ctx = {
+        "search_form_html_raw": form_html,
+        "home_cards_html_raw": cards,
+    }
+    return 200, render_page("home.html", ctx, title="King Context")

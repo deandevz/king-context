@@ -208,6 +208,24 @@ def _handle_section_page_research(
     return _import_handlers().section_page("research", path, query, **kw)
 
 
+def _handle_search_unified(
+    path: str, query: dict, **kw: object
+) -> tuple[int, dict]:
+    return _import_handlers().search_unified(path, query, **kw)
+
+
+def _handle_search_page(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().search_page(path, query, **kw)
+
+
+def _handle_home_page(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().home_page(path, query, **kw)
+
+
 _HTML = "text/html; charset=utf-8"
 
 
@@ -255,6 +273,11 @@ _ROUTES: list[tuple[str, str, Callable[..., tuple], str | None]] = [
         _handle_section_page_research,
         _HTML,
     ),
+    # Unified search.
+    ("GET", "/api/search", _handle_search_unified, None),
+    ("GET", "/search", _handle_search_page, _HTML),
+    # Home page (registered last among HTML routes; exact-path match).
+    ("GET", "/", _handle_home_page, _HTML),
     ("GET", "/static/{*rest}", _handle_static, None),
 ]
 

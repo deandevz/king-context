@@ -25,12 +25,86 @@ from __future__ import annotations
 import html
 from importlib.resources import files
 from string import Template
-from typing import Any
+from typing import Any, Literal
 
 
 _TEMPLATES_PACKAGE = "king_context.web.templates"
 _LAYOUT_NAME = "_layout.html"
 _LAYOUT_CONTENT_KEY = "__layout_content__"
+
+
+EmptyStateReason = Literal["dir_missing", "not_indexed", "parse_error"]
+
+
+HINTS: dict[str, dict[str, str]] = {
+    "adrs": {
+        "dir_missing": (
+            "Run `kctx adr index` to populate from .king-context/adr/*.md"
+        ),
+        "not_indexed": (
+            "No ADRs found. Run `npx @king-context/cli init` and add ADRs "
+            "with `kctx adr new`."
+        ),
+        "parse_error": (
+            "ADR has invalid frontmatter. Run `kctx adr validate` to see "
+            "errors."
+        ),
+    },
+    "docs": {
+        "dir_missing": (
+            "Run `npx @king-context/cli init` to create the docs store."
+        ),
+        "not_indexed": (
+            "No docs indexed. Run `king-scrape <url>` or "
+            "`kctx index <file.json>`."
+        ),
+        "parse_error": (
+            "Corpus index.json is malformed. Re-run `kctx index`."
+        ),
+    },
+    "research": {
+        "dir_missing": (
+            "Run `npx @king-context/cli init` to create the research store."
+        ),
+        "not_indexed": "No research indexed. Run `king-research <topic>`.",
+        "parse_error": (
+            "Corpus index.json is malformed. Re-run `kctx index`."
+        ),
+    },
+}
+
+
+def default_hint(source: str, reason: str) -> str:
+    """Return the canonical hint string for `(source, reason)`.
+
+    `source` is one of `adrs` / `docs` / `research`. `reason` is one of
+    `dir_missing` / `not_indexed` / `parse_error`. Unknown combinations
+    return an empty string so callers can fall back to a custom message.
+    """
+    return HINTS.get(source, {}).get(reason, "")
+
+
+def empty_state(
+    reason: EmptyStateReason,
+    hint: str,
+    *,
+    extra_fields: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the canonical empty-state response dict.
+
+    Always returns `{"items": [], "reason": reason, "hint": hint, **extra}`.
+    Handlers with a richer shape (e.g. search returns `results` not `items`)
+    pass `extra_fields={"results": []}`. `extra_fields` takes precedence,
+    so a handler can override `items` if it does not need that key.
+    """
+    payload: dict[str, Any] = {
+        "items": [],
+        "reason": reason,
+        "hint": hint,
+    }
+    if extra_fields:
+        payload.update(extra_fields)
+    return payload
 
 
 def html_escape(value: str) -> str:
