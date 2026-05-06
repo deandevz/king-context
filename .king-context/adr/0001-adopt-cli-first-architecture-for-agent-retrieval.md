@@ -14,6 +14,7 @@ superseded_by: []
 related:
   - ADR-0002
   - ADR-0003
+  - ADR-0004
 keywords:
   - cli-first
   - agent-retrieval
@@ -28,6 +29,7 @@ tags:
   - retrieval
   - agents
 ---
+
 
 
 # ADR-0001: Adopt CLI-first architecture for agent retrieval
