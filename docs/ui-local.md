@@ -1,5 +1,11 @@
 # Local UI
 
+> **Beta.** The local UI is not 100% production ready. It ships as a
+> working base to build on so the project can start delivering value
+> while the interface evolves. Contributions to the UI and UX, anything
+> that makes the pages more intuitive or easier to navigate, are very
+> welcome.
+
 A local, read-only web UI for browsing the ADRs, docs, and research indexed
 in `.king-context/`. It is a quality-of-life aid for humans. The canonical
 retrieval surface for agents is the `kctx` CLI (see ADR-0001).
@@ -40,7 +46,7 @@ Press `Ctrl+C` to stop.
 
 ## What each page shows
 
-The four pages below correspond to the screenshots in
+The pages below correspond to the screenshots in
 `docs/assets/ui-local/`. The top navigation (`Home` / `ADRs` / `Docs` /
 `Research` / `Search`) is present on every page.
 
@@ -70,9 +76,17 @@ referenced ID that does not exist in the index is rendered with a
 
 ### Docs (`/docs/{name}`) and Research (`/research/{topic}`)
 
+![Docs corpus with sidebar and rendered section](./assets/ui-local/docs-corpus.png)
+
+![Research corpus with sidebar and rendered section](./assets/ui-local/research-corpus.png)
+
 A sidebar lists the corpus sections grouped by tag. The center pane shows
 the rendered Markdown of the section selected via URL or sidebar click.
 The two routes are visually identical apart from the corpus subtitle.
+
+Embedded media inside a section (images, diagrams, tables) is constrained
+to the width of the content card, so wide assets scale down instead of
+breaking the layout.
 
 ### Search (`/search`)
 
