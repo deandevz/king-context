@@ -148,6 +148,66 @@ def _handle_adr_detail_page(
     return _import_handlers().adr_detail_page(path, query, **kw)
 
 
+def _handle_corpus_index_docs(
+    path: str, query: dict, **kw: object
+) -> tuple[int, dict]:
+    return _import_handlers().corpus_index("docs", path, query, **kw)
+
+
+def _handle_corpus_index_research(
+    path: str, query: dict, **kw: object
+) -> tuple[int, dict]:
+    return _import_handlers().corpus_index("research", path, query, **kw)
+
+
+def _handle_section_list_docs(
+    path: str, query: dict, **kw: object
+) -> tuple[int, dict]:
+    return _import_handlers().section_list("docs", path, query, **kw)
+
+
+def _handle_section_list_research(
+    path: str, query: dict, **kw: object
+) -> tuple[int, dict]:
+    return _import_handlers().section_list("research", path, query, **kw)
+
+
+def _handle_section_detail_docs(
+    path: str, query: dict, **kw: object
+) -> tuple[int, dict]:
+    return _import_handlers().section_detail("docs", path, query, **kw)
+
+
+def _handle_section_detail_research(
+    path: str, query: dict, **kw: object
+) -> tuple[int, dict]:
+    return _import_handlers().section_detail("research", path, query, **kw)
+
+
+def _handle_corpus_page_docs(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().corpus_page("docs", path, query, **kw)
+
+
+def _handle_corpus_page_research(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().corpus_page("research", path, query, **kw)
+
+
+def _handle_section_page_docs(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().section_page("docs", path, query, **kw)
+
+
+def _handle_section_page_research(
+    path: str, query: dict, **kw: object
+) -> tuple[int, bytes]:
+    return _import_handlers().section_page("research", path, query, **kw)
+
+
 _HTML = "text/html; charset=utf-8"
 
 
@@ -163,6 +223,38 @@ _ROUTES: list[tuple[str, str, Callable[..., tuple], str | None]] = [
     ("GET", "/api/adrs/{id}", _handle_adr_detail, None),
     ("GET", "/adrs", _handle_adr_page, _HTML),
     ("GET", "/adrs/{id}", _handle_adr_detail_page, _HTML),
+    # Corpus JSON endpoints (docs + research).
+    ("GET", "/api/docs", _handle_corpus_index_docs, None),
+    ("GET", "/api/docs/{name}/sections", _handle_section_list_docs, None),
+    (
+        "GET",
+        "/api/docs/{name}/sections/{section_path}",
+        _handle_section_detail_docs,
+        None,
+    ),
+    ("GET", "/api/research", _handle_corpus_index_research, None),
+    (
+        "GET",
+        "/api/research/{name}/sections",
+        _handle_section_list_research,
+        None,
+    ),
+    (
+        "GET",
+        "/api/research/{name}/sections/{section_path}",
+        _handle_section_detail_research,
+        None,
+    ),
+    # Corpus HTML pages.
+    ("GET", "/docs/{name}", _handle_corpus_page_docs, _HTML),
+    ("GET", "/docs/{name}/{section_path}", _handle_section_page_docs, _HTML),
+    ("GET", "/research/{name}", _handle_corpus_page_research, _HTML),
+    (
+        "GET",
+        "/research/{name}/{section_path}",
+        _handle_section_page_research,
+        _HTML,
+    ),
     ("GET", "/static/{*rest}", _handle_static, None),
 ]
 
