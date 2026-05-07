@@ -1,13 +1,14 @@
+import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
 from king_context.scraper.config import ScraperConfig
 
 
-@dataclass
+@dataclass(frozen=True)
 class Chunk:
     title: str
     breadcrumb: str
@@ -15,6 +16,15 @@ class Chunk:
     source_url: str
     path: str
     token_count: int
+    content_hash: str = field(default="")
+
+    def __post_init__(self) -> None:
+        if not self.content_hash:
+            object.__setattr__(
+                self,
+                "content_hash",
+                hashlib.sha256(self.content.encode("utf-8")).hexdigest(),
+            )
 
 
 def _estimate_tokens(text: str) -> int:
@@ -200,6 +210,7 @@ def chunk_pages(pages_dir: Path, output_dir: Path, config: ScraperConfig) -> lis
                 "source_url": c.source_url,
                 "path": c.path,
                 "token_count": c.token_count,
+                "content_hash": c.content_hash,
             }
             for c in page_chunks
         ]

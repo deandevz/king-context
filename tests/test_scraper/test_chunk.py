@@ -167,3 +167,32 @@ def test_chunk_token_count():
     assert len(chunks) == 1
     expected = int(100 * 1.33)
     assert chunks[0].token_count == expected
+
+
+def test_chunk_content_hash_is_populated():
+    chunk = Chunk(
+        title="t",
+        breadcrumb="t",
+        content="hello world",
+        source_url="https://example.com",
+        path="/p",
+        token_count=2,
+    )
+    assert len(chunk.content_hash) == 64
+    assert all(c in "0123456789abcdef" for c in chunk.content_hash)
+
+
+def test_chunk_content_hash_is_deterministic():
+    a = Chunk(title="", breadcrumb="", content="same content",
+              source_url="u", path="p", token_count=1)
+    b = Chunk(title="", breadcrumb="", content="same content",
+              source_url="u", path="p", token_count=1)
+    assert a.content_hash == b.content_hash
+
+
+def test_chunk_content_hash_changes_with_content():
+    a = Chunk(title="", breadcrumb="", content="A",
+              source_url="u", path="p", token_count=1)
+    b = Chunk(title="", breadcrumb="", content="B",
+              source_url="u", path="p", token_count=1)
+    assert a.content_hash != b.content_hash

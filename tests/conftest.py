@@ -2,7 +2,19 @@
 
 import pytest
 import king_context.db as db
+from king_context.scraper import enrich_cache
 from types import SimpleNamespace
+
+
+@pytest.fixture(autouse=True)
+def _isolate_enrich_cache(tmp_path, monkeypatch):
+    """Redirect the enrichment cache to a fresh tmp dir per test.
+
+    Tests routinely reuse identical chunk content; without isolation, the
+    persistent on-disk cache short-circuits the LLM call paths the tests
+    are exercising.
+    """
+    monkeypatch.setattr(enrich_cache, "DEFAULT_CACHE_DIR", tmp_path / "_enrich_cache")
 
 
 class FakeLLMClient:
