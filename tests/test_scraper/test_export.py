@@ -102,3 +102,27 @@ def test_save_and_index_creates_parent_dirs(tmp_path):
         save_and_index(doc_data, output_path, auto_seed=True)
 
     assert output_path.exists()
+
+
+def test_export_section_carries_content_hash():
+    chunk = make_enriched_chunk()
+    result = export_to_json([chunk], "example", "Example", "https://example.com")
+    section = result["sections"][0]
+    assert "_meta" in section
+    assert section["_meta"]["content_hash"] == chunk.content_hash
+    assert len(section["_meta"]["content_hash"]) == 64
+
+
+def test_export_top_level_meta():
+    result = export_to_json(
+        [make_enriched_chunk()],
+        "example",
+        "Example",
+        "https://docs.example.com",
+    )
+    meta = result["_meta"]
+    assert meta["schema_version"] == 1
+    assert meta["source_url"] == "https://docs.example.com"
+    assert meta["section_count"] == 1
+    assert "scraped_at" in meta
+    assert "scraper_version" in meta
