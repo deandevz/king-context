@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `king-scrape audit <name>` subcommand (ADR-0013). Walks the URLs of an
+  indexed corpus and reports which are reachable, moved (3xx with the
+  redirect target), broken (404/410), or unreachable. Optionally
+  re-runs discovery against the upstream and reports URLs added or
+  removed since the corpus was indexed (`--no-discover` to skip).
+  Read-only — never mutates the corpus file or the database. No LLM
+  cost. Markdown report lands at `.king-context/audit/<name>-<ts>.md`.
+  Exit code is `0` on clean, `2` when at least one section is broken,
+  so it can gate a CI job.
+
 ## [0.4.0] - 2026-05-06
 
 ### Added

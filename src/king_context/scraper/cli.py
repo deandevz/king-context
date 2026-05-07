@@ -256,7 +256,10 @@ async def run_pipeline(args: argparse.Namespace, config: ScraperConfig) -> None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="king-scrape",
-        description="Scrape and index documentation for King Context",
+        description=(
+            "Scrape and index documentation for King Context. "
+            "Use `king-scrape audit <name>` to check an existing corpus for drift."
+        ),
     )
     parser.add_argument("url", help="Base URL of the documentation to scrape")
     parser.add_argument(
@@ -347,6 +350,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "audit":
+        from king_context.scraper.audit import audit_main
+        sys.exit(audit_main(sys.argv[2:]))
+
     parser = _build_parser()
     args = parser.parse_args()
     config = load_config(
