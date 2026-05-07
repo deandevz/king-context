@@ -37,6 +37,17 @@ def test_make_key_changes_with_prompt_version():
     assert a != b
 
 
+def test_make_key_no_delimiter_collision_with_pipe_in_content():
+    # Markdown tables put `|` inside content. Length-prefixed digests must keep
+    # these distinguishable rather than colliding via a string-join boundary.
+    a = enrich_cache.make_key("foo|model-1|1", "model-2", "2")
+    b = enrich_cache.make_key("foo", "model-1", "1|model-2|2")
+    c = enrich_cache.make_key("foo", "model-1", "1")
+    assert a != b
+    assert a != c
+    assert b != c
+
+
 def test_get_returns_none_on_missing(tmp_path: Path):
     assert enrich_cache.get("deadbeef", cache_dir=tmp_path) is None
 

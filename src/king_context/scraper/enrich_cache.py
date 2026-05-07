@@ -30,9 +30,18 @@ DEFAULT_CACHE_DIR = PROJECT_ROOT / ".king-context" / "cache" / "enrichment"
 
 
 def make_key(content: str, model: str, prompt_version: str) -> str:
-    """Return the cache key for a ``(content, model, prompt_version)`` triple."""
-    payload = f"{content}|{model}|{prompt_version}".encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+    """Return the cache key for a ``(content, model, prompt_version)`` triple.
+
+    Each component is hashed to a fixed-length digest before concatenation, then
+    the concatenation is hashed. A character delimiter would in principle allow
+    collisions when ``content`` contains the delimiter (markdown tables use ``|``);
+    fixed-length digests make boundary ambiguity impossible.
+    """
+    digests = b"".join(
+        hashlib.sha256(part.encode("utf-8")).digest()
+        for part in (content, model, prompt_version)
+    )
+    return hashlib.sha256(digests).hexdigest()
 
 
 def get(key: str, cache_dir: Path | None = None) -> dict[str, Any] | None:
