@@ -14,6 +14,21 @@ Portuguese version: [README-pt-br.md](README-pt-br.md).
 
 Agents work better when they see the right context, not all of it. King Context indexes any corpus you give it (vendor docs, open web research, internal notes, architectural decisions) and hands the agent back exactly the slice it needs. Every section is annotated with structured metadata, so the agent searches before it reads, previews before it pulls full content, and never burns its budget on a file dump.
 
+## Why this exists
+
+King Context started as an internal tool for my own company. I run YouTube automation at scale, and my agents needed retrieval that didn't hallucinate, didn't burn the context window on file dumps, and didn't depend on opaque embedding similarity. I tried the existing options. None of them held up.
+
+So I built this for myself first. It's been in production on my own systems for months before any of it was public.
+
+A few things follow from that, and they're worth knowing before you adopt it:
+
+- **The same King Context you clone is the King Context I use.** No private fork, no internal branch with extra features, no premium build. If something breaks in a release, it breaks for me first.
+- **I don't depend on this project to pay rent.** My income comes from elsewhere. That means no investor pressure to ship features that don't earn their place, no urgency to compromise the license, no incentive to capture users into a SaaS.
+- **The core stays MIT, permanently.** If I ever build something that's paid, it lives outside this repo. What's in the repo is open. What I add to the repo is open. That's not a strategy I might revisit: **IT'S A CONSTRAINT.**
+- **I review every line because if it breaks, it breaks my workflow tomorrow.** Quality here isn't discipline. It's incentive alignment.
+
+The project ships when shipping helps me, my agents, or my own skills built on top of it. That's the filter. If you have the same itch I had agents that need precise, structured retrieval without the embedding lottery, **King Context is built for you the same way it's built for me.**
+
 ## Quick start
 
 ```bash
