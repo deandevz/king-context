@@ -258,7 +258,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="king-scrape",
         description=(
             "Scrape and index documentation for King Context. "
-            "Use `king-scrape audit <name>` to check an existing corpus for drift."
+            "Use `king-scrape audit <name>` to check an existing corpus for "
+            "drift, or `king-scrape update <name>` to refresh it cheaply."
         ),
     )
     parser.add_argument("url", help="Base URL of the documentation to scrape")
@@ -350,9 +351,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    if len(sys.argv) > 1 and sys.argv[1] == "audit":
-        from king_context.scraper.audit import audit_main
-        sys.exit(audit_main(sys.argv[2:]))
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "audit":
+            from king_context.scraper.audit import audit_main
+            sys.exit(audit_main(sys.argv[2:]))
+        if sys.argv[1] == "update":
+            from king_context.scraper.update import update_main
+            sys.exit(update_main(sys.argv[2:]))
 
     parser = _build_parser()
     args = parser.parse_args()

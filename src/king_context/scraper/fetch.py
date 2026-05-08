@@ -70,16 +70,28 @@ async def fetch_pages(
     output_dir: Path,
     config: ScraperConfig,
     provider: FetchProvider,
+    *,
+    force_refresh: bool = False,
 ) -> FetchResult:
+    """Fetch ``urls`` into ``output_dir/pages/``.
+
+    By default the slug skip behaviour gives idempotent resume. Pass
+    ``force_refresh=True`` to refetch every URL regardless of cached state;
+    used by the update flow (ADR-0014) to detect upstream content drift.
+    """
     pages_dir = output_dir / "pages"
     pages_dir.mkdir(parents=True, exist_ok=True)
 
-    existing_slugs = {f.stem for f in pages_dir.glob("*.md")}
-    pending_urls = [u for u in urls if _url_to_slug(u) not in existing_slugs]
-    skipped = len(urls) - len(pending_urls)
+    if force_refresh:
+        pending_urls = list(urls)
+        skipped = 0
+    else:
+        existing_slugs = {f.stem for f in pages_dir.glob("*.md")}
+        pending_urls = [u for u in urls if _url_to_slug(u) not in existing_slugs]
+        skipped = len(urls) - len(pending_urls)
 
-    if skipped > 0:
-        print(f"Resuming: {skipped} pages already fetched, {len(pending_urls)} remaining")
+        if skipped > 0:
+            print(f"Resuming: {skipped} pages already fetched, {len(pending_urls)} remaining")
 
     semaphore = asyncio.Semaphore(config.concurrency)
 

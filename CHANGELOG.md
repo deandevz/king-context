@@ -36,6 +36,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   corpus file or the database. No LLM cost. Markdown report lands at
   `.king-context/audit/<name>-<ts>.md`. Exit code is `0` on clean,
   `2` when at least one section is broken, so it can gate a CI job.
+- `king-scrape update <name>` subcommand (ADR-0014). Refetches the
+  upstream of an indexed corpus, rechunks, and reuses every section
+  whose chunked content is byte identical to the previous scrape.
+  Only new or changed chunks are sent to the LLM, so a typical
+  refresh costs cents instead of dollars even on a large corpus.
+  Reused sections carry forward `keywords`, `use_cases`, `tags`,
+  `priority` from the existing corpus but adopt fresh `title`,
+  `path`, `url` so a page reorganisation upstream is reflected.
+  Cost preview before enrichment; `--yes` skips the prompt. Writes
+  back to the same `data/<name>.json` path so `git diff` shows
+  exactly what changed. Pre ADR-0012 corpora (no
+  `_meta.content_hash`) are handled by recomputing the hash from
+  `content`. The work directory is reset at the start of every
+  update and the corpus JSON is written atomically (tempfile plus
+  rename). `fetch_pages` gains a `force_refresh=True` flag so the
+  update flow can refetch every URL regardless of cached state.
 
 ## [0.4.0] - 2026-05-06
 
