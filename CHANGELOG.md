@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A single chunk's `ProviderError` no longer aborts the entire concurrent
+  enrich batch (#47). `_enrich_one` is now contract-bound never to raise:
+  non-transient primary errors break the retry loop early and fall through
+  to the schema fallback (the layer designed to absorb malformed JSON);
+  the schema fallback's own failures are absorbed; the chunk is dropped
+  from the output and the batch keeps running. `enrich_chunks` adds
+  `return_exceptions=True` to its `asyncio.gather` call as a defensive
+  guard. Per-chunk failures and per-task `CancelledError`s emit a warning
+  on stderr and a per-batch summary line (`batch NNNN: X enriched, Y
+  dropped`) so contributors can see exactly how many chunks were lost.
+- The schema fallback's enrichments are no longer cached under the
+  primary client's cache key. Pre-fix, a successful schema-fallback
+  response was written to `enrich_cache` keyed by the primary's model;
+  next run with the primary healthy would short-circuit at the cache
+  check and serve fallback content as if it were primary. The cache
+  invariant is now: only successful primary responses are cached.
+- `enrich_chunks` deduplicates the schema fallback when the primary is a
+  `FallbackClient` whose own fallback leg points at the same underlying
+  client. Pre-fix this configuration paid for two LLM calls against the
+  same client per failed chunk; now the schema-fallback step is skipped
+  and the FallbackClient's internal fallback is the only call.
+- The bare `except Exception` in `_enrich_one` was narrowed to
+  `(ProviderError, asyncio.TimeoutError, ValueError, json.JSONDecodeError)`
+  so programming errors (`AttributeError`, `TypeError`, etc.) propagate
+  instead of being silently retried as transient provider hiccups.
+
 ### Added
 
 - Content-hash provenance through every layer of the scraper pipeline
