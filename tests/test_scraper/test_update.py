@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import os
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -257,6 +258,7 @@ def test_update_corpus_reuses_unchanged_and_enriches_new(tmp_path: Path, monkeyp
 
     assert report.reused == 1
     assert report.enriched == 1
+    assert report.lost == 0
     assert report.total_sections == 2
 
     rewritten = json.loads(corpus_path.read_text())
@@ -288,6 +290,176 @@ def test_update_main_returns_1_when_corpus_missing(capsys):
     assert rc == 1
     err = capsys.readouterr().err
     assert "not found" in err.lower()
+
+
+def test_update_corpus_refuses_to_wipe_to_empty(tmp_path: Path, monkeypatch):
+    """A discover/filter blip producing 0 URLs must not overwrite the corpus."""
+    corpus_path = _make_corpus(
+        tmp_path,
+        sections=[_section("aaa", title="A"), _section("bbb", title="B")],
+    )
+    original = corpus_path.read_text()
+
+    _patch_pipeline(
+        monkeypatch,
+        fresh_chunks=[],  # discover/filter produced nothing
+        fresh_urls=[],
+        enriched_new=[],
+    )
+
+    with pytest.raises(ValueError, match="empty corpus"):
+        asyncio.run(update.update_corpus(
+            name="demo",
+            corpus_path=corpus_path,
+            config=ScraperConfig(openrouter_api_key="x"),
+            yes=True,
+        ))
+
+    # Corpus on disk untouched.
+    assert corpus_path.read_text() == original
+
+
+def test_update_corpus_short_circuits_when_all_chunks_reused(tmp_path: Path, monkeypatch):
+    """If every fresh chunk hashes to an existing section, skip enrich entirely."""
+    corpus_path = _make_corpus(
+        tmp_path,
+        sections=[_section("aaa", title="A"), _section("bbb", title="B")],
+    )
+    fresh_chunks = [_chunk("aaa"), _chunk("bbb")]
+
+    enrich_calls = {"count": 0}
+
+    async def fake_enrich(chunks, config, work_dir):
+        enrich_calls["count"] += 1
+        return []
+
+    _patch_pipeline(
+        monkeypatch,
+        fresh_chunks=fresh_chunks,
+        fresh_urls=["https://docs.example.com/page"],
+        enriched_new=[],
+    )
+    monkeypatch.setattr(update, "enrich_chunks", fake_enrich)
+
+    report = asyncio.run(update.update_corpus(
+        name="demo",
+        corpus_path=corpus_path,
+        config=ScraperConfig(openrouter_api_key="x"),
+        yes=True,
+    ))
+
+    assert enrich_calls["count"] == 0
+    assert report.reused == 2
+    assert report.enriched == 0
+
+
+def test_update_corpus_reports_lost_chunks(tmp_path: Path, monkeypatch):
+    corpus_path = _make_corpus(
+        tmp_path, sections=[_section("aaa", title="A")]
+    )
+    fresh_chunks = [_chunk("aaa"), _chunk("xxx"), _chunk("yyy")]
+    # enrich returns only one of two new chunks: simulates a validation failure.
+    enriched_new = [
+        EnrichedChunk(
+            title="X", path="/x", url="u", content="xxx",
+            keywords=["k"] * 5, use_cases=["uc1", "uc2"],
+            tags=["t"], priority=5, content_hash=_hash("xxx"),
+        ),
+    ]
+    _patch_pipeline(
+        monkeypatch,
+        fresh_chunks=fresh_chunks,
+        fresh_urls=["https://docs.example.com/page"],
+        enriched_new=enriched_new,
+    )
+
+    report = asyncio.run(update.update_corpus(
+        name="demo",
+        corpus_path=corpus_path,
+        config=ScraperConfig(openrouter_api_key="x"),
+        yes=True,
+    ))
+
+    assert report.reused == 1
+    assert report.enriched == 1
+    assert report.lost == 1
+    assert report.total_sections == 2  # aaa + xxx; yyy lost
+
+
+def test_reset_work_dir_removes_stale_state(tmp_path: Path):
+    work = tmp_path / "work"
+    (work / "pages").mkdir(parents=True)
+    (work / "pages" / "old.md").write_text("stale")
+    (work / "chunks").mkdir(parents=True)
+    (work / "chunks" / "old.json").write_text("[]")
+    (work / "enriched").mkdir(parents=True)
+    (work / "enriched" / "batch_0001.json").write_text("[]")
+    (work / "manifest.json").write_text("{}")
+
+    update._reset_work_dir(work)
+
+    assert not (work / "pages").exists()
+    assert not (work / "chunks").exists()
+    assert not (work / "enriched").exists()
+    assert not (work / "manifest.json").exists()
+
+
+def test_reset_work_dir_is_safe_on_clean_dir(tmp_path: Path):
+    work = tmp_path / "work"
+    work.mkdir()
+    update._reset_work_dir(work)  # must not raise
+
+
+def test_atomic_write_json_writes_complete_file(tmp_path: Path):
+    target = tmp_path / "corpus.json"
+    update._atomic_write_json(target, {"hello": "world"})
+    assert json.loads(target.read_text()) == {"hello": "world"}
+    # No leftover tempfile.
+    assert not list(tmp_path.glob(".*.tmp"))
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_update_main_corpus_path_flag_bypasses_lookup(tmp_path: Path, monkeypatch):
+    corpus_path = _make_corpus(tmp_path)
+    fresh_chunks = [_chunk(s["content"]) for s in [_section("aaa"), _section("bbb")]]
+    _patch_pipeline(
+        monkeypatch,
+        fresh_chunks=fresh_chunks,
+        fresh_urls=["https://docs.example.com/page"],
+        enriched_new=[],
+    )
+    monkeypatch.setattr(update, "load_config", lambda **_: ScraperConfig(openrouter_api_key="x"))
+    # find_corpus must NOT be called when --corpus-path is provided.
+    monkeypatch.setattr(update, "find_corpus", lambda name: (_ for _ in ()).throw(
+        AssertionError("find_corpus should not be called when --corpus-path is set")
+    ))
+
+    rc = update.update_main([
+        "demo", "--yes",
+        "--corpus-path", str(corpus_path),
+    ])
+    assert rc == 0
+
+
+def test_update_main_corpus_path_flag_errors_when_missing(tmp_path: Path, capsys):
+    rc = update.update_main([
+        "demo", "--yes",
+        "--corpus-path", str(tmp_path / "nope.json"),
+    ])
+    assert rc == 1
+    assert "does not exist" in capsys.readouterr().err
+
+
+def test_update_main_provider_flag_overrides_env(monkeypatch):
+    """Unlike `setdefault`, an explicit --provider should win over a pre-set env."""
+    monkeypatch.setenv("SCRAPE_PROVIDER", "firecrawl")
+    # Force the rest of the run to bail cheaply: corpus not found returns 1.
+    rc = update.update_main([
+        "does-not-exist", "--yes",
+        "--provider", "crawl4ai",
+    ])
+    assert rc == 1
+    assert os.environ["SCRAPE_PROVIDER"] == "crawl4ai"
 
 
 def test_update_main_exit_code_on_user_abort(tmp_path: Path, monkeypatch):

@@ -20,7 +20,9 @@ import asyncio
 import hashlib
 import json
 import os
+import shutil
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -41,7 +43,7 @@ from king_context.scraper.enrich import (
     enrich_chunks,
     estimate_cost,
 )
-from king_context.scraper.export import export_to_json, save_and_index
+from king_context.scraper.export import export_to_json
 from king_context.scraper.fetch import fetch_pages
 from king_context.scraper.filter import filter_urls
 
@@ -68,6 +70,7 @@ class UpdateReport:
     name: str
     reused: int
     enriched: int
+    lost: int
     removed_urls: list[str]
     added_urls: list[str]
     total_sections: int
@@ -97,11 +100,56 @@ def _load_corpus(corpus_path: Path) -> dict:
 
 
 def _section_hash(section: dict) -> str:
-    """Resolve a section's content hash, falling back to a recompute for legacy corpora."""
+    """Resolve a section's content hash, falling back to a recompute for legacy corpora.
+
+    The fallback assumes the JSON-stored ``content`` round-trips to the same bytes
+    a fresh chunk produces; under the standard ``json.loads`` settings (NFC unicode,
+    UTF-8 encoding) this holds. Corpora with non-NFC content will miss-match here
+    and pay LLM cost on the first update; subsequent updates after that one
+    rewrites the corpus carry the stored ``_meta.content_hash`` and cost nothing.
+    """
     stored = section.get("_meta", {}).get("content_hash")
     if stored:
         return stored
     return hashlib.sha256(section.get("content", "").encode("utf-8")).hexdigest()
+
+
+def _reset_work_dir(work_dir: Path) -> None:
+    """Wipe per-stage state so update never inherits artifacts from a prior run.
+
+    Critical for correctness: stale ``enriched/batch_*.json`` triggers the resume
+    logic in ``enrich.py`` and silently returns the OLD batch contents instead of
+    enriching the fresh chunks. Stale ``pages/*.md`` from URLs no longer present
+    upstream would survive ``chunk_pages`` and resurface in the new corpus as
+    "reused" because their content hash still matches the old sections.
+    """
+    for sub in ("pages", "chunks", "enriched"):
+        target = work_dir / sub
+        if target.exists():
+            shutil.rmtree(target)
+    manifest = work_dir / "manifest.json"
+    if manifest.exists():
+        manifest.unlink()
+
+
+def _atomic_write_json(path: Path, doc: dict) -> None:
+    """Write JSON via tempfile + os.replace so an interrupted update never leaves a partial file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(doc, indent=2, ensure_ascii=False)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(payload)
+        os.replace(tmp_name, path)
+        tmp_name = None
+    finally:
+        if tmp_name is not None and Path(tmp_name).exists():
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
 
 
 def _enrichment_from_section(section: dict) -> dict:
@@ -234,6 +282,7 @@ async def update_corpus(
 
     work_dir = get_work_dir(source_url)
     work_dir.mkdir(parents=True, exist_ok=True)
+    _reset_work_dir(work_dir)
 
     print(f"[update] target: {name} ({source_url})")
     print("[discover] running...")
@@ -262,6 +311,16 @@ async def update_corpus(
     fresh_chunks = chunk_pages(work_dir / "pages", work_dir, config)
     print(f"  produced {len(fresh_chunks)} chunks")
 
+    # Refuse to wipe a non-empty corpus when discover/filter produced nothing.
+    # Most often this is a network blip or an over-aggressive filter regex; the
+    # original corpus is the safer artifact to preserve.
+    if not fresh_chunks and corpus.get("sections"):
+        raise ValueError(
+            f"refused to overwrite {corpus_path} with an empty corpus "
+            f"(discover/filter produced 0 URLs). The existing corpus is "
+            "untouched. Investigate before retrying."
+        )
+
     reuse_index = _build_reuse_index(corpus)
     plan = _plan_update(fresh_chunks, filtered.accepted, reuse_index, corpus)
 
@@ -271,9 +330,20 @@ async def update_corpus(
         print("aborted by user")
         raise SystemExit(1)
 
-    print("[enrich] running...")
-    enriched_new = await enrich_chunks(plan.new_chunks, config, work_dir)
-    print(f"  enriched {len(enriched_new)} new chunks")
+    if plan.new_chunks:
+        print("[enrich] running...")
+        enriched_new = await enrich_chunks(plan.new_chunks, config, work_dir)
+        print(f"  enriched {len(enriched_new)} new chunks")
+    else:
+        print("[enrich] nothing to enrich (all chunks reused)")
+        enriched_new = []
+
+    lost = len(plan.new_chunks) - len(enriched_new)
+    if lost > 0:
+        print(
+            f"warning: {lost} chunk(s) failed enrichment and are not in "
+            "the output corpus"
+        )
 
     reused_enriched = _materialise_reused(plan.reused_chunks, reuse_index)
     final = _interleave_in_chunk_order(fresh_chunks, reused_enriched, enriched_new)
@@ -287,12 +357,13 @@ async def update_corpus(
     )
 
     print("[export] running...")
-    save_and_index(doc, corpus_path, auto_seed=False)
+    _atomic_write_json(corpus_path, doc)
 
     return UpdateReport(
         name=name,
         reused=len(reused_enriched),
         enriched=len(enriched_new),
+        lost=lost,
         removed_urls=plan.removed_urls,
         added_urls=plan.added_urls,
         total_sections=len(final),
@@ -315,6 +386,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Skip the cost confirmation prompt before enrichment.",
     )
     parser.add_argument(
+        "--corpus-path",
+        type=Path,
+        default=None,
+        help=(
+            "Explicit path to the corpus JSON. Bypasses the default lookup in "
+            "data/<name>.json and .king-context/data/<name>.json."
+        ),
+    )
+    parser.add_argument(
         "--provider",
         default=None,
         help="Scraper provider name (e.g. 'firecrawl', 'crawl4ai').",
@@ -330,13 +410,24 @@ def _build_parser() -> argparse.ArgumentParser:
 def update_main(argv: list[str]) -> int:
     args = _build_parser().parse_args(argv)
     if args.provider:
-        os.environ.setdefault("SCRAPE_PROVIDER", args.provider)
+        # The user explicitly asked for this provider on the command line, so
+        # the flag wins over any pre-existing env (unlike the existing
+        # cli.run_pipeline path which uses setdefault). Stage-specific envs
+        # SCRAPE_DISCOVER_PROVIDER / SCRAPE_FETCH_PROVIDER still take
+        # precedence per ADR-0009.
+        os.environ["SCRAPE_PROVIDER"] = args.provider
 
-    try:
-        corpus_path = find_corpus(args.name)
-    except FileNotFoundError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
+    if args.corpus_path is not None:
+        corpus_path = args.corpus_path
+        if not corpus_path.exists():
+            print(f"error: corpus path does not exist: {corpus_path}", file=sys.stderr)
+            return 1
+    else:
+        try:
+            corpus_path = find_corpus(args.name)
+        except FileNotFoundError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
 
     config = load_config(enrichment_model=args.model)
 
@@ -356,10 +447,13 @@ def update_main(argv: list[str]) -> int:
     except SystemExit as exc:
         return int(exc.code or 1)
 
+    extras = ""
+    if report.lost > 0:
+        extras = f", lost {report.lost}"
     print(
         f"update {report.name}: "
         f"{report.total_sections} sections "
-        f"(reused {report.reused}, enriched {report.enriched}, "
-        f"+{len(report.added_urls)} URLs / -{len(report.removed_urls)} URLs)"
+        f"(reused {report.reused}, enriched {report.enriched}{extras}, "
+        f"added {len(report.added_urls)} URLs, removed {len(report.removed_urls)} URLs)"
     )
     return 0
