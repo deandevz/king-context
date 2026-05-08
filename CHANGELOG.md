@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `db.insert_documentation` (called by `seed_data.seed_one` and the scraper's
+  auto-seed step) is now an upsert. Re-seeding the same corpus name no longer
+  raises `sqlite3.IntegrityError` against `documentations.name UNIQUE`. The
+  documentations row is upserted via `INSERT ... ON CONFLICT(name) DO UPDATE
+  ... RETURNING id`, which keeps the original `created_at` and the existing
+  `doc_id` stable across refreshes. Sections, their `query_cache` entries
+  (via `ON DELETE CASCADE`), and their `sections_fts` index entries (via the
+  FTS5 'delete' protocol) are then cleared and the fresh sections inserted
+  in the same SQLite transaction. Embedding writes to `data/embeddings.npy`
+  and `data/_internal/section_mapping.json` are deferred until after the
+  commit, so a rollback never leaves the numpy sidecar ahead of the
+  committed DB state. Closes #48.
+- `db._get_connection` now executes `PRAGMA foreign_keys = ON` on every
+  connection. Without this, `ON DELETE CASCADE` on `sections.doc_id` and
+  `query_cache.section_id` was a silent no-op for everything outside
+  `init_db`, leaving orphan rows after deletes. The upsert above relies on
+  the cascade, but every other delete path benefits too.
+
 ### Added
 
 - Content-hash provenance through every layer of the scraper pipeline
