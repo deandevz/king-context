@@ -116,3 +116,25 @@ def test_fetch_updates_manifest(tmp_path):
     assert "fetch" in manifest
     assert manifest["fetch"]["completed"] == 1
     assert manifest["fetch"]["total"] == 1
+
+
+def test_fetch_writes_page_meta_sidecar(tmp_path):
+    config = ScraperConfig(firecrawl_api_key="fc-test")
+    provider = _FakeFetchProvider(fixed_markdown="# Hello\n\nbody")
+
+    urls = ["https://docs.example.com/api/intro"]
+    asyncio.run(fetch_pages(urls, tmp_path, config, provider))
+
+    pages_dir = tmp_path / "pages"
+    md_files = list(pages_dir.glob("*.md"))
+    assert len(md_files) == 1
+
+    sidecars = list(pages_dir.glob("*.meta.json"))
+    assert len(sidecars) == 1
+
+    meta = json.loads(sidecars[0].read_text())
+    assert meta["url"] == urls[0]
+    assert meta["slug"] == md_files[0].stem
+    assert len(meta["content_hash"]) == 64
+    assert meta["byte_size"] == len("# Hello\n\nbody".encode("utf-8"))
+    assert "fetched_at" in meta

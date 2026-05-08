@@ -1,13 +1,25 @@
 import json
+from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from pathlib import Path
 
 from king_context import seed_data
 from king_context.scraper.enrich import EnrichedChunk
 
 
+CORPUS_SCHEMA_VERSION = 1
+
+
 def _sanitize_path(path: str) -> str:
     """Sanitize section path for filesystem safety — replace / with - to avoid subdirs."""
     return path.replace("/", "-").strip("-")
+
+
+def _scraper_version() -> str:
+    try:
+        return _pkg_version("king-context")
+    except PackageNotFoundError:
+        return "unknown"
 
 
 def export_to_json(
@@ -19,7 +31,10 @@ def export_to_json(
 ) -> dict:
     """Build a King Context documentation dict from enriched chunks.
 
-    The returned dict matches the schema expected by seed_data.seed_one().
+    The returned dict matches the schema expected by seed_data.seed_one(). The
+    optional ``_meta`` fields carry provenance (content hashes, scrape timestamp,
+    scraper version) used by drift detection and incremental refresh; consumers
+    that don't recognise them ignore them.
     """
     sections = [
         {
@@ -31,6 +46,9 @@ def export_to_json(
             "tags": chunk.tags,
             "priority": chunk.priority,
             "content": chunk.content,
+            "_meta": {
+                "content_hash": chunk.content_hash,
+            },
         }
         for chunk in enriched_chunks
     ]
@@ -40,6 +58,13 @@ def export_to_json(
         "version": version,
         "base_url": base_url,
         "sections": sections,
+        "_meta": {
+            "schema_version": CORPUS_SCHEMA_VERSION,
+            "scraper_version": _scraper_version(),
+            "scraped_at": datetime.now(timezone.utc).isoformat(),
+            "source_url": base_url,
+            "section_count": len(sections),
+        },
     }
 
 
