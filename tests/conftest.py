@@ -61,9 +61,21 @@ def fake_stage_clients(primary, schema_fallback=None):
 
 @pytest.fixture
 def temp_db(tmp_path, monkeypatch):
-    """Create a temporary database path for testing."""
+    """Create a temporary database path for testing.
+
+    Also redirects the embedding sidecar files (``embeddings.npy``,
+    ``section_mapping.json``) and resets the in-process embedding state so a
+    test that triggers ``_generate_and_save_embedding`` cannot write to the
+    real repo's ``data/`` directory.
+    """
     temp_db_path = tmp_path / "test_docs.db"
     monkeypatch.setattr(db, "DB_PATH", temp_db_path)
+    monkeypatch.setattr(db, "EMBEDDINGS_PATH", tmp_path / "embeddings.npy")
+    monkeypatch.setattr(
+        db, "SECTION_MAPPING_PATH", tmp_path / "section_mapping.json"
+    )
+    monkeypatch.setattr(db, "_embeddings", None)
+    monkeypatch.setattr(db, "_section_id_to_idx", {})
     yield temp_db_path
     if temp_db_path.exists():
         temp_db_path.unlink()
