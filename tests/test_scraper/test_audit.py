@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -99,6 +100,7 @@ def test_audit_corpus_marks_status_per_url(tmp_path: Path):
         "https://docs.example.com/b": httpx.Response(
             301, headers={"location": "https://docs.example.com/b2"}
         ),
+        "https://docs.example.com/b2": httpx.Response(200),
         "https://docs.example.com/c": httpx.Response(404),
     }
     transport = httpx.MockTransport(_make_handler(by_url))
@@ -219,7 +221,7 @@ def test_render_report_contains_summary_and_breakdowns():
     )
     report = audit.render_report(a)
 
-    assert "# Audit -- demo" in report
+    assert "# Audit: demo" in report
     assert "fresh: 1" in report
     assert "broken: 1" in report
     assert "moved: 1" in report
@@ -299,6 +301,154 @@ def test_classify_marks_followed_redirects_as_moved():
     status, final_url = audit._classify(final)
     assert status == "moved"
     assert final_url == "https://x/final"
+
+
+def test_classify_redirect_chain_ending_in_404_is_broken():
+    """301 -> 404 must classify as broken (not moved). Final URL preserved for context."""
+    final = httpx.Response(404, request=httpx.Request("HEAD", "https://x/dead"))
+    final.history = [httpx.Response(308)]
+    status, final_url = audit._classify(final)
+    assert status == "broken"
+    assert final_url == "https://x/dead"
+
+
+def test_classify_redirect_chain_ending_in_500_is_unreachable():
+    final = httpx.Response(503, request=httpx.Request("HEAD", "https://x/down"))
+    final.history = [httpx.Response(301)]
+    status, final_url = audit._classify(final)
+    assert status == "unreachable"
+    assert final_url == "https://x/down"
+
+
+def test_classify_redirect_chain_ending_in_401_is_auth_required():
+    final = httpx.Response(401, request=httpx.Request("HEAD", "https://x/login"))
+    final.history = [httpx.Response(302)]
+    status, final_url = audit._classify(final)
+    assert status == "auth_required"
+    assert final_url == "https://x/login"
+
+
+def test_classify_redirect_chain_ending_in_429_is_throttled():
+    final = httpx.Response(429, request=httpx.Request("HEAD", "https://x/limited"))
+    final.history = [httpx.Response(307)]
+    status, final_url = audit._classify(final)
+    assert status == "throttled"
+    assert final_url == "https://x/limited"
+
+
+def test_print_summary_uses_new_orphan_words(tmp_path: Path, capsys):
+    a = audit.CorpusAudit(
+        name="x",
+        base_url="https://x",
+        audited_at="2026-05-08T00:00:00+00:00",
+        corpus_path="/x.json",
+        sections=[audit.SectionAudit(url="https://x/a", title="A", status="fresh")],
+        new_urls=["https://x/new"],
+        orphan_urls=[],
+    )
+    audit._print_summary(a, tmp_path / "report.md")
+    out = capsys.readouterr().out
+    assert "new 1" in out
+    assert "orphan 0" in out
+    assert "+1" not in out
+    assert "-0" not in out
+
+
+def test_retry_after_parses_seconds():
+    response = httpx.Response(429, headers={"retry-after": "5"})
+    assert audit._retry_after_seconds(response) == 5.0
+
+
+def test_retry_after_caps_excessive_seconds():
+    response = httpx.Response(429, headers={"retry-after": "9999"})
+    assert audit._retry_after_seconds(response) == audit.THROTTLE_RETRY_CAP_SECONDS
+
+
+def test_retry_after_parses_http_date():
+    # An HTTP date a few seconds in the future should be honoured (and capped).
+    future = datetime.now(timezone.utc).replace(microsecond=0)
+    future = future.replace(year=future.year + 1)
+    http_date = future.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    response = httpx.Response(429, headers={"retry-after": http_date})
+    delay = audit._retry_after_seconds(response)
+    assert delay == audit.THROTTLE_RETRY_CAP_SECONDS  # capped
+
+
+def test_retry_after_falls_back_on_garbage():
+    response = httpx.Response(429, headers={"retry-after": "not-a-date-or-number"})
+    assert audit._retry_after_seconds(response) == 1.0
+
+
+def test_retry_after_past_http_date_falls_back_to_min():
+    # A date in the past should not produce a negative or zero sleep.
+    response = httpx.Response(429, headers={"retry-after": "Wed, 21 Oct 2020 07:28:00 GMT"})
+    assert audit._retry_after_seconds(response) == 1.0
+
+
+def test_report_path_handles_naive_isoformat(tmp_path: Path):
+    """Naive (no tz) audited_at must not crash; assumed UTC."""
+    a = audit.CorpusAudit(
+        name="demo",
+        base_url="",
+        audited_at="2026-05-08T15:42:43.082839",  # no offset
+        corpus_path="/x.json",
+    )
+    path = audit._report_path(a, tmp_path)
+    assert path.name.endswith("Z.md")
+    assert "20260508T154243" in path.name
+
+
+def test_report_path_keeps_microsecond_precision(tmp_path: Path):
+    """Two audits in the same second must not collide on filename."""
+    base = audit.CorpusAudit(
+        name="demo",
+        base_url="",
+        audited_at="2026-05-08T15:42:43.082839+00:00",
+        corpus_path="/x.json",
+    )
+    other = audit.CorpusAudit(
+        name="demo",
+        base_url="",
+        audited_at="2026-05-08T15:42:43.999999+00:00",
+        corpus_path="/x.json",
+    )
+    p1 = audit._report_path(base, tmp_path)
+    p2 = audit._report_path(other, tmp_path)
+    assert p1 != p2
+    # Filename ends with `Z`, no offset.
+    assert p1.name.endswith("Z.md")
+    assert "+0000" not in p1.name
+
+
+def test_audit_main_returns_2_on_redirect_to_broken(tmp_path: Path):
+    """Live bug repro from elevenlabs corpus: 308 -> 404 must trigger CI gate."""
+    corpus_path = _make_corpus(
+        tmp_path, sections=[{"title": "X", "url": "https://docs.example.com/old"}]
+    )
+    audit_dir = tmp_path / "out"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == "https://docs.example.com/old":
+            return httpx.Response(
+                308, headers={"location": "https://docs.example.com/new"}
+            )
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+
+    async def fake_check(section_urls, *, concurrency=10):
+        async with httpx.AsyncClient(transport=transport) as client:
+            sem = asyncio.Semaphore(concurrency)
+            return list(await asyncio.gather(*[
+                audit._check_url(client, sem, url, title)
+                for url, title in section_urls
+            ]))
+
+    with patch.object(audit, "find_corpus", return_value=corpus_path), \
+         patch.object(audit, "_check_section_urls", side_effect=fake_check):
+        rc = audit.audit_main(["demo", "--no-discover", "--report-dir", str(audit_dir)])
+
+    assert rc == 2
 
 
 def test_check_url_retries_on_429_then_resolves(tmp_path: Path):

@@ -1,13 +1,13 @@
-"""Drift / staleness audit for an indexed corpus.
+"""Drift and staleness audit for an indexed corpus.
 
 Walks the URLs of an existing ``data/<name>.json`` corpus and reports which
 ones are still reachable, which moved (redirects), which are broken (404),
 and optionally which URLs the upstream docs site has gained or lost
-since the corpus was indexed. Pure read-only: never mutates the corpus
+since the corpus was indexed. Pure read only: never mutates the corpus
 file or the database.
 
 Designed to run cheaply (HEAD requests, no LLM calls, no provider keys
-required for the URL health pass) so contributors can re-run it on a
+required for the URL health pass) so contributors can rerun it on a
 schedule without spending OpenRouter credits.
 """
 
@@ -20,6 +20,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from pathlib import Path
 from typing import Iterable
@@ -118,7 +119,7 @@ def _load_corpus(corpus_path: Path) -> dict:
 
 
 def _unique_section_urls(corpus: dict) -> list[tuple[str, str]]:
-    """Return ``[(url, title), ...]`` deduped by canonical URL, preserving first-seen order."""
+    """Return ``[(url, title), ...]`` deduped by canonical URL, preserving first seen order."""
     seen: set[str] = set()
     out: list[tuple[str, str]] = []
     for section in corpus.get("sections", []):
@@ -136,32 +137,50 @@ def _unique_section_urls(corpus: dict) -> list[tuple[str, str]]:
 def _classify(response: httpx.Response) -> tuple[str, str | None]:
     """Map an httpx response to ``(status, final_url)``.
 
-    Caller passes a response from ``follow_redirects=True``, so a populated
-    ``response.history`` means we landed on the chain endpoint after one or
-    more 3xx hops; ``response.url`` is then the final URL.
+    Classification is keyed off the *final* status code, not the presence of
+    redirects. A chain like ``301 -> 308 -> 404`` is broken, not moved. The
+    audit exists to surface that, so reporting it as moved would defeat the
+    point. The final URL is still captured for context whenever the chain
+    has any redirect history, regardless of the final status.
     """
-    if response.history:
-        return "moved", str(response.url)
+    final_url = str(response.url) if response.history else None
     code = response.status_code
     if 200 <= code < 300:
-        return "fresh", None
+        return ("moved" if response.history else "fresh"), final_url
     if code in (401, 403):
-        return "auth_required", None
+        return "auth_required", final_url
     if code == 429:
-        return "throttled", None
+        return "throttled", final_url
     if code in (404, 410):
-        return "broken", None
-    return "unreachable", None
+        return "broken", final_url
+    return "unreachable", final_url
 
 
 def _retry_after_seconds(response: httpx.Response) -> float:
+    """Parse a ``Retry-After`` header into a sleep duration, capped to a sane max.
+
+    The header may be either a delta in seconds (RFC 7231) or an HTTP date.
+    Unrecognised values (or a date in the past) fall back to one second so the
+    audit always makes forward progress.
+    """
     raw = response.headers.get("retry-after")
     if not raw:
         return 1.0
+    raw = raw.strip()
     try:
         return min(THROTTLE_RETRY_CAP_SECONDS, max(1.0, float(raw)))
     except ValueError:
+        pass
+    try:
+        target = parsedate_to_datetime(raw)
+    except (TypeError, ValueError):
         return 1.0
+    if target is None:
+        return 1.0
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=timezone.utc)
+    delta = (target - datetime.now(timezone.utc)).total_seconds()
+    return min(THROTTLE_RETRY_CAP_SECONDS, max(1.0, delta))
 
 
 async def _check_url(
@@ -279,9 +298,9 @@ async def audit_corpus(
             (s.url for s in sections), fresh
         )
     except (httpx.RequestError, RuntimeError, ImportError, OSError) as exc:
-        # Narrow catch: provider call may surface any of these. A bug-class
-        # exception (TypeError, AttributeError, etc.) deliberately propagates so
-        # broken code doesn't masquerade as a "discovery skipped" warning.
+        # Narrow catch: provider call may surface any of these. A bug class
+        # exception (TypeError, AttributeError, etc.) deliberately propagates
+        # so broken code does not masquerade as a "discovery skipped" warning.
         result.discovery_skipped = True
         result.discovery_error = f"{type(exc).__name__}: {exc}"
 
@@ -291,7 +310,7 @@ async def audit_corpus(
 def render_report(audit: CorpusAudit) -> str:
     counts = audit.counts()
     lines: list[str] = [
-        f"# Audit -- {audit.name}",
+        f"# Audit: {audit.name}",
         "",
         f"- **Audited at:** {audit.audited_at}",
         f"- **Corpus:** `{audit.corpus_path}`",
@@ -357,7 +376,17 @@ def _sanitize_filename_component(value: str) -> str:
 
 
 def _report_path(audit: CorpusAudit, report_dir: Path) -> Path:
-    stamp = audit.audited_at.replace(":", "").replace("-", "").replace(".", "")
+    """Build the report path. Tolerates a malformed or naive ``audited_at``."""
+    try:
+        dt = datetime.fromisoformat(audit.audited_at)
+        if dt.tzinfo is None:
+            # A naive timestamp would crash astimezone(); assume UTC and proceed.
+            dt = dt.replace(tzinfo=timezone.utc)
+        # Microsecond precision avoids collision when audits run in the same
+        # second; trailing Z strips the timezone offset for a shorter name.
+        stamp = dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    except ValueError:
+        stamp = re.sub(r"[^A-Za-z0-9]", "", audit.audited_at)
     name = _sanitize_filename_component(audit.name)
     return report_dir / f"{name}-{stamp}.md"
 
@@ -411,7 +440,10 @@ def _print_summary(audit: CorpusAudit, report_path: Path) -> None:
     summary = ", ".join(parts)
     print(f"audit {audit.name}: {summary}", end="")
     if not audit.discovery_skipped:
-        print(f" | +{len(audit.new_urls)} / -{len(audit.orphan_urls)}", end="")
+        print(
+            f" | new {len(audit.new_urls)} / orphan {len(audit.orphan_urls)}",
+            end="",
+        )
     print(f" | report: {report_path}")
 
 
