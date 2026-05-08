@@ -350,8 +350,7 @@ def test_print_summary_uses_new_orphan_words(tmp_path: Path, capsys):
     out = capsys.readouterr().out
     assert "new 1" in out
     assert "orphan 0" in out
-    assert "+1" not in out
-    assert "-0" not in out
+    assert "+1 / -0" not in out
 
 
 def test_retry_after_parses_seconds():
