@@ -1,6 +1,9 @@
 import asyncio
+import hashlib
+import json
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from scraper_providers import FetchProvider
@@ -32,6 +35,18 @@ def _url_to_slug(url: str) -> str:
     return slug[:200]
 
 
+def _write_page_meta(pages_dir: Path, slug: str, url: str, markdown: str) -> None:
+    encoded = markdown.encode("utf-8")
+    meta = {
+        "url": url,
+        "slug": slug,
+        "content_hash": hashlib.sha256(encoded).hexdigest(),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "byte_size": len(encoded),
+    }
+    (pages_dir / f"{slug}.meta.json").write_text(json.dumps(meta, indent=2))
+
+
 async def _fetch_one(
     url: str,
     semaphore: asyncio.Semaphore,
@@ -43,6 +58,7 @@ async def _fetch_one(
             page = await provider.fetch_one(url)
             markdown = page.markdown
             slug = _url_to_slug(url)
+            _write_page_meta(pages_dir, slug, url, markdown)
             (pages_dir / f"{slug}.md").write_text(markdown)
             return PageResult(url=url, markdown=markdown, success=True, error=None)
         except Exception as e:

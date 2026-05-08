@@ -9,15 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `king-scrape audit <name>` subcommand (ADR-0013). Walks the URLs of an
-  indexed corpus and reports which are reachable, moved (3xx with the
-  redirect target), broken (404/410), or unreachable. Optionally
-  re-runs discovery against the upstream and reports URLs added or
-  removed since the corpus was indexed (`--no-discover` to skip).
-  Read-only — never mutates the corpus file or the database. No LLM
-  cost. Markdown report lands at `.king-context/audit/<name>-<ts>.md`.
-  Exit code is `0` on clean, `2` when at least one section is broken,
-  so it can gate a CI job.
+- Content-hash provenance through every layer of the scraper pipeline
+  (ADR-0012). `Chunk` and `EnrichedChunk` carry a `content_hash` field
+  populated by `sha256(content)`. Each fetched page now writes a sidecar
+  `pages/<slug>.meta.json` containing `{ url, slug, content_hash,
+  fetched_at, byte_size }`. The exported `data/<name>.json` gains an
+  optional `_meta.content_hash` per section and a top-level `_meta` with
+  `schema_version`, `scraper_version`, `scraped_at`, `source_url`, and
+  `section_count`. All `_meta` fields are optional; older corpora and
+  consumers that don't recognise them continue to work unchanged.
+- File-per-hash enrichment cache at
+  `.king-context/cache/enrichment/<sha256>.json`. Cache key is
+  `sha256(content + model_id + prompt_version)`. Writes are atomic via
+  `tempfile` + `os.replace`. A re-run on unchanged content (or a re-chunk
+  that produces structurally identical chunks) pays zero LLM cost.
 
 ## [0.4.0] - 2026-05-06
 

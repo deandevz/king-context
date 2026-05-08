@@ -1,9 +1,11 @@
 import asyncio
+import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from king_context.scraper import enrich_cache
 from king_context.scraper.chunk import Chunk
 from king_context.scraper.config import ScraperConfig
 from king_context.scraper.discover import _update_step
@@ -37,7 +39,12 @@ Content:
 Return only the JSON object, no explanation."""
 
 
-@dataclass
+# Derived from the prompt itself so any edit to ENRICHMENT_PROMPT automatically
+# invalidates cached entries — no human discipline required.
+PROMPT_VERSION = hashlib.sha256(ENRICHMENT_PROMPT.encode("utf-8")).hexdigest()[:16]
+
+
+@dataclass(frozen=True)
 class EnrichedChunk:
     title: str
     path: str
@@ -47,6 +54,15 @@ class EnrichedChunk:
     use_cases: list[str]
     tags: list[str]
     priority: int
+    content_hash: str = field(default="")
+
+    def __post_init__(self) -> None:
+        if not self.content_hash:
+            object.__setattr__(
+                self,
+                "content_hash",
+                hashlib.sha256(self.content.encode("utf-8")).hexdigest(),
+            )
 
 
 def validate_enrichment(enrichment: dict) -> list[str]:
@@ -155,6 +171,7 @@ def _to_enriched_chunk(chunk: Chunk, enrichment: dict) -> EnrichedChunk:
         use_cases=enrichment["use_cases"],
         tags=enrichment["tags"],
         priority=enrichment["priority"],
+        content_hash=chunk.content_hash,
     )
 
 
@@ -215,6 +232,15 @@ async def _enrich_one(
     schema_fallback: LLMClient | None = None,
 ) -> EnrichedChunk | None:
     """Enrich a single chunk with up to 2 retries on validation failure."""
+    cache_key = enrich_cache.make_key(
+        chunk.content,
+        primary_client.model,
+        PROMPT_VERSION,
+    )
+    cached = enrich_cache.get(cache_key)
+    if cached is not None and not validate_enrichment(cached):
+        return _to_enriched_chunk(chunk, cached)
+
     prompt = ENRICHMENT_PROMPT.format(title=chunk.title, content=chunk.content)
 
     for attempt in range(3):  # 1 initial attempt + 2 retries
@@ -222,6 +248,7 @@ async def _enrich_one(
             enrichment = await primary_client.complete(prompt)
             errors = validate_enrichment(enrichment)
             if not errors:
+                enrich_cache.put(cache_key, enrichment)
                 return _to_enriched_chunk(chunk, enrichment)
         except ProviderError as exc:
             if not exc.transient or attempt == 2:
@@ -241,6 +268,7 @@ async def _enrich_one(
             enrichment = await schema_fallback.complete(prompt)
             fallback_errors = validate_enrichment(enrichment)
             if not fallback_errors:
+                enrich_cache.put(cache_key, enrichment)
                 return _to_enriched_chunk(chunk, enrichment)
             raise ProviderError(
                 "validation_failed_3x",
@@ -296,6 +324,7 @@ async def enrich_chunks(
                     use_cases=item["use_cases"],
                     tags=item["tags"],
                     priority=item["priority"],
+                    content_hash=item.get("content_hash", ""),
                 ))
 
             total_chunks = len(chunks)
@@ -355,6 +384,7 @@ async def enrich_chunks(
                     "use_cases": e.use_cases,
                     "tags": e.tags,
                     "priority": e.priority,
+                    "content_hash": e.content_hash,
                 }
                 for e in enriched
             ]

@@ -239,6 +239,14 @@ Three areas where help moves the project the most.
 
 This project is open source because retrieval infrastructure for LLMs should be transparent, community driven, and independent of any single provider.
 
+## Cookbooks
+
+Real projects built on top of King Context. Useful as starting points, and as evidence that the retrieval layer holds up under a full workflow.
+
+- [ebook-factory](https://github.com/Vadelo/ebook-factory) by [@Vadelo](https://github.com/Vadelo). Ask an agent for an ebook on any topic. The `ebook-factory` skill creates the required corpora with `king-research`, queries indexed knowledge through `kctx`, writes the manuscript in Markdown, and hands it off to a PDF generator. End-to-end use of King Context as the local knowledge layer for a real content pipeline.
+
+Built something with King Context? Open a PR adding it to this list.
+
 ## License
 
 MIT. Use it, fork it, improve it.

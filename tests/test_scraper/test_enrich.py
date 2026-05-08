@@ -41,7 +41,7 @@ def test_enrich_batch_processing():
         openrouter_api_key="test-key",
         enrichment_batch_size=5,
     )
-    chunks = [make_chunk(f"Section {i}") for i in range(12)]
+    chunks = [make_chunk(f"Section {i}", content=f"Body {i}") for i in range(12)]
 
     call_count = 0
 
