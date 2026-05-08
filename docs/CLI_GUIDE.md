@@ -367,6 +367,13 @@ Useful flags:
   `SCRAPE_PROVIDER` for the process. Stage-specific environment variables
   take precedence over the flag. See [Scraper providers](#scraper-providers)
   for the full table.
+- `--no-fetch-cache`: bypass the scraper provider's local cache for this
+  run. Sets `SCRAPE_CACHE_MODE=bypass`. Useful when upstream content has
+  changed and you need a fresh fetch without wiping the cache directory
+  by hand (Crawl4AI keeps a local cache under `~/.crawl4ai/`). Honoured
+  by the crawl4ai provider; firecrawl's API defaults to fresh-fetch and
+  ignores this flag. Set `SCRAPE_CACHE_MODE` directly to `bypass`,
+  `disabled`, `read_only`, or `write_only` for finer-grained control.
 
 `king-scrape` writes exported documentation JSON to `.king-context/data/`.
 Use `kctx index` to build or rebuild the file-based CLI store from that JSON.

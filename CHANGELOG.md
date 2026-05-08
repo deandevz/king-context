@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--no-fetch-cache` flag on `king-scrape` and `SCRAPE_CACHE_MODE` env
+  var (#50). Bypasses the Crawl4AI provider's local cache (`~/.crawl4ai/`)
+  for the duration of the run without wiping the cache directory by hand.
+  `SCRAPE_CACHE_MODE` accepts `bypass`, `disabled`, `read_only`,
+  `write_only`, or `default`/unset. The CLI flag is shorthand for
+  `SCRAPE_CACHE_MODE=bypass` and uses `setdefault` semantics so an
+  explicit pre-existing env value wins (mirrors `--provider`'s
+  precedence). `main()` restores the prior env value on exit so the
+  flag does not leak into an embedding application or test session.
+  Honoured by the crawl4ai provider; firecrawl ignores it (its API
+  defaults to fresh-fetch). Knob is global today; per-stage variants
+  (`SCRAPE_DISCOVER_CACHE_MODE` / `SCRAPE_FETCH_CACHE_MODE`) deferred
+  to a follow-up if real configurations need them. Lays the primitive
+  `king-scrape update <name>` needs to make `force_refresh=True`
+  actually fetch from the network.
 - Content-hash provenance through every layer of the scraper pipeline
   (ADR-0012). `Chunk` and `EnrichedChunk` carry a `content_hash` field
   populated by `sha256(content)`. Each fetched page now writes a sidecar

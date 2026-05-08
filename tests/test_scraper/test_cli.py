@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -107,6 +108,7 @@ def test_cli_parse_args_basic():
     assert args.no_llm_filter is False
     assert args.no_auto_seed is False
     assert args.include_maybe is False
+    assert args.no_fetch_cache is False
 
 
 def test_cli_parse_args_with_flags():
@@ -140,6 +142,100 @@ def test_cli_parse_args_invalid_step():
     parser = _build_parser()
     with pytest.raises(SystemExit):
         parser.parse_args(["https://docs.example.com", "--step", "invalid"])
+
+
+def test_cli_no_fetch_cache_flag_sets_env(monkeypatch):
+    """`--no-fetch-cache` exports SCRAPE_CACHE_MODE=bypass for the run."""
+    import sys
+    from king_context.scraper.cli import main
+    from king_context.scraper.config import ScraperConfig
+
+    captured: dict = {}
+
+    async def fake_run_pipeline(args, config):
+        captured["env"] = os.environ.get("SCRAPE_CACHE_MODE")
+
+    monkeypatch.delenv("SCRAPE_CACHE_MODE", raising=False)
+    monkeypatch.setattr(
+        "king_context.scraper.cli.run_pipeline", fake_run_pipeline
+    )
+    monkeypatch.setattr(
+        "king_context.scraper.cli.load_config",
+        lambda **_: ScraperConfig(),
+    )
+    monkeypatch.setattr(
+        sys, "argv",
+        ["king-scrape", "https://docs.example.com", "--no-fetch-cache"],
+    )
+
+    main()
+
+    assert captured["env"] == "bypass"
+    # main() must restore env on exit so the flag does not leak into other
+    # tests or into an embedding application that calls main() repeatedly.
+    assert "SCRAPE_CACHE_MODE" not in os.environ
+
+
+def test_cli_no_fetch_cache_respects_pre_existing_env(monkeypatch):
+    """A user who explicitly set SCRAPE_CACHE_MODE keeps that value; the
+    flag does not silently downgrade it. Mirrors --provider's setdefault
+    behaviour."""
+    import sys
+    from king_context.scraper.cli import main
+    from king_context.scraper.config import ScraperConfig
+
+    captured: dict = {}
+
+    async def fake_run_pipeline(args, config):
+        captured["env"] = os.environ.get("SCRAPE_CACHE_MODE")
+
+    monkeypatch.setenv("SCRAPE_CACHE_MODE", "disabled")
+    monkeypatch.setattr(
+        "king_context.scraper.cli.run_pipeline", fake_run_pipeline
+    )
+    monkeypatch.setattr(
+        "king_context.scraper.cli.load_config",
+        lambda **_: ScraperConfig(),
+    )
+    monkeypatch.setattr(
+        sys, "argv",
+        ["king-scrape", "https://docs.example.com", "--no-fetch-cache"],
+    )
+
+    main()
+
+    assert captured["env"] == "disabled"
+    # Restored to the pre-existing value, not popped.
+    assert os.environ.get("SCRAPE_CACHE_MODE") == "disabled"
+
+
+def test_cli_without_no_fetch_cache_does_not_set_env(monkeypatch):
+    import sys
+    from king_context.scraper.cli import main
+    from king_context.scraper.config import ScraperConfig
+
+    captured: dict = {}
+
+    async def fake_run_pipeline(args, config):
+        captured["env"] = os.environ.get("SCRAPE_CACHE_MODE")
+
+    monkeypatch.delenv("SCRAPE_CACHE_MODE", raising=False)
+    monkeypatch.setattr(
+        "king_context.scraper.cli.run_pipeline", fake_run_pipeline
+    )
+    monkeypatch.setattr(
+        "king_context.scraper.cli.load_config",
+        lambda **_: ScraperConfig(),
+    )
+    monkeypatch.setattr(
+        sys, "argv",
+        ["king-scrape", "https://docs.example.com"],
+    )
+
+    main()
+
+    assert captured["env"] is None
+    assert "SCRAPE_CACHE_MODE" not in os.environ
 
 
 # ---------------------------------------------------------------------------

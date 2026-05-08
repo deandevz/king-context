@@ -346,6 +346,18 @@ def _build_parser() -> argparse.ArgumentParser:
             "have precedence."
         ),
     )
+    parser.add_argument(
+        "--no-fetch-cache",
+        dest="no_fetch_cache",
+        action="store_true",
+        help=(
+            "Bypass the scraper provider's local cache for this run. "
+            "Sets SCRAPE_CACHE_MODE=bypass. Useful when upstream content "
+            "has changed and you need a fresh fetch without wiping the "
+            "cache directory by hand. Honoured by the crawl4ai provider; "
+            "other providers may ignore it."
+        ),
+    )
     return parser
 
 
@@ -356,6 +368,14 @@ def main() -> None:
 
     parser = _build_parser()
     args = parser.parse_args()
+    cache_mode_was_set = "SCRAPE_CACHE_MODE" in os.environ
+    cache_mode_prior = os.environ.get("SCRAPE_CACHE_MODE")
+    if getattr(args, "no_fetch_cache", False):
+        # ``setdefault`` mirrors the precedence of ``--provider`` (cli.py
+        # above): an existing env wins. A contributor who set
+        # SCRAPE_CACHE_MODE=read_only and ALSO passes --no-fetch-cache keeps
+        # the explicit env value rather than being silently downgraded.
+        os.environ.setdefault("SCRAPE_CACHE_MODE", "bypass")
     config = load_config(
         enrichment_model=args.model,
         chunk_max_tokens=args.chunk_max_tokens,
@@ -371,6 +391,16 @@ def main() -> None:
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         sys.exit(2)
+    finally:
+        # Restore the env so calling ``main()`` from tests or from an
+        # embedding application does not leak the bypass flag into the
+        # next caller's process state.
+        if cache_mode_was_set:
+            # Type narrowing: was-set guarantees ``.get`` returned ``str``.
+            assert cache_mode_prior is not None
+            os.environ["SCRAPE_CACHE_MODE"] = cache_mode_prior
+        else:
+            os.environ.pop("SCRAPE_CACHE_MODE", None)
 
 
 if __name__ == "__main__":
