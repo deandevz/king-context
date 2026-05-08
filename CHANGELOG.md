@@ -21,8 +21,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File-per-hash enrichment cache at
   `.king-context/cache/enrichment/<sha256>.json`. Cache key is
   `sha256(content + model_id + prompt_version)`. Writes are atomic via
-  `tempfile` + `os.replace`. A re-run on unchanged content (or a re-chunk
+  `tempfile` + `os.replace`. A rerun on unchanged content (or a rechunk
   that produces structurally identical chunks) pays zero LLM cost.
+- `king-scrape audit <name>` subcommand (ADR-0013). Walks the URLs of
+  an indexed corpus and classifies each by its final HTTP status:
+  `fresh` (2xx), `moved` (redirect chain ending in 2xx, with the final
+  URL captured), `broken` (final 404/410, including chains that
+  redirect into a dead page), `throttled` (429, retried once with
+  `Retry-After`), `auth_required` (401/403), or `unreachable`. URLs
+  are canonicalised (fragment / trailing slash / host case) before
+  dedupe and discovery diff. Optionally reruns discovery against the
+  upstream and reports URLs added or removed since the corpus was
+  indexed (`--no-discover` to skip). Read only, never mutates the
+  corpus file or the database. No LLM cost. Markdown report lands at
+  `.king-context/audit/<name>-<ts>.md`. Exit code is `0` on clean,
+  `2` when at least one section is broken, so it can gate a CI job.
 
 ## [0.4.0] - 2026-05-06
 

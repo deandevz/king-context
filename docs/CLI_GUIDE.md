@@ -14,6 +14,8 @@ King Context installs three command-line tools:
 
 - `kctx`: search, read, index, and validate local retrieval stores.
 - `king-scrape`: scrape a documentation site and export indexed sections.
+  Also exposes `king-scrape audit <name>` to check an indexed corpus
+  for broken, moved, or drifted URLs.
 - `king-research`: build and index a research corpus for a topic.
 
 The `kctx` command searches two content stores by default:
@@ -482,6 +484,54 @@ The Python package is installed but the chromium binary is not. Run
 Firecrawl is selected (default) but no API key is set. Add
 `FIRECRAWL_API_KEY=...` to `.env`, or switch to Crawl4AI with
 `--provider=crawl4ai`.
+
+## Audit a corpus for drift
+
+Use `king-scrape audit <name>` to check whether an indexed corpus is still
+aligned with its upstream source. The audit is read only: it never mutates
+`data/<name>.json` or the database, and the URL health pass needs no
+provider key, so it is safe to run on a CI cron.
+
+```bash
+king-scrape audit elevenlabs-api
+```
+
+Each section URL is classified by its **final** HTTP status:
+
+| Status | Meaning |
+| --- | --- |
+| `fresh` | 2xx |
+| `moved` | redirect chain ending in 2xx; the final URL is captured |
+| `broken` | 404 / 410, including chains that redirect into a dead page |
+| `throttled` | 429; respects `Retry-After` (capped 30s), retries once |
+| `auth_required` | 401 / 403 |
+| `unreachable` | timeout / network error / other 5xx |
+
+URLs are canonicalised (fragment, trailing slash, host case stripped) before
+dedupe and before the discovery diff so cosmetic variations do not inflate
+the report.
+
+A Markdown report lands at `.king-context/audit/<name>-<timestamp>.md`
+(timestamp is UTC, microsecond precision, suffixed `Z`).
+Exit code is `0` when no broken URLs are found, `2` when at least one is, so
+the audit can gate a CI job. The URL health pass needs no provider key, so
+the keyless form is the right shape for CI:
+
+```bash
+# CI friendly: no provider key required, no upstream discovery diff
+king-scrape audit my-corpus --no-discover || echo "drift detected, see report"
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--no-discover` | off | Skip the upstream discovery diff (faster, no provider key required). |
+| `--concurrency N` | 10 | Max concurrent URL probes. |
+| `--report-dir DIR` | `.king-context/audit/` | Where to write the report. |
+
+The optional discovery diff calls the configured `DiscoveryProvider`
+(Firecrawl or Crawl4AI) to remap the upstream and lists URLs added or
+removed since the corpus was indexed. Use `--no-discover` to skip the
+provider step entirely.
 
 ## LLM Provider Configuration
 
