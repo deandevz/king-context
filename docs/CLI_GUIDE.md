@@ -15,7 +15,9 @@ King Context installs three command-line tools:
 - `kctx`: search, read, index, and validate local retrieval stores.
 - `king-scrape`: scrape a documentation site and export indexed sections.
   Also exposes `king-scrape audit <name>` to check an indexed corpus
-  for broken, moved, or drifted URLs.
+  for broken, moved, or drifted URLs, and `king-scrape update <name>`
+  to incrementally refresh an existing corpus, paying LLM cost only
+  for new or changed chunks.
 - `king-research`: build and index a research corpus for a topic.
 
 The `kctx` command searches two content stores by default:
@@ -367,6 +369,13 @@ Useful flags:
   `SCRAPE_PROVIDER` for the process. Stage-specific environment variables
   take precedence over the flag. See [Scraper providers](#scraper-providers)
   for the full table.
+- `--no-fetch-cache`: bypass the scraper provider's local cache for this
+  run. Sets `SCRAPE_CACHE_MODE=bypass`. Useful when upstream content has
+  changed and you need a fresh fetch without wiping the cache directory
+  by hand (Crawl4AI keeps a local cache under `~/.crawl4ai/`). Honoured
+  by the crawl4ai provider; firecrawl's API defaults to fresh-fetch and
+  ignores this flag. Set `SCRAPE_CACHE_MODE` directly to `bypass`,
+  `disabled`, `read_only`, or `write_only` for finer-grained control.
 
 `king-scrape` writes exported documentation JSON to `.king-context/data/`.
 Use `kctx index` to build or rebuild the file-based CLI store from that JSON.
@@ -532,6 +541,57 @@ The optional discovery diff calls the configured `DiscoveryProvider`
 (Firecrawl or Crawl4AI) to remap the upstream and lists URLs added or
 removed since the corpus was indexed. Use `--no-discover` to skip the
 provider step entirely.
+
+## Refresh an indexed corpus
+
+Use `king-scrape update <name>` to bring an indexed corpus back in line with
+its upstream source. The command refetches every page, rechunks, and reuses
+every section whose chunked content is byte identical to the previous scrape.
+Only new or changed chunks are sent to the LLM, so a typical refresh costs
+cents instead of dollars even on a corpus with hundreds of pages.
+
+```bash
+king-scrape update elevenlabs-api
+```
+
+The flow:
+
+1. Locate `data/<name>.json` (or `.king-context/data/<name>.json`).
+2. Resolve the source URL from `_meta.source_url`, falling back to `base_url`.
+3. Run discover, filter, and fetch with `force_refresh=True` so changed pages
+   are actually re-downloaded instead of being skipped by the resume logic.
+   Note: `force_refresh=True` only disables king-scrape's own slug-skip; the
+   underlying scraper provider (e.g. crawl4ai) may still serve from its own
+   on-disk cache. Pass `--no-fetch-cache` (or set `SCRAPE_CACHE_MODE=bypass`)
+   when you suspect provider cache is masking upstream changes.
+4. Rechunk all fetched pages.
+5. For each fresh chunk, look up `content_hash` in the existing corpus. Hit:
+   carry forward the enrichment values. Miss: enqueue for the LLM.
+6. Show a cost preview (reused / new / removed / added URL counts plus the
+   OpenRouter dollar estimate) and prompt for confirmation. `--yes` skips
+   the prompt for scripted runs.
+7. Enrich only the new chunks. Reused sections take fresh `title`, `path`,
+   `url` so a page reorganisation upstream is reflected.
+8. Write the merged corpus back to the same JSON path. `git diff` then shows
+   exactly what changed.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--yes` | off | Skip the cost confirmation prompt before enrichment. |
+| `--corpus-path <path>` | inferred | Explicit corpus JSON path; bypasses the default lookup in `data/<name>.json` and `.king-context/data/<name>.json`. |
+| `--provider <name>` | env / inferred | Override the scraper provider for this run (always wins over `SCRAPE_PROVIDER`). |
+| `--model <id>` | env / default | Override the OpenRouter model for enrichment. |
+
+The work directory at `.king-context/_temp/<host>/` is reset at the start of
+every update so stale state from a prior run cannot leak into the new corpus.
+The corpus JSON is written atomically (tempfile plus rename) so an interrupted
+update never leaves a partial file. If discover or filter produces zero
+URLs, the update aborts before writing and the original corpus is preserved.
+
+`auto_seed` is intentionally off: update writes to the corpus committed in
+the repo, not to the local indexed store. After a successful update, refresh
+the local index with `kctx index .king-context/data/<name>.json` (or
+`kctx index --all`).
 
 ## LLM Provider Configuration
 

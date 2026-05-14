@@ -28,6 +28,11 @@ from typing import Iterable
 import httpx
 
 from king_context import PROJECT_ROOT
+from king_context.scraper._cache_mode import (
+    add_cache_mode_argument,
+    apply_cache_mode_flag,
+    restore_cache_mode,
+)
 
 
 HTTP_TIMEOUT = 15.0
@@ -412,6 +417,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=PROJECT_ROOT / ".king-context" / "audit",
         help="Where to write the Markdown report.",
     )
+    add_cache_mode_argument(parser)
     return parser
 
 
@@ -450,6 +456,7 @@ def audit_main(argv: list[str]) -> int:
         print("error: --concurrency must be >= 1", file=sys.stderr)
         return 1
 
+    cache_mode_was_set, cache_mode_prior = apply_cache_mode_flag(args)
     try:
         audit = asyncio.run(
             audit_corpus(
@@ -461,6 +468,8 @@ def audit_main(argv: list[str]) -> int:
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    finally:
+        restore_cache_mode(cache_mode_was_set, cache_mode_prior)
 
     report_path = write_report(audit, args.report_dir)
     _print_summary(audit, report_path)

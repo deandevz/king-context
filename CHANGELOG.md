@@ -54,6 +54,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--no-fetch-cache` flag on `king-scrape` and `SCRAPE_CACHE_MODE` env
+  var (#50). Bypasses the Crawl4AI provider's local cache (`~/.crawl4ai/`)
+  for the duration of the run without wiping the cache directory by hand.
+  `SCRAPE_CACHE_MODE` accepts `bypass`, `disabled`, `read_only`,
+  `write_only`, or `default`/unset. The CLI flag is shorthand for
+  `SCRAPE_CACHE_MODE=bypass` and uses `setdefault` semantics so an
+  explicit pre-existing env value wins (mirrors `--provider`'s
+  precedence). `main()` restores the prior env value on exit so the
+  flag does not leak into an embedding application or test session.
+  Honoured by the crawl4ai provider; firecrawl ignores it (its API
+  defaults to fresh-fetch). Knob is global today; per-stage variants
+  (`SCRAPE_DISCOVER_CACHE_MODE` / `SCRAPE_FETCH_CACHE_MODE`) deferred
+  to a follow-up if real configurations need them. Lays the primitive
+  `king-scrape update <name>` needs to make `force_refresh=True`
+  actually fetch from the network.
 - Content-hash provenance through every layer of the scraper pipeline
   (ADR-0012). `Chunk` and `EnrichedChunk` carry a `content_hash` field
   populated by `sha256(content)`. Each fetched page now writes a sidecar
@@ -81,6 +96,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   corpus file or the database. No LLM cost. Markdown report lands at
   `.king-context/audit/<name>-<ts>.md`. Exit code is `0` on clean,
   `2` when at least one section is broken, so it can gate a CI job.
+- `king-scrape update <name>` subcommand (ADR-0014). Refetches the
+  upstream of an indexed corpus, rechunks, and reuses every section
+  whose chunked content is byte identical to the previous scrape.
+  Only new or changed chunks are sent to the LLM, so a typical
+  refresh costs cents instead of dollars even on a large corpus.
+  Reused sections carry forward `keywords`, `use_cases`, `tags`,
+  `priority` from the existing corpus but adopt fresh `title`,
+  `path`, `url` so a page reorganisation upstream is reflected.
+  Cost preview before enrichment; `--yes` skips the prompt. Writes
+  back to the same `data/<name>.json` path so `git diff` shows
+  exactly what changed. Pre ADR-0012 corpora (no
+  `_meta.content_hash`) are handled by recomputing the hash from
+  `content`. The work directory is reset at the start of every
+  update and the corpus JSON is written atomically (tempfile plus
+  rename). `fetch_pages` gains a `force_refresh=True` flag so the
+  update flow can refetch every URL regardless of cached state.
 
 ## [0.4.0] - 2026-05-06
 

@@ -266,6 +266,65 @@ def test_audit_main_returns_0_when_clean(tmp_path: Path):
     assert rc == 0
 
 
+def test_audit_main_no_fetch_cache_sets_env(tmp_path: Path, monkeypatch):
+    """`king-scrape audit --no-fetch-cache` must set SCRAPE_CACHE_MODE=bypass
+    for the duration of the run and restore the prior state on exit."""
+    import os
+
+    monkeypatch.delenv("SCRAPE_CACHE_MODE", raising=False)
+    corpus_path = _make_corpus(tmp_path)
+    audit_dir = tmp_path / "out"
+
+    seen = {"during": None}
+
+    async def fake_check(section_urls, *, concurrency=10):
+        seen["during"] = os.environ.get("SCRAPE_CACHE_MODE")
+        return [
+            audit.SectionAudit(url=url, title=title, status="fresh", status_code=200)
+            for url, title in section_urls
+        ]
+
+    with patch.object(audit, "find_corpus", return_value=corpus_path), \
+         patch.object(audit, "_check_section_urls", side_effect=fake_check):
+        rc = audit.audit_main([
+            "demo", "--no-discover", "--no-fetch-cache",
+            "--report-dir", str(audit_dir),
+        ])
+
+    assert rc == 0
+    assert seen["during"] == "bypass"
+    assert "SCRAPE_CACHE_MODE" not in os.environ
+
+
+def test_audit_main_no_fetch_cache_respects_prior_env(tmp_path: Path, monkeypatch):
+    """Explicit pre-existing env value wins via setdefault, restored on exit."""
+    import os
+
+    monkeypatch.setenv("SCRAPE_CACHE_MODE", "read_only")
+    corpus_path = _make_corpus(tmp_path)
+    audit_dir = tmp_path / "out"
+
+    seen = {"during": None}
+
+    async def fake_check(section_urls, *, concurrency=10):
+        seen["during"] = os.environ.get("SCRAPE_CACHE_MODE")
+        return [
+            audit.SectionAudit(url=url, title=title, status="fresh", status_code=200)
+            for url, title in section_urls
+        ]
+
+    with patch.object(audit, "find_corpus", return_value=corpus_path), \
+         patch.object(audit, "_check_section_urls", side_effect=fake_check):
+        rc = audit.audit_main([
+            "demo", "--no-discover", "--no-fetch-cache",
+            "--report-dir", str(audit_dir),
+        ])
+
+    assert rc == 0
+    assert seen["during"] == "read_only"
+    assert os.environ.get("SCRAPE_CACHE_MODE") == "read_only"
+
+
 def test_audit_main_returns_1_when_corpus_missing(tmp_path: Path, capsys):
     rc = audit.audit_main(["does-not-exist", "--no-discover"])
     assert rc == 1
