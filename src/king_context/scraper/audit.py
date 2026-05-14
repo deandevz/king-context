@@ -235,15 +235,10 @@ async def _check_section_urls(
 
 async def _discover_fresh_urls(base_url: str) -> list[str]:
     # Lazy import so audit doesn't pull in scraper-provider deps when --no-discover.
-    from king_context.scraper.config import load_config
     from scraper_providers import get_discovery_provider, resolve_provider_name
 
-    config = load_config()
-    provider_name = resolve_provider_name(
-        "discover",
-        explicit=config.scrape_discover_provider or config.scrape_provider,
-    )
-    provider = get_discovery_provider(provider_name, config)
+    provider_name = resolve_provider_name("discover")
+    provider = get_discovery_provider(provider_name)
     return list(await provider.discover_urls(base_url))
 
 
