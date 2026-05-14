@@ -7,8 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `db.insert_documentation` (called by `seed_data.seed_one` and the scraper's
+  auto-seed step) is now an upsert. Re-seeding the same corpus name no longer
+  raises `sqlite3.IntegrityError` against `documentations.name UNIQUE`. The
+  documentations row is upserted via `INSERT ... ON CONFLICT(name) DO UPDATE
+  ... RETURNING id`, which keeps the original `created_at` and the existing
+  `doc_id` stable across refreshes. Sections, their `query_cache` entries
+  (via `ON DELETE CASCADE`), and their `sections_fts` index entries (via the
+  FTS5 'delete' protocol) are then cleared and the fresh sections inserted
+  in the same SQLite transaction. Embedding writes to `data/embeddings.npy`
+  and `data/_internal/section_mapping.json` are deferred until after the
+  commit, so a rollback never leaves the numpy sidecar ahead of the
+  committed DB state. Closes #48.
+- `db._get_connection` now executes `PRAGMA foreign_keys = ON` on every
+  connection. Without this, `ON DELETE CASCADE` on `sections.doc_id` and
+  `query_cache.section_id` was a silent no-op for everything outside
+  `init_db`, leaving orphan rows after deletes. The upsert above relies on
+  the cascade, but every other delete path benefits too.
+- A single chunk's `ProviderError` no longer aborts the entire concurrent
+  enrich batch (#47). `_enrich_one` is now contract-bound never to raise:
+  non-transient primary errors break the retry loop early and fall through
+  to the schema fallback (the layer designed to absorb malformed JSON);
+  the schema fallback's own failures are absorbed; the chunk is dropped
+  from the output and the batch keeps running. `enrich_chunks` adds
+  `return_exceptions=True` to its `asyncio.gather` call as a defensive
+  guard. Per-chunk failures and per-task `CancelledError`s emit a warning
+  on stderr and a per-batch summary line (`batch NNNN: X enriched, Y
+  dropped`) so contributors can see exactly how many chunks were lost.
+- The schema fallback's enrichments are no longer cached under the
+  primary client's cache key. Pre-fix, a successful schema-fallback
+  response was written to `enrich_cache` keyed by the primary's model;
+  next run with the primary healthy would short-circuit at the cache
+  check and serve fallback content as if it were primary. The cache
+  invariant is now: only successful primary responses are cached.
+- `enrich_chunks` deduplicates the schema fallback when the primary is a
+  `FallbackClient` whose own fallback leg points at the same underlying
+  client. Pre-fix this configuration paid for two LLM calls against the
+  same client per failed chunk; now the schema-fallback step is skipped
+  and the FallbackClient's internal fallback is the only call.
+- The bare `except Exception` in `_enrich_one` was narrowed to
+  `(ProviderError, asyncio.TimeoutError, ValueError, json.JSONDecodeError)`
+  so programming errors (`AttributeError`, `TypeError`, etc.) propagate
+  instead of being silently retried as transient provider hiccups.
+
 ### Added
 
+- `--no-fetch-cache` flag on `king-scrape` and `SCRAPE_CACHE_MODE` env
+  var (#50). Bypasses the Crawl4AI provider's local cache (`~/.crawl4ai/`)
+  for the duration of the run without wiping the cache directory by hand.
+  `SCRAPE_CACHE_MODE` accepts `bypass`, `disabled`, `read_only`,
+  `write_only`, or `default`/unset. The CLI flag is shorthand for
+  `SCRAPE_CACHE_MODE=bypass` and uses `setdefault` semantics so an
+  explicit pre-existing env value wins (mirrors `--provider`'s
+  precedence). `main()` restores the prior env value on exit so the
+  flag does not leak into an embedding application or test session.
+  Honoured by the crawl4ai provider; firecrawl ignores it (its API
+  defaults to fresh-fetch). Knob is global today; per-stage variants
+  (`SCRAPE_DISCOVER_CACHE_MODE` / `SCRAPE_FETCH_CACHE_MODE`) deferred
+  to a follow-up if real configurations need them. Lays the primitive
+  `king-scrape update <name>` needs to make `force_refresh=True`
+  actually fetch from the network.
 - Content-hash provenance through every layer of the scraper pipeline
   (ADR-0012). `Chunk` and `EnrichedChunk` carry a `content_hash` field
   populated by `sha256(content)`. Each fetched page now writes a sidecar
@@ -36,6 +96,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   corpus file or the database. No LLM cost. Markdown report lands at
   `.king-context/audit/<name>-<ts>.md`. Exit code is `0` on clean,
   `2` when at least one section is broken, so it can gate a CI job.
+- `king-scrape update <name>` subcommand (ADR-0014). Refetches the
+  upstream of an indexed corpus, rechunks, and reuses every section
+  whose chunked content is byte identical to the previous scrape.
+  Only new or changed chunks are sent to the LLM, so a typical
+  refresh costs cents instead of dollars even on a large corpus.
+  Reused sections carry forward `keywords`, `use_cases`, `tags`,
+  `priority` from the existing corpus but adopt fresh `title`,
+  `path`, `url` so a page reorganisation upstream is reflected.
+  Cost preview before enrichment; `--yes` skips the prompt. Writes
+  back to the same `data/<name>.json` path so `git diff` shows
+  exactly what changed. Pre ADR-0012 corpora (no
+  `_meta.content_hash`) are handled by recomputing the hash from
+  `content`. The work directory is reset at the start of every
+  update and the corpus JSON is written atomically (tempfile plus
+  rename). `fetch_pages` gains a `force_refresh=True` flag so the
+  update flow can refetch every URL regardless of cached state.
 
 ## [0.4.0] - 2026-05-06
 

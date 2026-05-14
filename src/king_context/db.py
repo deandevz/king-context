@@ -458,26 +458,66 @@ def insert_documentation(doc_data: Dict[str, Any]) -> int:
     """
     conn = _get_connection()
     cursor = conn.cursor()
+    # Embeddings are written to disk by _generate_and_save_embedding and live
+    # outside the SQLite transaction. Stage them here and flush only AFTER the
+    # commit so a rolled back transaction never leaves orphan numpy rows on
+    # disk that disagree with the committed DB state.
+    embeddings_pending: list[tuple[int, str]] = []
 
     try:
-        # Get current timestamp in ISO format
         now = datetime.now().isoformat()
 
-        # Insert documentation record
-        cursor.execute("""
+        # Atomic upsert of the documentations row. ON CONFLICT preserves
+        # `created_at` (we only overwrite display_name, version, base_url,
+        # updated_at) and removes the read-modify-write race two concurrent
+        # scrapers would have hit with a SELECT-then-DELETE-then-INSERT.
+        cursor.execute(
+            """
             INSERT INTO documentations (name, display_name, version, base_url, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            doc_data["name"],
-            doc_data["display_name"],
-            doc_data.get("version"),
-            doc_data["base_url"],
-            now,
-            now
-        ))
-        doc_id = cursor.lastrowid
+            ON CONFLICT(name) DO UPDATE SET
+                display_name = excluded.display_name,
+                version = excluded.version,
+                base_url = excluded.base_url,
+                updated_at = excluded.updated_at
+            RETURNING id
+            """,
+            (
+                doc_data["name"],
+                doc_data["display_name"],
+                doc_data.get("version"),
+                doc_data["base_url"],
+                now,
+                now,
+            ),
+        )
+        doc_id = cursor.fetchone()[0]
 
-        # Insert sections
+        # Drop any prior sections for this doc. sections_fts is an external
+        # content table and does not auto-prune on cascade or DELETE, so each
+        # row's index entry must be removed via the FTS5 'delete' protocol
+        # before the sections rows themselves go away. Use a separate cursor
+        # so the streaming SELECT and the per-row INSERT do not contend on
+        # the same statement handle.
+        read_cursor = conn.cursor()
+        read_cursor.execute(
+            "SELECT id, title, content FROM sections WHERE doc_id = ?",
+            (doc_id,),
+        )
+        for sid, stitle, scontent in read_cursor:
+            # The `or ""` mirrors the insert path below: NULL content stored in
+            # `sections` was originally fed to FTS5 as the empty string. The
+            # 'delete' values must match what FTS5 saw on insert, byte for
+            # byte, or term frequencies drift silently.
+            cursor.execute(
+                "INSERT INTO sections_fts(sections_fts, rowid, title, content) "
+                "VALUES('delete', ?, ?, ?)",
+                (sid, stitle, scontent if scontent is not None else ""),
+            )
+        read_cursor.close()
+        cursor.execute("DELETE FROM sections WHERE doc_id = ?", (doc_id,))
+
+        # Insert new sections
         sections = doc_data.get("sections", [])
         for section in sections:
             cursor.execute("""
@@ -506,17 +546,24 @@ def insert_documentation(doc_data: Dict[str, Any]) -> int:
                 section.get("content", "")
             ))
 
-            # Generate and save embedding for section
-            _generate_and_save_embedding(section_id, section.get("content", ""))
+            embeddings_pending.append((section_id, section.get("content", "")))
 
         conn.commit()
-        return doc_id
 
     except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
+
+    # Embeddings flushed AFTER commit, so a SQLite rollback above leaves the
+    # numpy file untouched. Failures here do not corrupt the DB; at worst the
+    # corpus has fresh sections without their embedding rows, which the
+    # hybrid reranker handles gracefully (FTS-only fallback).
+    for section_id, content in embeddings_pending:
+        _generate_and_save_embedding(section_id, content)
+
+    return doc_id
 
 
 def list_documentations() -> List[Dict[str, Any]]:
@@ -700,5 +747,13 @@ def _escape_fts5_query(query: str) -> str:
 
 
 def _get_connection() -> sqlite3.Connection:
-    """Retorna conexão com o banco."""
-    return sqlite3.connect(DB_PATH)
+    """Open a database connection with foreign keys enforced.
+
+    SQLite requires ``PRAGMA foreign_keys = ON`` per connection; without it,
+    ``ON DELETE CASCADE`` on ``sections`` and ``query_cache`` is a silent
+    no-op. Enable it on every connection so cascade behaviour matches the
+    schema's stated contract.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn

@@ -1,6 +1,8 @@
 """Crawl4AI scraper provider — local Playwright-based backend."""
 from __future__ import annotations
 
+import os
+import sys
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
@@ -14,6 +16,7 @@ try:
     from crawl4ai import (  # type: ignore[import-not-found]
         AsyncWebCrawler,
         BrowserConfig,
+        CacheMode,
         CrawlerRunConfig,
     )
     from crawl4ai.deep_crawling import (  # type: ignore[import-not-found]
@@ -23,9 +26,74 @@ try:
 except ImportError:
     AsyncWebCrawler = None  # type: ignore[assignment,misc]
     BrowserConfig = None  # type: ignore[assignment,misc]
+    CacheMode = None  # type: ignore[assignment,misc]
     CrawlerRunConfig = None  # type: ignore[assignment,misc]
     BFSDeepCrawlStrategy = None  # type: ignore[assignment,misc]
     _CRAWL4AI_AVAILABLE = False
+
+
+# Maps the public ``SCRAPE_CACHE_MODE`` env value to the attribute name on
+# Crawl4AI's ``CacheMode`` enum. ``"default"`` is handled by an early return
+# in ``_resolve_cache_mode`` and is intentionally absent here.
+_CACHE_MODE_MAP = {
+    "enabled": "ENABLED",
+    "bypass": "BYPASS",
+    "disabled": "DISABLED",
+    "read_only": "READ_ONLY",
+    "write_only": "WRITE_ONLY",
+}
+
+# One-shot warning state so a typo in SCRAPE_CACHE_MODE does not produce
+# hundreds of duplicate stderr lines during a deep crawl. Keyed by the raw
+# value so different typos still each warn once. Tests reset this set via
+# ``monkeypatch.setattr(...)`` to keep warn-once assertions independent.
+_WARNED_CACHE_VALUES: set[str] = set()
+
+
+def _warn_unknown_cache_mode(raw: str) -> None:
+    if raw in _WARNED_CACHE_VALUES:
+        return
+    _WARNED_CACHE_VALUES.add(raw)
+    print(
+        f"warning: SCRAPE_CACHE_MODE='{raw}' not recognised; "
+        "using crawl4ai default",
+        file=sys.stderr,
+    )
+
+
+def _resolve_cache_mode() -> Any:
+    """Resolve ``SCRAPE_CACHE_MODE`` env to a ``CacheMode`` value or ``None``.
+
+    ``None`` means "use the library default" — callers omit ``cache_mode``
+    from ``CrawlerRunConfig`` rather than passing ``None``, so existing
+    behaviour is preserved when the env is unset.
+
+    Two distinct paths return ``None``: (1) the value is missing, ``default``,
+    or unrecognised — emits a stderr warning the first time per raw value;
+    (2) the ``crawl4ai`` library is not installed — silent because the
+    caller's ``_ensure_available`` will surface a clearer error before any
+    real fetch happens.
+    """
+    raw = (os.environ.get("SCRAPE_CACHE_MODE") or "").strip().lower()
+    if not raw or raw == "default":
+        return None
+    if CacheMode is None:
+        # Library missing: stay silent. The caller path won't reach a real
+        # crawl4ai call (the provider's _ensure_available raises a clearer
+        # ProviderUnavailableError), so a "not recognised" warning here would
+        # only confuse a user whose actual problem is a missing dependency.
+        return None
+    mapped = _CACHE_MODE_MAP.get(raw)
+    if mapped is None:
+        _warn_unknown_cache_mode(raw)
+        return None
+    try:
+        return getattr(CacheMode, mapped)
+    except AttributeError:
+        # Future crawl4ai version may rename the enum value. Fall back to
+        # default behaviour with a one-shot warning so the run continues.
+        _warn_unknown_cache_mode(raw)
+        return None
 
 
 _INSTALL_HINT = (
@@ -103,10 +171,15 @@ class Crawl4AIDiscoveryProvider:
     async def discover_urls(self, base_url: str) -> list[str]:
         _ensure_available()
         _ensure_browser_present()
+        cache_kwargs: dict[str, Any] = {}
+        cache_mode = _resolve_cache_mode()
+        if cache_mode is not None:
+            cache_kwargs["cache_mode"] = cache_mode
         run_config = CrawlerRunConfig(  # type: ignore[misc]
             deep_crawl_strategy=BFSDeepCrawlStrategy(  # type: ignore[misc]
                 max_depth=2, include_external=False
             ),
+            **cache_kwargs,
         )
         try:
             async with AsyncWebCrawler(  # type: ignore[misc]
@@ -131,11 +204,23 @@ class Crawl4AIFetchProvider:
     async def fetch_one(self, url: str) -> PageContent:
         _ensure_available()
         _ensure_browser_present()
+        cache_mode = _resolve_cache_mode()
+        run_config = (
+            CrawlerRunConfig(cache_mode=cache_mode)  # type: ignore[misc]
+            if cache_mode is not None
+            else None
+        )
         try:
             async with AsyncWebCrawler(  # type: ignore[misc]
                 config=BrowserConfig(headless=True),  # type: ignore[misc]
             ) as crawler:
-                result = await crawler.arun(url=url)
+                if run_config is not None:
+                    result = await crawler.arun(url=url, config=run_config)
+                else:
+                    # Preserve the pre-fix call shape when no cache override is
+                    # set, so existing behaviour and any provider-side defaults
+                    # remain unchanged for users who have not opted in.
+                    result = await crawler.arun(url=url)
         except Exception as exc:
             if _is_browser_missing(exc):
                 raise ProviderUnavailableError("crawl4ai", _SETUP_HINT) from exc

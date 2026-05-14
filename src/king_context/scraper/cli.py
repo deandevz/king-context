@@ -14,6 +14,11 @@ from scraper_providers import (
 )
 
 from king_context import PROJECT_ROOT
+from king_context.scraper._cache_mode import (
+    add_cache_mode_argument,
+    apply_cache_mode_flag,
+    restore_cache_mode,
+)
 from king_context.scraper.chunk import Chunk, chunk_pages
 from king_context.scraper.config import ScraperConfig, load_config
 from king_context.scraper.discover import (
@@ -258,7 +263,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="king-scrape",
         description=(
             "Scrape and index documentation for King Context. "
-            "Use `king-scrape audit <name>` to check an existing corpus for drift."
+            "Use `king-scrape audit <name>` to check an existing corpus for "
+            "drift, or `king-scrape update <name>` to refresh it cheaply."
         ),
     )
     parser.add_argument("url", help="Base URL of the documentation to scrape")
@@ -346,24 +352,30 @@ def _build_parser() -> argparse.ArgumentParser:
             "have precedence."
         ),
     )
+    add_cache_mode_argument(parser)
     return parser
 
 
 def main() -> None:
-    if len(sys.argv) > 1 and sys.argv[1] == "audit":
-        from king_context.scraper.audit import audit_main
-        sys.exit(audit_main(sys.argv[2:]))
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "audit":
+            from king_context.scraper.audit import audit_main
+            sys.exit(audit_main(sys.argv[2:]))
+        if sys.argv[1] == "update":
+            from king_context.scraper.update import update_main
+            sys.exit(update_main(sys.argv[2:]))
 
     parser = _build_parser()
     args = parser.parse_args()
-    config = load_config(
-        enrichment_model=args.model,
-        chunk_max_tokens=args.chunk_max_tokens,
-        chunk_min_tokens=args.chunk_min_tokens,
-        concurrency=args.concurrency,
-        filter_llm_fallback=not args.no_llm_filter,
-    )
+    cache_mode_was_set, cache_mode_prior = apply_cache_mode_flag(args)
     try:
+        config = load_config(
+            enrichment_model=args.model,
+            chunk_max_tokens=args.chunk_max_tokens,
+            chunk_min_tokens=args.chunk_min_tokens,
+            concurrency=args.concurrency,
+            filter_llm_fallback=not args.no_llm_filter,
+        )
         asyncio.run(run_pipeline(args, config))
     except ProviderUnavailableError as exc:
         print(f"error: {exc.hint}", file=sys.stderr)
@@ -371,6 +383,12 @@ def main() -> None:
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         sys.exit(2)
+    finally:
+        # Restore the env so calling ``main()`` from tests or from an
+        # embedding application does not leak the bypass flag into the
+        # next caller's process state. Covers both the asyncio.run path
+        # AND any failure inside load_config (e.g. invalid --model arg).
+        restore_cache_mode(cache_mode_was_set, cache_mode_prior)
 
 
 if __name__ == "__main__":

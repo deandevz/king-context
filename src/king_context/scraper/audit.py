@@ -24,11 +24,15 @@ from email.utils import parsedate_to_datetime
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from pathlib import Path
 from typing import Iterable
-from urllib.parse import urldefrag, urlsplit, urlunsplit
 
 import httpx
 
 from king_context import PROJECT_ROOT
+from king_context.scraper._cache_mode import (
+    add_cache_mode_argument,
+    apply_cache_mode_flag,
+    restore_cache_mode,
+)
 
 
 HTTP_TIMEOUT = 15.0
@@ -43,14 +47,11 @@ def _scraper_version() -> str:
         return "dev"
 
 
-def _canonicalize(url: str) -> str:
-    """Drop fragment, lowercase scheme/host, strip trailing slash from path."""
-    url, _ = urldefrag(url)
-    parts = urlsplit(url)
-    path = parts.path.rstrip("/") or "/"
-    return urlunsplit(
-        (parts.scheme.lower(), parts.netloc.lower(), path, parts.query, "")
-    )
+from king_context.scraper.url_utils import canonicalize_url as _canonicalize  # noqa: E402
+
+# ``_canonicalize`` is re-exported for compatibility with existing call sites
+# inside audit.py. New code should import ``canonicalize_url`` directly from
+# ``king_context.scraper.url_utils``.
 
 
 @dataclass
@@ -416,6 +417,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=PROJECT_ROOT / ".king-context" / "audit",
         help="Where to write the Markdown report.",
     )
+    add_cache_mode_argument(parser)
     return parser
 
 
@@ -454,6 +456,7 @@ def audit_main(argv: list[str]) -> int:
         print("error: --concurrency must be >= 1", file=sys.stderr)
         return 1
 
+    cache_mode_was_set, cache_mode_prior = apply_cache_mode_flag(args)
     try:
         audit = asyncio.run(
             audit_corpus(
@@ -465,6 +468,8 @@ def audit_main(argv: list[str]) -> int:
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    finally:
+        restore_cache_mode(cache_mode_was_set, cache_mode_prior)
 
     report_path = write_report(audit, args.report_dir)
     _print_summary(audit, report_path)

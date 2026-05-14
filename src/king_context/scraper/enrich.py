@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -231,57 +232,79 @@ async def _enrich_one(
     primary_client: LLMClient,
     schema_fallback: LLMClient | None = None,
 ) -> EnrichedChunk | None:
-    """Enrich a single chunk with up to 2 retries on validation failure."""
-    cache_key = enrich_cache.make_key(
-        chunk.content,
-        primary_client.model,
-        PROMPT_VERSION,
-    )
+    """Enrich a single chunk. Never raises; returns ``None`` on terminal failure.
+
+    Tries the primary client up to three times. Transient ``ProviderError``
+    rounds are retried; a non-transient ``ProviderError`` (e.g. unparseable
+    JSON, schema validation gone wrong) breaks the retry loop early and falls
+    through to the schema fallback. Validation failures use the full retry
+    budget. If the schema fallback also fails, returns ``None`` so the caller
+    can record the chunk as "lost" and continue the batch.
+
+    The "never raises per chunk" contract is what lets ``enrich_chunks`` run
+    a 500-chunk batch without one bad model response cancelling the rest of
+    the in-flight requests (#47).
+
+    Cache invariant: only successful primary responses get written to the
+    enrichment cache. The schema fallback's outputs are intentionally NOT
+    cached under the primary's key, because next run with the primary
+    healthy would otherwise serve fallback content as if it were primary.
+    """
+    # Defensive ``getattr`` so a future client wrapper that drops ``.model``
+    # produces a stable fallback key rather than a swallowed AttributeError.
+    model_id = getattr(primary_client, "model", "unknown")
+    cache_key = enrich_cache.make_key(chunk.content, model_id, PROMPT_VERSION)
     cached = enrich_cache.get(cache_key)
     if cached is not None and not validate_enrichment(cached):
         return _to_enriched_chunk(chunk, cached)
 
     prompt = ENRICHMENT_PROMPT.format(title=chunk.title, content=chunk.content)
+    fallback_reason = "validation_failed_3x"
 
     for attempt in range(3):  # 1 initial attempt + 2 retries
+        # Reset to the validation-failure default each iteration so the
+        # final reason reflects the LAST attempt's failure mode, not a
+        # stale value from an earlier transient retry.
+        attempt_reason = "validation_failed_3x"
         try:
             enrichment = await primary_client.complete(prompt)
             errors = validate_enrichment(enrichment)
             if not errors:
                 enrich_cache.put(cache_key, enrichment)
                 return _to_enriched_chunk(chunk, enrichment)
+            # Validation failed; keep retrying within the budget.
         except ProviderError as exc:
-            if not exc.transient or attempt == 2:
-                raise
-            continue
-        except Exception:
-            pass
+            attempt_reason = f"primary_provider_error:{exc.reason or 'unknown'}"
+            if not exc.transient:
+                # Non-transient: more retries will not help. Break out and
+                # let the schema fallback (if any) absorb the failure.
+                fallback_reason = attempt_reason
+                break
+        except (asyncio.TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            # Narrow defensive catch: timeouts surface as TimeoutError on
+            # newer Python; JSON parse and value errors come from the
+            # provider's response handling. Programming errors
+            # (AttributeError, TypeError) deliberately propagate so a
+            # regression cannot hide as silent retries.
+            attempt_reason = f"primary_unexpected_error:{type(exc).__name__}"
+        fallback_reason = attempt_reason
 
     if schema_fallback is not None:
         log_fallback(
             stage="enrich",
             primary=primary_client,
             fallback=schema_fallback,
-            reason="validation_failed_3x",
+            reason=fallback_reason,
         )
         try:
             enrichment = await schema_fallback.complete(prompt)
             fallback_errors = validate_enrichment(enrichment)
             if not fallback_errors:
-                enrich_cache.put(cache_key, enrichment)
+                # Intentionally no cache write: see docstring "Cache invariant".
                 return _to_enriched_chunk(chunk, enrichment)
-            raise ProviderError(
-                "validation_failed_3x",
-                transient=False,
-                provider=schema_fallback.name,
-                message=(
-                    "Enrichment schema fallback returned invalid metadata: "
-                    + "; ".join(fallback_errors)
-                ),
-            )
-        except ProviderError:
-            raise
-        except Exception:
+        except (ProviderError, asyncio.TimeoutError, ValueError, json.JSONDecodeError):
+            # Provider-class failures from the fallback are absorbed by design;
+            # programming errors propagate so regressions surface in CI.
             pass
 
     return None
@@ -354,8 +377,25 @@ async def enrich_chunks(
     primary_client = _with_provider_semaphores(clients.primary, semaphores)
     schema_fallback = _with_provider_semaphores(clients.schema_fallback, semaphores)
     assert primary_client is not None
+
+    # Avoid double-billing when the primary is a FallbackClient whose own
+    # fallback leg is the same underlying client as the configured schema
+    # fallback. ``_with_provider_semaphores`` re-wraps clients, so identity
+    # on the wrapper is not enough; compare the underlying ``_client`` (or
+    # the wrapper itself if it has none).
+    def _unwrap(c: LLMClient | None) -> LLMClient | None:
+        return getattr(c, "_client", c)
+
+    if (
+        isinstance(primary_client, FallbackClient)
+        and schema_fallback is not None
+        and _unwrap(primary_client.fallback) is _unwrap(schema_fallback)
+    ):
+        schema_fallback = None
+
     batch_size = config.enrichment_batch_size
     total_chunks = len(chunks) + len(enriched)  # original total
+    total_dropped = 0
 
     async def guarded(chunk: Chunk) -> EnrichedChunk | None:
         return await _enrich_one(
@@ -367,11 +407,49 @@ async def enrich_chunks(
     for batch_idx, start in enumerate(range(0, len(chunks), batch_size)):
         batch_num = batch_offset + batch_idx
         batch = chunks[start:start + batch_size]
-        results = await asyncio.gather(*[guarded(c) for c in batch])
+        # ``return_exceptions=True`` so one chunk's failure cannot cancel the
+        # rest of the in-flight batch (#47). ``_enrich_one`` already absorbs
+        # per-chunk errors and returns ``None`` on terminal failure; this
+        # guard is defensive in case a future change introduces a new raise
+        # path or a cancellation slips through.
+        results: list[EnrichedChunk | None | BaseException] = await asyncio.gather(
+            *[guarded(c) for c in batch], return_exceptions=True
+        )
 
+        batch_dropped = 0
         for result in results:
-            if result is not None:
-                enriched.append(result)
+            # An outer-task cancellation propagates through ``await
+            # asyncio.gather(...)`` directly; a child CancelledError
+            # returned as a value here means a per-task cancel that we
+            # treat as a per-chunk failure and keep going.
+            if isinstance(result, asyncio.CancelledError):
+                print(
+                    f"  warning: chunk cancelled: {result}",
+                    file=sys.stderr,
+                )
+                batch_dropped += 1
+                continue
+            if isinstance(result, BaseException):
+                print(
+                    f"  warning: chunk failed with {type(result).__name__}: {result}",
+                    file=sys.stderr,
+                )
+                batch_dropped += 1
+                continue
+            if result is None:
+                # _enrich_one absorbed the failure and returned None.
+                batch_dropped += 1
+                continue
+            enriched.append(result)
+
+        total_dropped += batch_dropped
+        if batch_dropped:
+            survived = len(batch) - batch_dropped
+            print(
+                f"  batch {batch_num:04d}: {survived} enriched, "
+                f"{batch_dropped} dropped (running total dropped: {total_dropped})",
+                file=sys.stderr,
+            )
 
         if enriched_dir is not None:
             checkpoint = [
