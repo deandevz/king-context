@@ -75,6 +75,13 @@ def test_section_hash_falls_back_to_content_when_meta_missing():
     assert update._section_hash(legacy) == _hash("legacy")
 
 
+def test_resolve_source_url_handles_explicit_null_meta():
+    """Hand-written JSON can serialise `"_meta": null` (not missing); the
+    helper must not raise AttributeError on the chained .get."""
+    corpus = {"_meta": None, "base_url": "https://docs.example.com"}
+    assert update._resolve_source_url(corpus) == "https://docs.example.com"
+
+
 def test_resolve_source_url_prefers_meta():
     corpus = {
         "base_url": "https://docs.example.com",

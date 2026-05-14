@@ -183,11 +183,13 @@ def _enrichment_from_section(section: dict) -> dict:
 
 
 def _resolve_source_url(corpus: dict) -> str:
-    return (
-        corpus.get("_meta", {}).get("source_url")
-        or corpus.get("base_url")
-        or ""
-    )
+    # `corpus.get("_meta") or {}` (not the default form) so an explicit
+    # `"_meta": null` in the JSON still produces a dict for the chained
+    # .get(...) instead of raising AttributeError. The legacy guard
+    # upstream uses `"_meta" not in corpus`, which lets explicit-null
+    # through.
+    meta = corpus.get("_meta") or {}
+    return meta.get("source_url") or corpus.get("base_url") or ""
 
 
 def _build_reuse_index(corpus: dict) -> dict[str, dict]:
