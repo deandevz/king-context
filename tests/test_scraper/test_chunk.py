@@ -196,3 +196,75 @@ def test_chunk_content_hash_changes_with_content():
     b = Chunk(title="", breadcrumb="", content="B",
               source_url="u", path="p", token_count=1)
     assert a.content_hash != b.content_hash
+
+
+# --- _resolve_page_url + chunk_pages sidecar integration ----------------
+
+
+def test_chunk_pages_uses_real_url_from_sidecar(tmp_path):
+    """When a <slug>.meta.json sidecar exists next to <slug>.md, chunks
+    carry the real https URL, not the slug stem."""
+    import json
+    pages_dir = tmp_path / "pages"
+    pages_dir.mkdir()
+    (pages_dir / "docs-example-com-quickstart.md").write_text(
+        "## Quickstart\n\nbody text"
+    )
+    (pages_dir / "docs-example-com-quickstart.meta.json").write_text(
+        json.dumps({
+            "url": "https://docs.example.com/quickstart",
+            "slug": "docs-example-com-quickstart",
+            "content_hash": "deadbeef",
+            "fetched_at": "2026-05-08T00:00:00+00:00",
+            "byte_size": 18,
+        })
+    )
+
+    config = make_config(chunk_min_tokens=1)
+    chunks = chunk_pages(pages_dir, tmp_path, config)
+
+    assert len(chunks) == 1
+    assert chunks[0].source_url == "https://docs.example.com/quickstart"
+
+
+def test_chunk_pages_falls_back_to_slug_when_sidecar_missing(tmp_path):
+    """Pre-#46 work directories have no sidecars; chunks fall back to slug."""
+    pages_dir = tmp_path / "pages"
+    pages_dir.mkdir()
+    (pages_dir / "legacy-slug.md").write_text("## Title\n\nbody")
+    # No legacy-slug.meta.json on disk.
+
+    config = make_config(chunk_min_tokens=1)
+    chunks = chunk_pages(pages_dir, tmp_path, config)
+
+    assert len(chunks) == 1
+    assert chunks[0].source_url == "legacy-slug"
+
+
+def test_chunk_pages_falls_back_to_slug_when_sidecar_malformed(tmp_path):
+    """Malformed sidecar must not abort the run; fall back to slug."""
+    pages_dir = tmp_path / "pages"
+    pages_dir.mkdir()
+    (pages_dir / "broken.md").write_text("## Title\n\nbody")
+    (pages_dir / "broken.meta.json").write_text("{ not valid json")
+
+    config = make_config(chunk_min_tokens=1)
+    chunks = chunk_pages(pages_dir, tmp_path, config)
+
+    assert len(chunks) == 1
+    assert chunks[0].source_url == "broken"
+
+
+def test_chunk_pages_falls_back_to_slug_when_sidecar_lacks_url(tmp_path):
+    """Sidecar present but missing the ``url`` key — fall back to slug."""
+    import json
+    pages_dir = tmp_path / "pages"
+    pages_dir.mkdir()
+    (pages_dir / "no-url.md").write_text("## Title\n\nbody")
+    (pages_dir / "no-url.meta.json").write_text(json.dumps({"slug": "no-url"}))
+
+    config = make_config(chunk_min_tokens=1)
+    chunks = chunk_pages(pages_dir, tmp_path, config)
+
+    assert len(chunks) == 1
+    assert chunks[0].source_url == "no-url"

@@ -189,6 +189,29 @@ def chunk_page(markdown: str, source_url: str, config: ScraperConfig) -> list[Ch
     return merged
 
 
+def _resolve_page_url(md_file: Path) -> str:
+    """Return the real URL for a fetched page, or fall back to the slug.
+
+    ``fetch.py`` writes ``<slug>.meta.json`` next to ``<slug>.md`` with the
+    real upstream URL. When the sidecar is present, prefer it so chunks
+    carry the actual ``https://...`` URL rather than the slug. Legacy
+    ``_temp/`` directories from scrapes that pre-date the sidecar (or
+    sidecars that fail to parse) fall back to ``md_file.stem`` so the
+    pipeline stays compatible with older work directories.
+    """
+    sidecar = md_file.with_suffix(".meta.json")
+    if not sidecar.exists():
+        return md_file.stem
+    try:
+        meta = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return md_file.stem
+    url = meta.get("url") if isinstance(meta, dict) else None
+    if isinstance(url, str) and url:
+        return url
+    return md_file.stem
+
+
 def chunk_pages(pages_dir: Path, output_dir: Path, config: ScraperConfig) -> list[Chunk]:
     """Process all .md files in pages_dir and save per-page chunk JSONs."""
     chunks_dir = output_dir / "chunks"
@@ -198,8 +221,9 @@ def chunk_pages(pages_dir: Path, output_dir: Path, config: ScraperConfig) -> lis
 
     for md_file in sorted(pages_dir.glob("*.md")):
         markdown = md_file.read_text()
-        slug = md_file.stem
-        page_chunks = chunk_page(markdown, slug, config)
+        slug = md_file.stem  # filename stem; used for the per-page chunks JSON below
+        source_url = _resolve_page_url(md_file)
+        page_chunks = chunk_page(markdown, source_url, config)
         all_chunks.extend(page_chunks)
 
         chunk_data = [
