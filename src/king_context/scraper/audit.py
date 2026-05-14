@@ -24,7 +24,6 @@ from email.utils import parsedate_to_datetime
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from pathlib import Path
 from typing import Iterable
-from urllib.parse import urldefrag, urlsplit, urlunsplit
 
 import httpx
 
@@ -43,14 +42,11 @@ def _scraper_version() -> str:
         return "dev"
 
 
-def _canonicalize(url: str) -> str:
-    """Drop fragment, lowercase scheme/host, strip trailing slash from path."""
-    url, _ = urldefrag(url)
-    parts = urlsplit(url)
-    path = parts.path.rstrip("/") or "/"
-    return urlunsplit(
-        (parts.scheme.lower(), parts.netloc.lower(), path, parts.query, "")
-    )
+from king_context.scraper.url_utils import canonicalize_url as _canonicalize  # noqa: E402
+
+# ``_canonicalize`` is re-exported for compatibility with existing call sites
+# inside audit.py. New code should import ``canonicalize_url`` directly from
+# ``king_context.scraper.url_utils``.
 
 
 @dataclass
