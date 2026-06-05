@@ -31,9 +31,9 @@ Turns the enriched JSON into a flat file structure with reverse indexes:
 
 ### `kctx` — search and read
 
-The retrieval interface. Scores sections by matching query terms against the keyword and use-case indexes. No full-text scan, no vector similarity on roughly 90% of lookups. A local query cache collapses repeat lookups to sub-millisecond reads.
+The retrieval interface. Scores sections by matching query terms against the keyword, use-case, and tag indexes (no full-text scan, no SQLite, no vector similarity). Reads are plain JSON file loads. See the [CLI retrieval deep dive](architecture/cli-retrieval.md).
 
-Agents can write `.king-context/_learned/<corpus>.md` shortcuts as they work — mapping common questions to exact section paths. The retrieval layer gets faster per corpus over time, with no manual wiring.
+Agents can write `.king-context/_learned/<corpus>.md` shortcuts as they work, mapping common questions to exact section paths. The retrieval layer gets faster per corpus over time, with no manual wiring.
 
 ## Cascade search (MCP server)
 
