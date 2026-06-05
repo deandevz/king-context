@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from dataclasses import asdict
+from importlib.metadata import PackageNotFoundError, version as _package_version
 from pathlib import Path
 
 from context_cli import PROJECT_ROOT, RESEARCH_STORE_DIR, STORE_DIR
@@ -24,6 +25,14 @@ from context_cli.store import list_docs
 
 
 SOURCE_CHOICES = ("all", "docs", "research")
+
+
+def _kctx_version() -> str:
+    """Return the kctx version string from the installed package metadata."""
+    try:
+        return f"kctx {_package_version('king-context')}"
+    except PackageNotFoundError:
+        return "kctx (version unknown)"
 
 
 class AmbiguousDocError(RuntimeError):
@@ -284,7 +293,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="File-based documentation search for AI agents",
     )
     parser.add_argument(
-        "--version", action="version", version="kctx 0.1.0"
+        "--version", action="version", version=_kctx_version()
     )
     subparsers = parser.add_subparsers(dest="command")
 
