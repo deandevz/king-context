@@ -28,6 +28,7 @@ If unsure where to start, browse [open issues](https://github.com/deandevz/king-
 
 ### Code style
 
+- See [code style](docs/contributing/code-style.md) for the conventions extracted from the codebase, and [testing](docs/contributing/testing.md) for test patterns.
 - Python: follow the existing style in `src/` (PEP 8, type hints where helpful, no broad `except` clauses without a reason).
 - Shell scripts: POSIX-compatible when possible, `#!/usr/bin/env bash` otherwise.
 - Keep changes focused. A bug fix should not include unrelated refactors. A refactor should not change behavior.
@@ -66,7 +67,9 @@ cp .env.example .env
 # Fill in FIRECRAWL_API_KEY, EXA_API_KEY, OPENROUTER_API_KEY as needed
 ```
 
-### 4. Seed the database (optional, for MCP work)
+Note: `cp .env.example .env` at the repo root is for this development clone. Projects that installed King Context via `npx @king-context/cli init` use `cp .king-context/.env.example .env` instead. See [environment variables reference](docs/reference/env-vars.md).
+
+### 4. Seed the database (optional, only for legacy MCP server work)
 
 ```bash
 python -m king_context.seed_data
@@ -78,7 +81,7 @@ python -m king_context.seed_data
 pytest
 ```
 
-For more detail on the codebase, see [`CLAUDE.md`](CLAUDE.md) and the [architecture overview](docs/architecture.md).
+For more detail on the codebase, see [`AGENTS.md`](AGENTS.md), the [architecture overview](docs/architecture.md), and the [architecture deep dives](docs/architecture/overview.md).
 
 ---
 
@@ -107,7 +110,9 @@ The project follows [Conventional Commits](https://www.conventionalcommits.org/)
 ```
 
 Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`.
-Common scopes: `cli`, `mcp`, `scraper`, `research`, `installer`, `skill`, `db`, `docs`, `tests`.
+Common scopes: `cli`, `scraper`, `research`, `installer`, `ui`, `llm`, `providers`, `adr`, `skill`, `db`, `mcp`, `docs`, `tests`.
+
+See [commits and PRs](docs/contributing/commits-and-prs.md) for the full conventions, including the no-em-dash rule for all published text.
 
 Examples:
 
