@@ -673,7 +673,7 @@ def _rerank_with_embeddings(
 
     Note:
         - Returns None if _embedding_model or _embeddings is None
-        - Filters results by similarity threshold of 0.5
+        - Filters results by similarity threshold of 0.3
         - Sorts by similarity descending
         - Skips sections not found in _section_id_to_idx
     """
